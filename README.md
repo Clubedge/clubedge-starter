@@ -9,7 +9,7 @@ A reference application foundation for Clubedge projects. This repository is the
 - Supabase Auth through cookie based `@supabase/ssr` clients. Application code uses `auth`, not SDK calls scattered across pages.
 - Email and password sign-up/sign-in, sign-out action, and PKCE callback route.
 - Storage interface with S3 compatible support (including Cloudflare R2) and a Supabase Storage adapter.
-- Optional Upstash Redis cache and rate limiter.
+- Optional Redis cache and rate limiter over the standard Redis protocol (Upstash or self-hosted).
 - Zod environment checks, security headers, structured errors, and `/api/health`.
 - Docker, GitHub Actions, Vitest, Playwright, ESLint, and Prettier configuration.
 
@@ -55,7 +55,15 @@ Use one migration source of truth for app tables: Drizzle. Do not also create an
 
 `STORAGE_PROVIDER` selects `s3` (the default) or `supabase`. S3 configuration works with AWS S3 or any compatible endpoint such as Cloudflare R2. The storage API is server only; validate upload authorization, file size, content type, and object key ownership in the calling route or action before using it. Signed read URLs are short lived by default.
 
-Upstash Redis is enabled only when both `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set. `createRateLimiter()` returns `null` when Redis is absent so endpoints can choose an explicit local/development policy rather than silently claiming distributed rate limiting is active.
+Redis uses a normal TCP connection, enabled by `REDIS_URL`. For Upstash, copy the TLS connection URL (`rediss://...`) from its console; self-hosted Redis can use `redis://...` or `rediss://...`. The same `redis` client handles both. This requires a Node.js runtime and network access to the Redis host; it is not for Edge runtimes where outbound TCP is unavailable. The starter uses Redis `INCR` and `PEXPIRE` in one Lua script for an atomic fixed-window rate limit. `createRateLimiter()` returns `null` when `REDIS_URL` is absent so endpoints can choose an explicit local/development policy instead of silently claiming distributed rate limiting is active.
+
+```ts
+const limiter = createRateLimiter(20, 60); // 20 requests per 60 seconds
+const result = await limiter?.limit(userId);
+if (result && !result.success) {
+  return Response.json({ error: "Too many requests" }, { status: 429 });
+}
+```
 
 ## Commands
 

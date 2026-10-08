@@ -3,8 +3,10 @@ import { z } from "zod";
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  UPSTASH_REDIS_REST_URL: z.url().optional().or(z.literal("")),
-  UPSTASH_REDIS_REST_TOKEN: z.string().optional().or(z.literal("")),
+  REDIS_URL: z
+    .url({ protocol: /^rediss?$/ })
+    .optional()
+    .or(z.literal("")),
   STORAGE_PROVIDER: z.enum(["s3", "supabase"]).default("s3"),
   STORAGE_BUCKET: z.string().optional().or(z.literal("")),
   STORAGE_REGION: z.string().default("auto"),
@@ -24,5 +26,5 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export function hasRedisConfig() {
-  return Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
+  return Boolean(env.REDIS_URL);
 }
