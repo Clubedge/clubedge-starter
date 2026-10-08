@@ -1,0 +1,168 @@
+# Setup guide
+
+This guide covers local development and the optional infrastructure adapters in Clubedge Starter. Start with [README.md](README.md), then follow only the provider sections your project needs.
+
+## 1. Install the toolchain
+
+Install Node.js 22.12 or newer, then enable Corepack and install pnpm dependencies from the repository root:
+
+```sh
+corepack enable
+pnpm install
+```
+
+The root `package.json` pins pnpm 10.9.0 through its `packageManager` field. Use a compatible pnpm 10 release if Corepack is not available.
+
+If pnpm reports that it ignored a package build script needed by your environment, review the package name and approve only the required dependency with `pnpm approve-builds`.
+
+## 2. Configure local environment
+
+Copy `.env.example` to `apps/web/.env.local`.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example apps/web/.env.local
+```
+
+macOS/Linux:
+
+```sh
+cp .env.example apps/web/.env.local
+```
+
+At minimum, edit these values:
+
+| Variable                               | Required          | Description                                                                                        |
+| -------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                         | Yes               | PostgreSQL connection URL. Use a Supabase transaction pooler URL or another PostgreSQL connection. |
+| `NEXT_PUBLIC_SUPABASE_URL`             | For Supabase Auth | Project URL, such as `https://<project-ref>.supabase.co`.                                          |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | For Supabase Auth | Supabase publishable key. This key is intended for the browser; never use a service role key here. |
+| `NEXT_PUBLIC_APP_URL`                  | Recommended       | The app's origin, defaulting to `http://localhost:3000`.                                           |
+
+`DATABASE_URL` must be a non-empty string for server environment validation. If you are only exploring the UI, you can use a local placeholder URL, but database operations will fail until it points to a real PostgreSQL database.
+
+Start the development server:
+
+```sh
+pnpm dev
+```
+
+The app is available at <http://localhost:3000> and the liveness endpoint at <http://localhost:3000/api/health>.
+
+## 3. Configure Supabase Auth
+
+Create or select a Supabase project. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the project's API settings. For the database, use the transaction pooler URL when appropriate; the Postgres.js client is configured with `prepare: false` for compatibility with Supabase transaction pooling.
+
+In Supabase Auth URL configuration, add this redirect URL for local email confirmation:
+
+```text
+http://localhost:3000/auth/callback
+```
+
+For deployed environments, add the corresponding `${NEXT_PUBLIC_APP_URL}/auth/callback` URL. The app uses the publishable key and validates users through its server auth adapter. Never expose a Supabase service role key to the client.
+
+## 4. Set up the database
+
+Application tables are managed with Drizzle. Supabase Auth manages its own auth tables. Keep one migration source of truth for application tables: do not also create an independent Supabase migration history for those same tables.
+
+From the repository root:
+
+```sh
+pnpm db:check
+pnpm db:generate
+pnpm db:migrate
+```
+
+`db:generate` creates migration files from `apps/web/src/db/schema`; review and commit those files. `db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate.
+
+## 5. Configure optional services
+
+### Redis
+
+Redis is optional. Set `REDIS_URL` to a TCP connection URL:
+
+```dotenv
+REDIS_URL=rediss://default:<password>@<host>:6379
+```
+
+Use `rediss://` for TLS connections such as Upstash and `redis://` for an unencrypted connection on a trusted network. Self-hosted Redis can use either scheme according to its TLS configuration. The app uses the standard Redis protocol and requires a Node.js runtime with outbound TCP access; this adapter is not for Edge runtimes that cannot open TCP connections.
+
+When Redis is not configured, `createRateLimiter()` returns `null` and cache reads return a miss. Callers must choose an explicit local/development policy when no distributed limiter is available. Never commit a real Redis URL or password.
+
+### Object storage
+
+Set `STORAGE_PROVIDER=s3` for AWS S3 or an S3-compatible provider such as Cloudflare R2. Configure `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ENDPOINT` when required, and the access key, secret, and optional public URL. For R2, use the account's S3 API endpoint and region `auto`.
+
+Set `STORAGE_PROVIDER=supabase` to select the Supabase Storage adapter and configure `SUPABASE_STORAGE_BUCKET`. This adapter uses the configured Supabase server client. Choose a bucket policy that matches your application's access model.
+
+The storage adapter does not authorize users or validate uploads. Before calling it, the route or action must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
+
+## 6. Shared UI development
+
+The repo uses `apps/web/components.json` to direct the shadcn CLI into the shared `packages/ui` package. Generate a shared component from the repository root:
+
+```sh
+pnpm dlx shadcn@latest add accordion -c apps/web
+```
+
+Shared components live in `packages/ui/src/components` and are imported from `@clubedge/ui/components/<component>`. Keep the app and package `components.json` files aligned when changing the shadcn style, Tailwind CSS entry, base color, icon library, or RTL setting. App-specific components belong in `apps/web/src/components`.
+
+## 7. Docker
+
+Create `apps/web/.env.local` first. Start the development image with:
+
+```sh
+pnpm docker:dev
+```
+
+Build a production image and run it with:
+
+```sh
+pnpm docker:build
+pnpm docker:start
+```
+
+The Docker image uses Next.js standalone output and runs as an unprivileged user. Ensure the configured database and provider hosts are reachable from the container.
+
+## 8. Checks
+
+Run the checks relevant to your change before opening a pull request:
+
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm format:check
+pnpm build
+```
+
+Browser checks use Playwright. Install Chromium once, then run `pnpm test:e2e`:
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+The Playwright configuration starts the local app with a placeholder database URL; browser scenarios should not require real provider credentials.
+
+## Before deploying
+
+This repository is a starting point; review the security and operational choices for your application before production use:
+
+- Set production environment variables through your hosting provider's secret manager. Use unique, rotated credentials and TLS for external connections.
+- Set `NEXT_PUBLIC_APP_URL` to the deployed origin and add its `/auth/callback` URL to Supabase's allowed redirect URLs.
+- Make authenticated server routes call `auth.getUser()` or `requireUser()`; do not treat cookie contents alone as proof of identity.
+- Authorize storage access and validate upload size, content type, and object ownership in the route or action before using the storage adapter.
+- Decide what rate-limit behavior is appropriate when Redis is not configured; the limiter factory returns `null` in that case.
+- Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets.
+- Review database migration and backup procedures, provider access policies, and application-specific error handling.
+
+## Troubleshooting
+
+- **Environment validation fails:** confirm you copied the example to `apps/web/.env.local` and set `DATABASE_URL`.
+- **Auth redirects fail:** add the exact local or deployed `/auth/callback` URL to Supabase Auth's allowed redirect URLs.
+- **Database connection fails:** check the URL, network access, and whether your provider expects a transaction pooler. Keep `prepare: false` for the current Supabase pooler setup.
+- **Redis cannot connect:** check that the URL uses `redis://` or `rediss://`, credentials are current, and outbound TCP access is allowed.
+- **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`.
+- **A package file appears missing after an offline install:** retry with a normal registry-backed `pnpm install`; an incomplete local package cache can satisfy offline resolution while leaving package contents incomplete.

@@ -2,6 +2,7 @@
   "name": "clubedge-starter-v1",
   "version": "1.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "packageManager": "pnpm@10.9.0",
   "engines": {
     "node": ">=22.12.0"

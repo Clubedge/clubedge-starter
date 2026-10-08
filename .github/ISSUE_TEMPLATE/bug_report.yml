@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible problem in Clubedge Starter.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Before submitting, search existing issues and remove secrets or personal data from logs.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: Include the smallest set of steps that shows the problem.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Environment
+      description: Include OS, Node.js, and pnpm versions.
+      placeholder: Windows 11, Node 22.12, pnpm 10.9.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Redact tokens, passwords, URLs with credentials, and other private data.
