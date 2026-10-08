@@ -1,6 +1,6 @@
 # Setup guide
 
-This guide covers local development and the optional infrastructure adapters in Clubedge Starter. Start with [README.md](README.md), then follow only the provider sections your project needs.
+This guide covers local development and provider setup for Clubedge Starter. Start with the [README](README.md) for the architecture overview, then follow only the provider sections your project needs.
 
 ## 1. Install the toolchain
 

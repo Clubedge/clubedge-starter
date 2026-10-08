@@ -3,7 +3,7 @@
 [![CI](https://github.com/yassine-ahmed/clubedge-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yassine-ahmed/clubedge-starter/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-Clubedge Starter is an open source foundation for building full stack web applications with Next.js. It provides a pnpm monorepo, a shared shadcn/ui component package, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard.
+Clubedge Starter is a production-oriented, modular Next.js application foundation. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.
 
 This is a starter, not a hosted service or a one-command app generator. Fork it or use it as a reference, then adapt the app and provider configuration to your project. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist.
 
@@ -17,6 +17,42 @@ This is a starter, not a hosted service or a one-command app generator. Fork it 
 - Optional Redis cache and fixed-window rate limiter using a standard Redis URL.
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
+
+## Stack and provider choices
+
+| Capability              | Included choice                                      | Other supported options                                               |
+| ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
+| Web app                 | Next.js App Router, React, TypeScript                | —                                                                     |
+| UI                      | Tailwind CSS 4 and shadcn/ui                         | Add or replace components in your app or shared UI package.           |
+| Database                | PostgreSQL through Drizzle ORM                       | Any reachable PostgreSQL provider; Supabase PostgreSQL is documented. |
+| Authentication          | Supabase Auth with `@supabase/ssr`                   | No alternate auth adapter is currently included.                      |
+| Cache and rate limiting | Optional Redis protocol client                       | Upstash, self-hosted Redis, or a compatible Redis service.            |
+| Object storage          | S3-compatible adapter or Supabase Storage            | AWS S3, Cloudflare R2, and other S3-compatible services.              |
+| Local runtime           | Docker and Next.js standalone output                 | Run directly with Node.js during development.                         |
+| Verification            | Vitest, Playwright, ESLint, Prettier, GitHub Actions | —                                                                     |
+
+## Architecture
+
+```mermaid
+flowchart TB
+  Browser --> Next[Next.js application]
+  Next -->|auth interface and server sessions| Auth[Supabase Auth]
+  Next -->|Drizzle ORM| DB[(PostgreSQL)]
+  Next -->|optional cache and rate limits| Redis[(Redis)]
+  Next -->|storage interface| Storage{Storage provider}
+  Storage --> S3[S3-compatible storage: AWS S3, R2, MinIO]
+  Storage --> SupabaseStorage[Supabase Storage]
+```
+
+Drizzle manages application data in PostgreSQL. Supabase Auth manages identity and sessions separately; it is not accessed through Drizzle. The PostgreSQL database may be Supabase PostgreSQL or another PostgreSQL provider.
+
+### Architecture principles
+
+- **PostgreSQL is the source of truth for application data.** Drizzle centralizes application schema, queries, and migrations.
+- **Authentication stays separate from application data.** Supabase Auth owns credentials and sessions; application tables are managed by Drizzle.
+- **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the limiter factory returns `null`, so callers must choose their local fallback explicitly.
+- **Storage has a provider boundary.** Application code can use the storage interface with S3-compatible services or Supabase Storage; authorization and upload validation remain the caller's responsibility.
+- **Keep the baseline focused.** Additional providers, queues, and generator tooling should be added when a real use case calls for them.
 
 ## Quick start
 
