@@ -1,3 +1,5 @@
+import { Button } from "@clubedge/ui/components/button";
+
 const integrations = [
   { icon: "N", name: "Next.js", description: "App Router · TypeScript", status: "Ready" },
   { icon: "D", name: "Drizzle ORM", description: "PostgreSQL · migrations", status: "Ready" },
@@ -12,9 +14,12 @@ const integrations = [
 ];
 
 const setup = [
-  ["Add your environment values", "Copy .env.example to .env.local and add Supabase credentials."],
+  [
+    "Add your environment values",
+    "Copy .env.example to apps/web/.env.local and add your provider credentials.",
+  ],
   ["Apply database migrations", "Run pnpm db:generate, then pnpm db:migrate."],
-  ["Start building", "Your app code is ready in src/app and src/lib."],
+  ["Start building", "Your app code is ready in apps/web/src/app and apps/web/src/lib."],
 ];
 
 export default function Home() {
@@ -96,9 +101,11 @@ export default function Home() {
                 stay behind clean interfaces, and your next feature can start here.
               </p>
             </div>
-            <a className="primary-button" href="#setup">
-              Explore your starter <span className="button-arrow">↗</span>
-            </a>
+            <Button asChild size="lg">
+              <a href="#setup">
+                Explore your starter <span className="button-arrow">↗</span>
+              </a>
+            </Button>
           </section>
 
           <div className="status-strip">

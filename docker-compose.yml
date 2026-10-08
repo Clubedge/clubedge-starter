@@ -4,5 +4,5 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.local
+      - ./apps/web/.env.local
     restart: unless-stopped
