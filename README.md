@@ -89,7 +89,7 @@ Set `DATABASE_URL` in `apps/web/.env.local`. Supabase Auth is optional for explo
 pnpm dev
 ```
 
-Open <http://localhost:3000>. The example dashboard and `/api/health` liveness endpoint can render without connecting to providers. Database, authentication, storage, and Redis operations require their respective configuration.
+Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashboard> for the starter dashboard, or <http://localhost:3000/api/health> for the liveness endpoint. The pages render without connecting to providers. Database, authentication, storage, and Redis operations require their respective configuration.
 
 ## Common commands
 
@@ -128,7 +128,7 @@ SECURITY.md     Vulnerability reporting guidance
 
 ## Shared UI components
 
-The shared component package is `@clubedge/ui`. It uses the shadcn `base-nova` style, which generates components backed by `@base-ui/react` rather than Radix UI. The dashboard and sign-in page demonstrate shared buttons, cards, badges, separators, inputs, labels, and tables.
+The shared component package is `@clubedge/ui`. It uses the shadcn `base-nova` style, which generates components backed by `@base-ui/react` rather than Radix UI. The landing page and dashboard demonstrate the shared sidebar, breadcrumbs, theme switch, buttons, cards, badges, separators, inputs, labels, and tables. The light/dark theme preference is stored in the browser; dark mode uses a `#151515` page background and blue `#2563eb` primary color.
 
 Add a component from the repository root using the web app's config:
 
