@@ -1,240 +1,349 @@
-import { Button } from "@clubedge/ui/components/button";
+import {
+  Activity,
+  ArrowRight,
+  ArrowUpRight,
+  Blocks,
+  Check,
+  CircleDashed,
+  Database,
+  Github,
+  LockKeyhole,
+  Settings2,
+  ShieldCheck,
+  Workflow,
+} from "lucide-react";
+import Link from "next/link";
 
-const integrations = [
-  { icon: "N", name: "Next.js", description: "App Router · TypeScript", status: "Ready" },
-  { icon: "D", name: "Drizzle ORM", description: "PostgreSQL · migrations", status: "Ready" },
-  { icon: "S", name: "Supabase Auth", description: "Cookie based SSR sessions", status: "Connect" },
+import { Badge } from "@clubedge/ui/components/badge";
+import { Button } from "@clubedge/ui/components/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@clubedge/ui/components/card";
+import { Separator } from "@clubedge/ui/components/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@clubedge/ui/components/table";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/components/sidebar";
+import { AppSidebar } from "./app-sidebar";
+
+const modules = [
   {
-    icon: "R",
-    name: "Redis",
-    description: "Cache · rate limiting",
+    name: "PostgreSQL + Drizzle",
+    description: "Typed schema and migrations for application data.",
+    icon: Database,
+    status: "Configure",
+    variant: "secondary" as const,
+  },
+  {
+    name: "Supabase Auth",
+    description: "Cookie-based sessions and server-validated users.",
+    icon: LockKeyhole,
+    status: "Optional setup",
+    variant: "outline" as const,
+  },
+  {
+    name: "Storage adapters",
+    description: "S3-compatible storage or Supabase Storage.",
+    icon: Workflow,
+    status: "Ready to configure",
+    variant: "secondary" as const,
+  },
+  {
+    name: "Redis cache",
+    description: "Optional cache and distributed rate limiting.",
+    icon: CircleDashed,
     status: "Optional",
-    optional: true,
+    variant: "outline" as const,
   },
 ];
 
-const setup = [
-  [
-    "Add your environment values",
-    "Copy .env.example to apps/web/.env.local and add your provider credentials.",
-  ],
-  ["Apply database migrations", "Run pnpm db:generate, then pnpm db:migrate."],
-  ["Start building", "Your app code is ready in apps/web/src/app and apps/web/src/lib."],
+const setupRows = [
+  {
+    item: "Shared UI workspace",
+    detail: "shadcn/ui components with Base UI primitives",
+    status: "Ready",
+  },
+  {
+    item: "Database connection",
+    detail: "Set DATABASE_URL in apps/web/.env.local",
+    status: "Configure",
+  },
+  {
+    item: "Authentication provider",
+    detail: "Add Supabase URL and publishable key when needed",
+    status: "Optional",
+  },
 ];
 
 export default function Home() {
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a className="brand" href="#home">
-          <span className="brand-mark">c</span>
-          <span>
-            clubedge<span style={{ color: "#899790", fontWeight: 500 }}> / starter</span>
-          </span>
-        </a>
-        <div>
-          <div className="workspace-label">Workspace</div>
-          <nav className="nav" aria-label="Main navigation" style={{ marginTop: 12 }}>
-            <a className="active" href="#overview">
-              <span className="nav-icon">◫</span>Overview
-            </a>
-            <a href="#integrations">
-              <span className="nav-icon">⌘</span>Integrations
-            </a>
-            <a href="#database">
-              <span className="nav-icon">▤</span>Database
-            </a>
-            <a href="#security">
-              <span className="nav-icon">◇</span>Security
-            </a>
-          </nav>
-        </div>
-        <div>
-          <div className="workspace-label">Resources</div>
-          <nav className="nav" aria-label="Resources" style={{ marginTop: 12 }}>
-            <a href="#docs">
-              <span className="nav-icon">▧</span>Documentation
-            </a>
-            <a href="https://github.com" target="_blank" rel="noreferrer">
-              <span className="nav-icon">↗</span>GitHub repository
-            </a>
-          </nav>
-        </div>
-        <div className="sidebar-bottom">
-          <div className="sidebar-card">
-            <strong>Built for your next idea</strong>
-            <p>
-              Composable foundations that keep your product code independent from infrastructure
-              providers.
-            </p>
-            <a href="#docs">Read the guide ↗</a>
-          </div>
-          <div style={{ padding: "18px 10px 0", color: "#9aa59f", fontSize: 10 }}>
-            CLUBEDGE PLATFORM <span style={{ float: "right" }}>v1.0.0</span>
-          </div>
-        </div>
-      </aside>
-
-      <main className="main" id="home">
-        <header className="topbar">
-          <div className="crumbs">
-            <span>Workspace</span>
-            <span>/</span>
-            <strong>Overview</strong>
-          </div>
-          <div className="top-actions">
-            <button className="icon-button" aria-label="Help">
-              ?
-            </button>
-            <div className="avatar" aria-label="Starter account">
-              CE
+    <SidebarProvider defaultOpen>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <SidebarTrigger aria-label="Toggle navigation sidebar" />
+              <span>Workspace</span>
+              <span aria-hidden="true">/</span>
+              <span className="font-medium text-foreground">Overview</span>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <Badge className="hidden sm:inline-flex" variant="outline">
+                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                Starter ready
+              </Badge>
+              <Button
+                aria-label="Open GitHub repository"
+                render={
+                  <Link
+                    href="https://github.com/yassine-ahmed/clubedge-starter"
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+                size="icon"
+                variant="ghost"
+              >
+                <Github aria-hidden="true" />
+              </Button>
+              <Button render={<Link href="/login" />} size="sm" variant="outline">
+                Sign in
+              </Button>
             </div>
           </div>
         </header>
-        <div className="content" id="overview">
-          <section className="welcome">
-            <div>
-              <div className="eyebrow">Your development platform</div>
-              <h1 className="page-heading">A better place to start building.</h1>
-              <p className="intro">
-                Your Clubedge foundation is ready. Core tools are organized, provider integrations
-                stay behind clean interfaces, and your next feature can start here.
+
+        <main
+          className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10"
+          id="overview"
+        >
+          <section className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="max-w-2xl space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <ShieldCheck aria-hidden="true" className="size-4" />
+                Production-minded application foundation
+              </div>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                A better place to start building.
+              </h1>
+              <p className="max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+                Your workspace is ready. Connect the services you need, then build your product on
+                top of a consistent, replaceable foundation.
               </p>
             </div>
-            <Button asChild size="lg">
-              <a href="#setup">
-                Explore your starter <span className="button-arrow">↗</span>
-              </a>
+            <Button
+              render={
+                <Link
+                  href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+            >
+              Read setup guide <ArrowRight aria-hidden="true" />
             </Button>
           </section>
 
-          <div className="status-strip">
-            <span className="status-label">
-              <i className="status-dot" />
-              Starter is ready
-            </span>
-            <span className="status-sep" />
-            <span className="status-item">
-              <b>Framework</b> Next.js 16
-            </span>
-            <span className="status-item">
-              <b>Runtime</b> Node.js 22
-            </span>
-            <span className="status-item">
-              <b>Mode</b> Development
-            </span>
-          </div>
-
-          <section aria-labelledby="foundation-title">
-            <div className="section-head">
-              <div>
-                <h2 className="section-title" id="foundation-title">
-                  Your foundation
-                </h2>
-                <p className="section-subtitle">
-                  The essentials are in place and ready to grow with you.
+          <section
+            aria-label="Starter summary"
+            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+          >
+            <Card className="gap-4 py-5">
+              <CardHeader className="flex-row items-center justify-between gap-2 px-5">
+                <CardDescription>Workspace packages</CardDescription>
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Blocks aria-hidden="true" className="size-4" />
+                </span>
+              </CardHeader>
+              <CardContent className="px-5">
+                <CardTitle className="text-2xl">3</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Web, shared UI, and root tooling
                 </p>
-              </div>
-              <a className="text-link" href="#integrations">
-                View integrations ↗
-              </a>
-            </div>
-            <div className="metrics">
-              <article className="metric-card">
-                <div className="metric-top">
-                  <span>Core modules</span>
-                  <span className="metric-icon">◈</span>
-                </div>
-                <div className="metric-value">6</div>
-                <div className="metric-caption">Connected to your application</div>
-              </article>
-              <article className="metric-card">
-                <div className="metric-top">
-                  <span>Provider adapters</span>
-                  <span className="metric-icon">⌘</span>
-                </div>
-                <div className="metric-value">4</div>
-                <div className="metric-caption">Swap services without rewrites</div>
-              </article>
-              <article className="metric-card">
-                <div className="metric-top">
-                  <span>Environment</span>
-                  <span className="metric-icon">⌁</span>
-                </div>
-                <div className="metric-value" style={{ fontSize: 17, marginTop: 16 }}>
-                  Validated
-                </div>
-                <div className="metric-caption">Zod checks configuration on startup</div>
-              </article>
-              <article className="metric-card">
-                <div className="metric-top">
-                  <span>Health check</span>
-                  <span className="metric-icon">♥</span>
-                </div>
-                <div className="metric-value" style={{ fontSize: 17, marginTop: 16 }}>
-                  Operational
-                </div>
-                <div className="metric-caption">
-                  <a className="text-link" href="/api/health">
-                    Open /api/health ↗
-                  </a>
-                </div>
-              </article>
-            </div>
+              </CardContent>
+            </Card>
+            <Card className="gap-4 py-5">
+              <CardHeader className="flex-row items-center justify-between gap-2 px-5">
+                <CardDescription>Database</CardDescription>
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Database aria-hidden="true" className="size-4" />
+                </span>
+              </CardHeader>
+              <CardContent className="px-5">
+                <CardTitle className="text-2xl">PostgreSQL</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Drizzle manages app data</p>
+              </CardContent>
+            </Card>
+            <Card className="gap-4 py-5">
+              <CardHeader className="flex-row items-center justify-between gap-2 px-5">
+                <CardDescription>Shared UI</CardDescription>
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Blocks aria-hidden="true" className="size-4" />
+                </span>
+              </CardHeader>
+              <CardContent className="px-5">
+                <CardTitle className="text-2xl">shadcn/ui</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Base UI primitives in @clubedge/ui
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="gap-4 py-5">
+              <CardHeader className="flex-row items-center justify-between gap-2 px-5">
+                <CardDescription>Health endpoint</CardDescription>
+                <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Activity aria-hidden="true" className="size-4" />
+                </span>
+              </CardHeader>
+              <CardContent className="px-5">
+                <CardTitle className="text-2xl">Available</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <Link
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                    href="/api/health"
+                  >
+                    Check liveness <ArrowUpRight aria-hidden="true" className="size-3" />
+                  </Link>
+                </p>
+              </CardContent>
+            </Card>
           </section>
 
-          <div className="lower-grid" id="integrations">
-            <section className="panel" aria-labelledby="integration-title">
-              <div className="panel-head">
-                <h2 className="panel-title" id="integration-title">
-                  Platform integrations
-                </h2>
-                <span className="panel-meta">4 modules</span>
-              </div>
-              {integrations.map((item) => (
-                <div className="integration-row" key={item.name}>
-                  <div className="integration-icon">{item.icon}</div>
-                  <div>
-                    <div className="integration-name">{item.name}</div>
-                    <div className="integration-desc">{item.description}</div>
-                  </div>
-                  {item.status === "Connect" ? (
-                    <a className="badge" href="/login">
-                      Connect
-                    </a>
-                  ) : (
-                    <span className={`badge${item.optional ? " optional" : ""}`}>
-                      {item.status}
-                    </span>
-                  )}
+          <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" id="modules">
+            <Card className="gap-0 py-0">
+              <CardHeader className="flex-row items-start justify-between gap-3 border-b px-5 py-5 sm:px-6">
+                <div className="space-y-1.5">
+                  <CardTitle className="text-base">Application modules</CardTitle>
+                  <CardDescription>
+                    Provider boundaries are ready for your project configuration.
+                  </CardDescription>
                 </div>
-              ))}
-            </section>
-            <section className="panel" id="setup" aria-labelledby="setup-title">
-              <div className="panel-head">
-                <h2 className="panel-title" id="setup-title">
-                  Get started
-                </h2>
-                <span className="panel-meta">3 simple steps</span>
-              </div>
-              <div className="checklist">
-                {setup.map(([title, description], index) => (
-                  <div className="check-row" key={title}>
-                    <span className="checkmark">{index + 1}</span>
-                    <div className="check-copy">
-                      <strong>{title}</strong>
-                      <span>{description}</span>
+                <Badge variant="secondary">4 modules</Badge>
+              </CardHeader>
+              <CardContent className="px-5 py-2 sm:px-6">
+                {modules.map(({ name, description, icon: Icon, status, variant }, index) => (
+                  <div key={name}>
+                    {index > 0 && <Separator />}
+                    <div className="flex items-center gap-3 py-4">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-lg border bg-muted/60 text-muted-foreground">
+                        <Icon aria-hidden="true" className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{name}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {description}
+                        </p>
+                      </div>
+                      <Badge className="shrink-0" variant={variant}>
+                        {status}
+                      </Badge>
                     </div>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-0" id="activity">
+              <CardHeader className="border-b px-5 py-5 sm:px-6">
+                <CardTitle className="text-base">Project setup</CardTitle>
+                <CardDescription>Recommended first steps for a new application.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="ps-5 sm:ps-6">Item</TableHead>
+                      <TableHead className="pe-5 text-end sm:pe-6">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {setupRows.map((row) => (
+                      <TableRow key={row.item}>
+                        <TableCell className="whitespace-normal py-4 ps-5 sm:ps-6">
+                          <span className="block font-medium">{row.item}</span>
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                            {row.detail}
+                          </span>
+                        </TableCell>
+                        <TableCell className="pe-5 text-end sm:pe-6">
+                          <Badge variant={row.status === "Ready" ? "default" : "outline"}>
+                            {row.status === "Ready" && <Check aria-hidden="true" />}
+                            {row.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+              <Separator />
+              <CardContent className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                <p className="text-xs text-muted-foreground">Need help connecting a provider?</p>
+                <Button
+                  render={
+                    <Link
+                      href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                      target="_blank"
+                      rel="noreferrer"
+                    />
+                  }
+                  size="sm"
+                  variant="ghost"
+                >
+                  Setup docs <ArrowUpRight aria-hidden="true" />
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+
+          <Card className="gap-4 border-dashed bg-muted/30 py-5 shadow-none">
+            <CardContent className="flex flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-background text-primary shadow-sm">
+                  <Settings2 aria-hidden="true" className="size-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Make this foundation yours</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Configure environment values, review the architecture, and add only the UI
+                    components your product needs.
+                  </p>
+                </div>
               </div>
-            </section>
-          </div>
-          <p className="footer-note">
-            A calm, consistent starting point from Clubedge Engineering.
-          </p>
-        </div>
-      </main>
-    </div>
+              <Button
+                render={
+                  <Link
+                    href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+                size="sm"
+                variant="outline"
+              >
+                Get started <ArrowRight aria-hidden="true" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          <footer className="flex flex-col gap-2 border-t pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <span>Clubedge Starter · Next.js application foundation</span>
+            <span className="inline-flex items-center gap-2">
+              <Check aria-hidden="true" className="size-3.5 text-primary" /> Built to be extended
+            </span>
+          </footer>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

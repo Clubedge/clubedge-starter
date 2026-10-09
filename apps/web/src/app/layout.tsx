@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@clubedge/ui/globals.css";
+import { TooltipProvider } from "@clubedge/ui/components/tooltip";
 
 export const metadata: Metadata = {
   title: { default: "Clubedge Starter", template: "%s · Clubedge Starter" },
@@ -9,7 +10,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

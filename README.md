@@ -9,7 +9,7 @@ This is a starter, not a hosted service or a one-command app generator. Fork it 
 
 ## Features
 
-- Next.js App Router, React, TypeScript, Tailwind CSS 4, and shadcn/ui.
+- Next.js App Router, React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives.
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and reusable UI source in `packages/ui`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Supabase Auth using cookie based server clients from `@supabase/ssr`.
@@ -23,7 +23,7 @@ This is a starter, not a hosted service or a one-command app generator. Fork it 
 | Capability              | Included choice                                      | Other supported options                                               |
 | ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
 | Web app                 | Next.js App Router, React, TypeScript                | —                                                                     |
-| UI                      | Tailwind CSS 4 and shadcn/ui                         | Add or replace components in your app or shared UI package.           |
+| UI                      | Tailwind CSS 4, shadcn/ui, and Base UI               | Add or replace components in your app or shared UI package.           |
 | Database                | PostgreSQL through Drizzle ORM                       | Any reachable PostgreSQL provider; Supabase PostgreSQL is documented. |
 | Authentication          | Supabase Auth with `@supabase/ssr`                   | No alternate auth adapter is currently included.                      |
 | Cache and rate limiting | Optional Redis protocol client                       | Upstash, self-hosted Redis, or a compatible Redis service.            |
@@ -128,13 +128,15 @@ SECURITY.md     Vulnerability reporting guidance
 
 ## Shared UI components
 
-The shared component package is `@clubedge/ui`. Add a shadcn/ui component from the repository root using the web app's config:
+The shared component package is `@clubedge/ui`. It uses the shadcn `base-nova` style, which generates components backed by `@base-ui/react` rather than Radix UI. The dashboard and sign-in page demonstrate shared buttons, cards, badges, separators, inputs, labels, and tables.
+
+Add a component from the repository root using the web app's config:
 
 ```sh
-pnpm dlx shadcn@latest add accordion -c apps/web
+pnpm dlx shadcn@latest add badge -c apps/web
 ```
 
-Shared components are generated under `packages/ui/src/components` and can be imported from `@clubedge/ui/components/<component>`. Keep `apps/web/components.json` and `packages/ui/components.json` aligned when changing shadcn/ui style, base color, icon library, or Tailwind CSS settings. Put app-only components in `apps/web/src/components`.
+Shared components are generated under `packages/ui/src/components` and can be imported from `@clubedge/ui/components/<component>`. The two `components.json` files intentionally share the `base-nova` style, neutral color base, Lucide icons, Tailwind v4 stylesheet, and RTL-aware generation setting. The app currently renders English in LTR; set the root document's `lang` and `dir` for the locale used by your application. Put app-only components in `apps/web/src/components`.
 
 ## Contributing
 

@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=@clubedge/web",
     "build": "turbo run build --filter=@clubedge/web",
-    "start": "node apps/web/.next/standalone/apps/web/server.js",
+    "start": "node scripts/start-standalone.mjs",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",

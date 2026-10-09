@@ -100,13 +100,15 @@ The storage adapter does not authorize users or validate uploads. Before calling
 
 ## 6. Shared UI development
 
-The repo uses `apps/web/components.json` to direct the shadcn CLI into the shared `packages/ui` package. Generate a shared component from the repository root:
+The repo uses matching `apps/web/components.json` and `packages/ui/components.json` files to direct the shadcn CLI into the shared `packages/ui` package. The selected `base-nova` style uses `@base-ui/react` primitives, not Radix UI. Tailwind CSS 4 and semantic theme tokens are defined in `packages/ui/src/styles/globals.css` and imported by the web app's root layout.
+
+Generate a shared component from the repository root:
 
 ```sh
-pnpm dlx shadcn@latest add accordion -c apps/web
+pnpm dlx shadcn@latest add badge -c apps/web
 ```
 
-Shared components live in `packages/ui/src/components` and are imported from `@clubedge/ui/components/<component>`. Keep the app and package `components.json` files aligned when changing the shadcn style, Tailwind CSS entry, base color, icon library, or RTL setting. App-specific components belong in `apps/web/src/components`.
+Shared components live in `packages/ui/src/components` and are imported from `@clubedge/ui/components/<component>`. Keep both `components.json` files aligned when changing the shadcn style, Tailwind CSS entry, base color, icon library, or RTL setting. The `rtl` setting makes newly generated components RTL-aware; set `lang` and `dir` on the root `<html>` element to match your application's actual locale. App-specific components belong in `apps/web/src/components`.
 
 ## 7. Docker
 
