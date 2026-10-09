@@ -6,7 +6,7 @@ Security fixes are made against the latest code on the `main` branch. This start
 
 ## Report a vulnerability
 
-Please do not report exploitable vulnerabilities in a public issue or pull request. Use GitHub's **Report a vulnerability** option in the repository's Security tab to send a private report. If private vulnerability reporting is unavailable, contact the repository owner through [their GitHub profile](https://github.com/yassine-ahmed) and include enough detail to reproduce the issue safely.
+Please do not report exploitable vulnerabilities in a public issue or pull request. Use GitHub's **Report a vulnerability** option in the repository's Security tab to send a private report. If private vulnerability reporting is unavailable, contact the repository owner through [their GitHub profile](https://github.com/Clubedge) and include enough detail to reproduce the issue safely.
 
 Include the affected component or file, impact, reproduction steps or proof of concept, and any suggested mitigation. Please allow reasonable time for investigation and a fix before sharing details publicly. We will acknowledge reports and coordinate next steps through GitHub.
 

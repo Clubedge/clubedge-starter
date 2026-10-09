@@ -1,6 +1,6 @@
 # Clubedge Starter
 
-[![CI](https://github.com/yassine-ahmed/clubedge-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yassine-ahmed/clubedge-starter/actions/workflows/ci.yml)
+[![CI](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 Clubedge Starter is a production-oriented, modular Next.js application foundation. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.

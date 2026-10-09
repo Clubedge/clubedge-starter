@@ -124,7 +124,7 @@ export default function Home() {
                 aria-label="Open GitHub repository"
                 render={
                   <Link
-                    href="https://github.com/yassine-ahmed/clubedge-starter"
+                    href="https://github.com/Clubedge/clubedge-starter"
                     target="_blank"
                     rel="noreferrer"
                   />
@@ -162,7 +162,7 @@ export default function Home() {
             <Button
               render={
                 <Link
-                  href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                  href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
                   target="_blank"
                   rel="noreferrer"
                 />
@@ -310,7 +310,7 @@ export default function Home() {
                 <Button
                   render={
                     <Link
-                      href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                      href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
                       target="_blank"
                       rel="noreferrer"
                     />
@@ -341,7 +341,7 @@ export default function Home() {
               <Button
                 render={
                   <Link
-                    href="https://github.com/yassine-ahmed/clubedge-starter/blob/main/SETUP.md"
+                    href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
                     target="_blank"
                     rel="noreferrer"
                   />

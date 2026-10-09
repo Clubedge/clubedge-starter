@@ -6,7 +6,7 @@ import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { CopyCommand } from "@/components/landing/copy-command";
 import { ThemeToggle } from "./theme-toggle";
 
-const REPO_URL = "https://github.com/yassine-ahmed/clubedge-starter";
+const REPO_URL = "https://github.com/Clubedge/clubedge-starter";
 const SETUP_URL = `${REPO_URL}/blob/main/SETUP.md`;
 const CREATE_COMMAND = "pnpm dlx @clubedge/create-clubedge-app my-app";
 

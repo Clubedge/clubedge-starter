@@ -74,7 +74,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               render={
                 <Link
-                  href="https://github.com/yassine-ahmed/clubedge-starter"
+                  href="https://github.com/Clubedge/clubedge-starter"
                   target="_blank"
                   rel="noreferrer"
                 />

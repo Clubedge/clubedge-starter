@@ -17,6 +17,6 @@ Harassment, discrimination, intimidation, personal attacks, unwanted sexual atte
 
 ## Enforcement
 
-Project maintainers may edit or remove contributions and may restrict participation when behavior violates this code. Report conduct concerns privately to the repository owner through [their GitHub profile](https://github.com/yassine-ahmed). Reports will be handled as confidentially as practical.
+Project maintainers may edit or remove contributions and may restrict participation when behavior violates this code. Report conduct concerns privately to the repository owner through [their GitHub profile](https://github.com/Clubedge). Reports will be handled as confidentially as practical.
 
 This code applies in repository discussions, issues, pull requests, and other spaces when someone is representing this project.
