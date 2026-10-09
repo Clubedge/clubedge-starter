@@ -73,21 +73,11 @@ export function EmailField() {
   );
 }
 
-export function SubmitButton({
-  children,
-  disabled,
-}: {
-  children: ReactNode;
-  disabled?: boolean;
-}) {
+export function SubmitButton({ children, disabled }: { children: ReactNode; disabled?: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button
-      className="h-11 w-full justify-center"
-      disabled={disabled || pending}
-      type="submit"
-    >
+    <Button className="h-11 w-full justify-center" disabled={disabled || pending} type="submit">
       {pending ? (
         <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
       ) : null}

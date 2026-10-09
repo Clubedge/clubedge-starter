@@ -1,7 +1,7 @@
 import { Activity, ArrowUpRight, Blocks, Github, LayoutDashboard } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { Button } from "@clubedge/ui/components/button";
 import {
   Sidebar,
@@ -34,14 +34,7 @@ export function AppSidebar() {
               size="lg"
               tooltip="Clubedge Starter"
             >
-              <Image
-                alt=""
-                className="size-8 shrink-0 rounded-lg"
-                height={512}
-                src="/.well-known/logo.svg"
-                unoptimized
-                width={512}
-              />
+              <ClubedgeMark alt="" className="size-8 shrink-0 rounded-lg" />
               <span className="grid min-w-0 text-start leading-tight">
                 <span className="truncate font-semibold">Clubedge</span>
                 <span className="truncate text-xs text-sidebar-foreground/70">

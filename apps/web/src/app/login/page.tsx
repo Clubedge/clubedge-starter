@@ -1,13 +1,13 @@
 import { CircleAlert, Info, MailCheck } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signIn, signUp } from "@/app/actions/auth";
+import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { hasSupabaseAuthConfig } from "@/env/client";
 import { Card, CardContent } from "@clubedge/ui/components/card";
 
-import { EmailField, PasswordField, SubmitButton } from "./auth-form-controls";
+import { EmailField, PasswordField, SubmitButton } from "./_components/auth-form-controls";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -23,19 +23,6 @@ const errorMessages: Record<string, string> = {
   "signup-failed": "We could not create your account. Please check your details and try again.",
   "auth-callback": "That sign-in link could not be verified. Request a new one.",
 };
-
-function BrandMark({ className = "size-10" }: { className?: string }) {
-  return (
-    <Image
-      alt="Clubedge"
-      className={className}
-      height={512}
-      src="/.well-known/logo.svg"
-      unoptimized
-      width={512}
-    />
-  );
-}
 
 type NoticeTone = "error" | "info" | "warning";
 
@@ -84,14 +71,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href="/"
           >
-            <BrandMark className="size-12 rounded-xl" />
+            <ClubedgeMark className="size-12 rounded-xl" />
           </Link>
           <div className="grid gap-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">
               {isSignUp ? "Create your account" : "Sign in to Clubedge"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isSignUp ? "Enter your email and choose a password." : "Welcome back. Enter your details to continue."}
+              {isSignUp
+                ? "Enter your email and choose a password."
+                : "Welcome back. Enter your details to continue."}
             </p>
           </div>
         </header>

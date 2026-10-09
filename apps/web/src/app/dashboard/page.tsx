@@ -41,7 +41,7 @@ import {
   BreadcrumbSeparator,
 } from "@clubedge/ui/components/breadcrumb";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/components/sidebar";
-import { AppSidebar } from "../app-sidebar";
+import { AppSidebar } from "./_components/app-sidebar";
 import { ThemeToggle } from "../theme-toggle";
 
 const modules = [
