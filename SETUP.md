@@ -31,7 +31,9 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
-At minimum, edit these values:
+The example file leaves optional provider URLs and keys blank so the app can build and start without connecting to real services. At minimum, set `DATABASE_URL`; set the Supabase values when you want to use authentication.
+
+Edit these values as needed:
 
 | Variable                               | Required          | Description                                                                                        |
 | -------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------- |
