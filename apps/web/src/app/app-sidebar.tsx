@@ -1,4 +1,5 @@
 import { Activity, ArrowUpRight, Blocks, Github, LayoutDashboard } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@clubedge/ui/components/button";
@@ -33,9 +34,14 @@ export function AppSidebar() {
               size="lg"
               tooltip="Clubedge Starter"
             >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
-                <Blocks aria-hidden="true" className="size-4" />
-              </span>
+              <Image
+                alt=""
+                className="size-8 shrink-0 rounded-lg"
+                height={512}
+                src="/.well-known/logo.svg"
+                unoptimized
+                width={512}
+              />
               <span className="grid min-w-0 text-start leading-tight">
                 <span className="truncate font-semibold">Clubedge</span>
                 <span className="truncate text-xs text-sidebar-foreground/70">

@@ -29,15 +29,15 @@ export async function signIn(formData: FormData) {
 
 export async function signUp(formData: FormData) {
   const parsed = readCredentials(formData);
-  if (!parsed.success) redirect("/login?error=invalid-input");
+  if (!parsed.success) redirect("/login?mode=signup&error=invalid-input");
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     ...parsed.data,
     options: { emailRedirectTo: `${clientEnv.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
-  if (error) redirect("/login?error=signup-failed");
-  if (!data.session) redirect("/login?check-email=1");
+  if (error) redirect("/login?mode=signup&error=signup-failed");
+  if (!data.session) redirect("/login?mode=signup&check-email=1");
   redirect("/");
 }
 

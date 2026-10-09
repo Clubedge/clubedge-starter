@@ -1,150 +1,153 @@
-import { ArrowLeft, ArrowUpRight, ShieldCheck } from "lucide-react";
+import { CircleAlert, Info, MailCheck } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { signIn, signUp } from "@/app/actions/auth";
 import { hasSupabaseAuthConfig } from "@/env/client";
-import { Button } from "@clubedge/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@clubedge/ui/components/card";
-import { Input } from "@clubedge/ui/components/input";
-import { Label } from "@clubedge/ui/components/label";
-import { Separator } from "@clubedge/ui/components/separator";
+import { Card, CardContent } from "@clubedge/ui/components/card";
+
+import { EmailField, PasswordField, SubmitButton } from "./auth-form-controls";
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string; "check-email"?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    mode?: string;
+    "check-email"?: string;
+  }>;
 };
 
 const errorMessages: Record<string, string> = {
   "invalid-input": "Enter a valid email and a password with at least 8 characters.",
-  "invalid-credentials": "Those credentials could not be verified. Try again.",
-  "signup-failed": "We could not create the account. Check your details and try again.",
+  "invalid-credentials": "Those credentials could not be verified. Check your email and password.",
+  "signup-failed": "We could not create your account. Please check your details and try again.",
   "auth-callback": "That sign-in link could not be verified. Request a new one.",
 };
 
+function BrandMark({ className = "size-10" }: { className?: string }) {
+  return (
+    <Image
+      alt="Clubedge"
+      className={className}
+      height={512}
+      src="/.well-known/logo.svg"
+      unoptimized
+      width={512}
+    />
+  );
+}
+
+type NoticeTone = "error" | "info" | "warning";
+
+const noticeStyles: Record<NoticeTone, string> = {
+  error: "border-destructive/30 bg-destructive/5 text-destructive",
+  info: "border-primary/30 bg-primary/5 text-foreground",
+  warning: "border-amber-500/30 bg-amber-500/5 text-foreground",
+};
+
+function Notice({
+  children,
+  icon,
+  role,
+  tone,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  role: "alert" | "status";
+  tone: NoticeTone;
+}) {
+  return (
+    <div
+      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-5 ${noticeStyles[tone]}`}
+      role={role}
+    >
+      <span aria-hidden="true" className="mt-0.5 shrink-0 [&>svg]:size-4">
+        {icon}
+      </span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
+  const isSignUp = params.mode === "signup";
   const error = params.error ? errorMessages[params.error] : undefined;
+  const checkEmail = Boolean(params["check-email"]);
 
   return (
-    <main className="grid min-h-svh place-items-center bg-muted/40 p-4 sm:p-8">
-      <div className="w-full max-w-md space-y-5">
-        <Link
-          className="inline-flex items-center gap-2 text-sm font-semibold tracking-tight"
-          href="/"
-        >
-          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-            <ShieldCheck aria-hidden="true" className="size-4" />
-          </span>
-          Clubedge Starter
-        </Link>
+    <main className="flex min-h-svh flex-col items-center bg-background px-4 py-10 sm:justify-center">
+      <div className="w-full max-w-[26rem]">
+        <header className="mb-8 flex flex-col items-center gap-4 text-center">
+          <Link
+            aria-label="Clubedge home"
+            className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            href="/"
+          >
+            <BrandMark className="size-12 rounded-xl" />
+          </Link>
+          <div className="grid gap-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {isSignUp ? "Create your account" : "Sign in to Clubedge"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? "Enter your email and choose a password." : "Welcome back. Enter your details to continue."}
+            </p>
+          </div>
+        </header>
 
-        <Card className="gap-0 overflow-hidden py-0">
-          <CardHeader className="gap-2 border-b px-6 py-6">
-            <CardTitle className="text-xl">Welcome back</CardTitle>
-            <CardDescription>
-              Sign in to your application or create an account to get started.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5 px-6 py-6">
+        <Card className="rounded-xl border-border/70 p-0 shadow-sm">
+          <CardContent className="grid gap-5 p-6 sm:p-8">
             {!hasSupabaseAuthConfig && (
-              <div
-                className="rounded-lg border bg-muted/50 p-3 text-sm leading-5 text-muted-foreground"
-                role="status"
-              >
-                Add your Supabase URL and publishable key to{" "}
-                <code className="rounded bg-background px-1 py-0.5 font-mono text-xs">
+              <Notice icon={<Info />} role="status" tone="warning">
+                Authentication is not configured yet. Add your Supabase URL and publishable key to{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
                   apps/web/.env.local
-                </code>{" "}
-                to enable authentication.
-              </div>
+                </code>
+                .
+              </Notice>
             )}
             {error && (
-              <div
-                className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm leading-5 text-destructive"
-                role="alert"
-              >
+              <Notice icon={<CircleAlert />} role="alert" tone="error">
                 {error}
-              </div>
+              </Notice>
             )}
-            {params["check-email"] && (
-              <div
-                className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm leading-5 text-foreground"
-                role="status"
-              >
-                Check your email to confirm your new account.
-              </div>
+            {checkEmail && (
+              <Notice icon={<MailCheck />} role="status" tone="info">
+                Account created. Check your inbox for the confirmation link to finish signing up.
+              </Notice>
             )}
 
-            <form action={signIn} className="grid gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input id="email" name="email" type="email" autoComplete="email" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  minLength={8}
-                  maxLength={128}
-                  required
-                />
-              </div>
-              <Button className="mt-2 w-full" type="submit" disabled={!hasSupabaseAuthConfig}>
-                Sign in <ArrowUpRight aria-hidden="true" />
-              </Button>
-            </form>
-
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <Separator className="flex-1" />
-              <span>New to the workspace?</span>
-              <Separator className="flex-1" />
-            </div>
-
-            <form action={signUp} className="grid gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="signup-email">Email address</Label>
-                <Input id="signup-email" name="email" type="email" autoComplete="email" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="signup-password">Create a password</Label>
-                <Input
-                  id="signup-password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  minLength={8}
-                  maxLength={128}
-                  required
-                />
-              </div>
-              <Button
-                className="w-full"
-                type="submit"
-                variant="outline"
-                disabled={!hasSupabaseAuthConfig}
-              >
-                Create account
-              </Button>
+            <form action={isSignUp ? signUp : signIn} className="grid gap-5">
+              <EmailField />
+              <PasswordField isSignUp={isSignUp} />
+              <SubmitButton disabled={!hasSupabaseAuthConfig}>
+                {isSignUp ? "Create account" : "Sign in"}
+              </SubmitButton>
             </form>
           </CardContent>
-          <CardFooter className="border-t bg-muted/30 px-6 py-4 text-xs text-muted-foreground">
-            Sessions are verified server side and stored in secure cookies.
-          </CardFooter>
         </Card>
 
-        <Button className="px-0 text-muted-foreground" render={<Link href="/" />} variant="link">
-          <ArrowLeft aria-hidden="true" /> Back to the starter
-        </Button>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+          <Link
+            className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href={isSignUp ? "/login" : "/login?mode=signup"}
+          >
+            {isSignUp ? "Sign in" : "Create one"}
+          </Link>
+        </p>
       </div>
+
+      <footer className="mt-10 text-center text-xs text-muted-foreground sm:absolute sm:bottom-6">
+        <Link className="underline-offset-4 hover:underline" href="/">
+          Back to home
+        </Link>
+        <span aria-hidden="true" className="mx-2">
+          |
+        </span>
+        Clubedge Starter, Apache-2.0
+      </footer>
     </main>
   );
 }
