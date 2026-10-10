@@ -37,6 +37,9 @@ export function getServerEnv(): ServerEnv {
   return cached;
 }
 
-export function hasRedisConfig() {
-  return Boolean(process.env.REDIS_URL);
+/** Validates only REDIS_URL, so cache and rate limiting work without the rest of the env. */
+export function getRedisUrl(): string | undefined {
+  const parsed = serverSchema.shape.REDIS_URL.safeParse(process.env.REDIS_URL);
+  if (!parsed.success) throw new Error("REDIS_URL must be a redis:// or rediss:// URL.");
+  return parsed.data || undefined;
 }

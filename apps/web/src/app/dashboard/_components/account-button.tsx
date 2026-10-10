@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
-import type { AuthUser } from "@/lib/auth";
+import type { AuthUser } from "@clubedge/auth";
 import { Button } from "@clubedge/ui/components/button";
 
 type AccountButtonProps = {

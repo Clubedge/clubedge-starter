@@ -1,0 +1,23 @@
+{
+  "name": "@clubedge/auth",
+  "version": "0.2.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./supabase": "./src/supabase.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/core": "workspace:*",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.57.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

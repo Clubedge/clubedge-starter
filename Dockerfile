@@ -2,16 +2,21 @@ FROM node:22-alpine AS base
 RUN corepack enable
 WORKDIR /app
 
+# Reduce the workspace to the web app and the packages it depends on, split into manifests
+# (for a cacheable install layer) and full sources. New packages are picked up automatically.
+FROM base AS pruner
+COPY . .
+RUN pnpm dlx turbo@^2.5.0 prune @clubedge/web --docker
+
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY apps/web/package.json ./apps/web/package.json
-COPY packages/ui/package.json ./packages/ui/package.json
+COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/ .
+COPY --from=pruner /app/out/full/ .
+COPY tsconfig.base.json ./
 RUN pnpm build
 
 FROM node:22-alpine AS runner

@@ -3,12 +3,12 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getClientIp, safeRedirectPath } from "@clubedge/core";
 import { clientEnv } from "@/env/client";
-import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
-import { createSupabaseServerClient } from "@/lib/auth/supabase";
-import { createRateLimiter } from "@/lib/cache";
-import { getClientIp } from "@/lib/http/client-ip";
-import { ensureUserProfile } from "@/lib/users/profile";
+import { loginUrl } from "@/lib/login-url";
+import { getAuth } from "@/server/auth";
+import { createRateLimiter } from "@/server/cache";
+import { ensureUserProfile } from "@/server/users";
 
 const credentialsSchema = z.object({
   email: z.email(),
@@ -44,11 +44,11 @@ export async function signIn(formData: FormData) {
   const parsed = readCredentials(formData);
   if (!parsed.success) redirect(loginUrl({ error: "invalid-input", next }));
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error || !data.user) redirect(loginUrl({ error: "invalid-credentials", next }));
+  const auth = await getAuth();
+  const result = await auth.signInWithPassword(parsed.data);
+  if (!result.ok) redirect(loginUrl({ error: "invalid-credentials", next }));
 
-  await ensureUserProfile({ id: data.user.id, email: data.user.email ?? null });
+  await ensureUserProfile(result.value);
   redirect(next);
 }
 
@@ -61,22 +61,25 @@ export async function signUp(formData: FormData) {
   const parsed = readCredentials(formData);
   if (!parsed.success) redirect(loginUrl({ mode: "signup", error: "invalid-input", next }));
 
-  const supabase = await createSupabaseServerClient();
   const callbackUrl = new URL("/auth/callback", clientEnv.NEXT_PUBLIC_APP_URL);
   callbackUrl.searchParams.set("next", next);
-  const { data, error } = await supabase.auth.signUp({
-    ...parsed.data,
-    options: { emailRedirectTo: callbackUrl.toString() },
-  });
-  if (error) redirect(loginUrl({ mode: "signup", error: "signup-failed", next }));
-  if (!data.session || !data.user) redirect(loginUrl({ mode: "signup", checkEmail: true, next }));
+  const auth = await getAuth();
+  const result = await auth.signUp({ ...parsed.data, emailRedirectTo: callbackUrl.toString() });
+  if (!result.ok) redirect(loginUrl({ mode: "signup", error: "signup-failed", next }));
+  if (result.value.needsConfirmation || !result.value.user) {
+    redirect(loginUrl({ mode: "signup", checkEmail: true, next }));
+  }
 
-  await ensureUserProfile({ id: data.user.id, email: data.user.email ?? null });
+  await ensureUserProfile(result.value.user);
   redirect(next);
 }
 
 export async function signOut() {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
+  try {
+    const auth = await getAuth();
+    await auth.signOut();
+  } catch (error) {
+    console.error("Sign-out failed", error);
+  }
   redirect("/login");
 }

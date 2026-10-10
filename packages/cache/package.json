@@ -1,0 +1,20 @@
+{
+  "name": "@clubedge/cache",
+  "version": "0.2.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "redis": "^5.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

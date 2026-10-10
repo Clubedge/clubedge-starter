@@ -52,6 +52,8 @@ Drizzle manages application data in PostgreSQL. Supabase Auth manages identity a
 - **Authentication stays separate from application data.** Supabase Auth owns credentials and sessions; application tables are managed by Drizzle.
 - **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the rate limiter falls back to a per-process memory window, which is suitable for a single server instance only.
 - **Storage has a provider boundary.** Application code can use the storage interface with S3-compatible services or Supabase Storage; authorization and upload validation remain the caller's responsibility.
+- **Shared packages are framework-agnostic.** Packages under `packages/` receive configuration and request cookies as arguments and never import Next.js, so another app (for example a TanStack Start app) can reuse them unchanged. ESLint enforces these boundaries.
+- **One composition root per app.** `apps/web/src/server/` is the only place that reads environment variables and chooses providers. Routes, actions, and components call it rather than a provider SDK.
 - **Keep the baseline focused.** Additional providers, queues, and generator tooling should be added when a real use case calls for them.
 
 ## Quick start
@@ -118,9 +120,15 @@ Playwright's first run may require installing Chromium with `pnpm exec playwrigh
 ## Repository structure
 
 ```text
-apps/web/       Next.js app, API routes, database schema, and app-specific code
-packages/ui/    Shared shadcn/ui components, utilities, and global theme styles
-.github/        CI workflow, issue forms, and pull request template
+apps/web/            Next.js app: routes, actions, UI, and the composition root
+  src/server/        Wires environment, cookies, and providers into the packages
+packages/core/       Errors, Result type, and HTTP helpers (no dependencies)
+packages/auth/       AuthProvider and CookieStore interfaces, Supabase adapter
+packages/db/         Drizzle schema, client factory, migrations, and seed script
+packages/storage/    StorageProvider interface, S3 and Supabase Storage adapters
+packages/cache/      Rate limiters (memory and Redis) and Redis cache
+packages/ui/         Shared shadcn/ui components, utilities, and global theme styles
+.github/             CI workflow, issue forms, and pull request template
 SETUP.md        Detailed local and provider setup
 CONTRIBUTING.md Contribution workflow and review expectations
 SECURITY.md     Vulnerability reporting guidance
