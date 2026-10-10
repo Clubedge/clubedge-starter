@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import { signIn, signUp } from "@/app/actions/auth";
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
+import { siteConfig } from "@/config/site";
+import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
 import { hasSupabaseAuthConfig } from "@/env/client";
 import { Card, CardContent } from "@clubedge/ui/components/card";
 
@@ -14,6 +16,7 @@ type LoginPageProps = {
     error?: string;
     mode?: string;
     "check-email"?: string;
+    next?: string;
   }>;
 };
 
@@ -22,6 +25,7 @@ const errorMessages: Record<string, string> = {
   "invalid-credentials": "Those credentials could not be verified. Check your email and password.",
   "signup-failed": "We could not create your account. Please check your details and try again.",
   "auth-callback": "That sign-in link could not be verified. Request a new one.",
+  "rate-limited": "Too many attempts. Wait a minute and try again.",
 };
 
 type NoticeTone = "error" | "info" | "warning";
@@ -61,13 +65,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const isSignUp = params.mode === "signup";
   const error = params.error ? errorMessages[params.error] : undefined;
   const checkEmail = Boolean(params["check-email"]);
+  const next = safeRedirectPath(params.next);
 
   return (
     <main className="flex min-h-svh flex-col items-center bg-background px-4 py-10 sm:justify-center">
       <div className="w-full max-w-[26rem]">
         <header className="mb-8 flex flex-col items-center gap-4 text-center">
           <Link
-            aria-label="Clubedge home"
+            aria-label={`${siteConfig.name} home`}
             className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             href="/"
           >
@@ -75,7 +80,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </Link>
           <div className="grid gap-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">
-              {isSignUp ? "Create your account" : "Sign in to Clubedge"}
+              {isSignUp ? "Create your account" : `Sign in to ${siteConfig.shortName}`}
             </h1>
             <p className="text-sm text-muted-foreground">
               {isSignUp
@@ -108,6 +113,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             )}
 
             <form action={isSignUp ? signUp : signIn} className="grid gap-5">
+              <input name="next" type="hidden" value={next} />
               <EmailField />
               <PasswordField isSignUp={isSignUp} />
               <SubmitButton disabled={!hasSupabaseAuthConfig}>
@@ -121,7 +127,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
           <Link
             className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            href={isSignUp ? "/login" : "/login?mode=signup"}
+            href={loginUrl({ mode: isSignUp ? "signin" : "signup", next })}
           >
             {isSignUp ? "Sign in" : "Create one"}
           </Link>
@@ -135,7 +141,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <span aria-hidden="true" className="mx-2">
           |
         </span>
-        Clubedge Starter, Apache-2.0
+        {siteConfig.name}, Apache-2.0
       </footer>
     </main>
   );

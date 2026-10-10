@@ -41,6 +41,9 @@ import {
   BreadcrumbSeparator,
 } from "@clubedge/ui/components/breadcrumb";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/components/sidebar";
+import { siteConfig } from "@/config/site";
+import { getPageUser } from "@/lib/auth";
+import { AccountButton } from "./_components/account-button";
 import { AppSidebar } from "./_components/app-sidebar";
 import { ThemeToggle } from "../theme-toggle";
 
@@ -93,10 +96,12 @@ const setupRows = [
   },
 ];
 
-export default function Home() {
+export default async function DashboardPage() {
+  const user = await getPageUser("/dashboard");
+
   return (
     <SidebarProvider defaultOpen>
-      <AppSidebar />
+      <AppSidebar user={user} />
       <SidebarInset>
         <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -123,20 +128,14 @@ export default function Home() {
               <Button
                 aria-label="Open GitHub repository"
                 render={
-                  <Link
-                    href="https://github.com/Clubedge/clubedge-starter"
-                    target="_blank"
-                    rel="noreferrer"
-                  />
+                  <Link href={siteConfig.links.repository} target="_blank" rel="noreferrer" />
                 }
                 size="icon"
                 variant="ghost"
               >
                 <Github aria-hidden="true" />
               </Button>
-              <Button render={<Link href="/login" />} size="sm" variant="outline">
-                Sign in
-              </Button>
+              <AccountButton user={user} />
             </div>
           </div>
         </header>
@@ -160,13 +159,7 @@ export default function Home() {
               </p>
             </div>
             <Button
-              render={
-                <Link
-                  href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
+              render={<Link href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />}
             >
               Read setup guide <ArrowRight aria-hidden="true" />
             </Button>
@@ -309,11 +302,7 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Need help connecting a provider?</p>
                 <Button
                   render={
-                    <Link
-                      href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
-                      target="_blank"
-                      rel="noreferrer"
-                    />
+                    <Link href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />
                   }
                   size="sm"
                   variant="ghost"
@@ -340,11 +329,7 @@ export default function Home() {
               </div>
               <Button
                 render={
-                  <Link
-                    href="https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
-                    target="_blank"
-                    rel="noreferrer"
-                  />
+                  <Link href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />
                 }
                 size="sm"
                 variant="outline"
@@ -355,7 +340,7 @@ export default function Home() {
           </Card>
 
           <footer className="flex flex-col gap-2 border-t pt-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>Clubedge Starter · Next.js application foundation</span>
+            <span>{siteConfig.name} · Next.js application foundation</span>
             <span className="inline-flex items-center gap-2">
               <Check aria-hidden="true" className="size-3.5 text-primary" /> Built to be extended
             </span>

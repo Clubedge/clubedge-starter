@@ -90,7 +90,7 @@ REDIS_URL=rediss://default:<password>@<host>:6379
 
 Use `rediss://` for TLS connections such as Upstash and `redis://` for an unencrypted connection on a trusted network. Self-hosted Redis can use either scheme according to its TLS configuration. The app uses the standard Redis protocol and requires a Node.js runtime with outbound TCP access; this adapter is not for Edge runtimes that cannot open TCP connections.
 
-When Redis is not configured, `createRateLimiter()` returns `null` and cache reads return a miss. Callers must choose an explicit local/development policy when no distributed limiter is available. Never commit a real Redis URL or password.
+When Redis is not configured, cache reads return a miss and `createRateLimiter()` falls back to an in-memory fixed window. Memory limits apply per server process, so configure Redis when you run several instances or serverless functions. Sign-in and sign-up attempts are limited to ten per minute per client address. Never commit a real Redis URL or password.
 
 ### Object storage
 
@@ -158,9 +158,9 @@ This repository is a starting point; review the security and operational choices
 
 - Set production environment variables through your hosting provider's secret manager. Use unique, rotated credentials and TLS for external connections.
 - Set `NEXT_PUBLIC_APP_URL` to the deployed origin and add its `/auth/callback` URL to Supabase's allowed redirect URLs.
-- Make authenticated server routes call `auth.getUser()` or `requireUser()`; do not treat cookie contents alone as proof of identity.
+- Make authenticated server routes call `auth.getUser()` or `requireUser()` (which throws a 401 `AppError`), and protect pages with `getPageUser(pathname)`, which redirects signed-out visitors to `/login`. Do not treat cookie contents alone as proof of identity.
 - Authorize storage access and validate upload size, content type, and object ownership in the route or action before using the storage adapter.
-- Decide what rate-limit behavior is appropriate when Redis is not configured; the limiter factory returns `null` in that case.
+- Configure Redis for rate limiting when you deploy more than one instance; the in-memory fallback does not share counts between instances. Client addresses come from `x-forwarded-for`, so deploy behind a proxy that sets it.
 - Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets.
 - Review database migration and backup procedures, provider access policies, and application-specific error handling.
 

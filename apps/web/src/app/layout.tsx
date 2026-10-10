@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "@clubedge/ui/globals.css";
 import { TooltipProvider } from "@clubedge/ui/components/tooltip";
+import { siteConfig } from "@/config/site";
 import { ThemeProvider } from "./theme-provider";
 
 const themeBootstrap = `try {
@@ -15,8 +16,8 @@ const themeBootstrap = `try {
 `;
 
 export const metadata: Metadata = {
-  title: { default: "Clubedge Starter", template: "%s · Clubedge Starter" },
-  description: "A production-minded foundation for Clubedge applications.",
+  title: { default: siteConfig.name, template: `%s · ${siteConfig.name}` },
+  description: siteConfig.description,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -1,11 +1,12 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/auth/supabase";
-import { env } from "@/env/server";
+import { getServerEnv } from "@/env/server";
 import type { StorageProvider, UploadInput } from "./types";
 
 function bucketName() {
-  if (!env.SUPABASE_STORAGE_BUCKET) throw new Error("SUPABASE_STORAGE_BUCKET must be configured.");
-  return env.SUPABASE_STORAGE_BUCKET;
+  const bucket = getServerEnv().SUPABASE_STORAGE_BUCKET;
+  if (!bucket) throw new Error("SUPABASE_STORAGE_BUCKET must be configured.");
+  return bucket;
 }
 
 function toBlob(body: UploadInput["body"], type: string) {

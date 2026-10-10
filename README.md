@@ -50,7 +50,7 @@ Drizzle manages application data in PostgreSQL. Supabase Auth manages identity a
 
 - **PostgreSQL is the source of truth for application data.** Drizzle centralizes application schema, queries, and migrations.
 - **Authentication stays separate from application data.** Supabase Auth owns credentials and sessions; application tables are managed by Drizzle.
-- **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the limiter factory returns `null`, so callers must choose their local fallback explicitly.
+- **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the rate limiter falls back to a per-process memory window, which is suitable for a single server instance only.
 - **Storage has a provider boundary.** Application code can use the storage interface with S3-compatible services or Supabase Storage; authorization and upload validation remain the caller's responsibility.
 - **Keep the baseline focused.** Additional providers, queues, and generator tooling should be added when a real use case calls for them.
 
@@ -125,6 +125,8 @@ SETUP.md        Detailed local and provider setup
 CONTRIBUTING.md Contribution workflow and review expectations
 SECURITY.md     Vulnerability reporting guidance
 ```
+
+The project name, description, service identifier, and documentation links live in `apps/web/src/config/site.json`. Edit that file to rename the app; `create-clubedge-app` writes it for generated projects.
 
 ## Shared UI components
 
