@@ -9,5 +9,5 @@
     "target": "apps/web/.env.local"
   },
   "dockerImage": "clubedge-starter",
-  "exclude": ["clubedge.template.json"]
+  "exclude": ["clubedge.template.json", "scripts/template-manifest.test.ts"]
 }

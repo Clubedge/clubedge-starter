@@ -27,6 +27,13 @@ describe("clubedge.template.json", () => {
     });
   });
 
+  it("keeps maintainer-only files out of generated projects", () => {
+    // Generated projects have no manifest, so this test must not be copied into them either.
+    expect(manifest.exclude).toEqual(
+      expect.arrayContaining(["clubedge.template.json", "scripts/template-manifest.test.ts"]),
+    );
+  });
+
   it("matches the Docker image name used by the root scripts", () => {
     const { scripts } = readJson("package.json");
     expect(scripts["docker:build"]).toContain(`-t ${manifest.dockerImage} `);
