@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",
+    "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/cache": "workspace:*",
+    "@clubedge/cache-redis": "workspace:*",
     "@clubedge/core": "workspace:*",
     "@clubedge/db": "workspace:*",
     "@clubedge/storage": "workspace:*",
+    "@clubedge/storage-s3": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "cn": "^0.4.0",
     "lucide-react": "^0.468.0",

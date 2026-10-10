@@ -1,7 +1,7 @@
 import { createServerClient, type CookieMethodsServer } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import { err, ok } from "@clubedge/core";
-import type { AuthProvider, AuthUser, CookieStore } from "./types";
+import type { AuthProvider, AuthUser, CookieStore } from "@clubedge/auth";
 
 export interface SupabaseAuthConfig {
   url: string;

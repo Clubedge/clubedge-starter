@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { CookieStore } from "@clubedge/auth";
-import { createSupabaseAuth } from "@clubedge/auth/supabase";
-import { clientEnv, hasSupabaseAuthConfig } from "@/env/client";
+import { createSupabaseAuth } from "@clubedge/auth-supabase";
+import { getSupabaseAuthEnv } from "@/env/auth";
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (!hasSupabaseAuthConfig) return response;
+  const env = getSupabaseAuthEnv();
+  if (!env) return response;
 
   // Refreshed cookies must reach both the downstream request and the browser response.
   const cookies: CookieStore = {
@@ -17,11 +18,7 @@ export async function proxy(request: NextRequest) {
     },
   };
 
-  const auth = createSupabaseAuth({
-    url: clientEnv.NEXT_PUBLIC_SUPABASE_URL!,
-    publishableKey: clientEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    cookies,
-  });
+  const auth = createSupabaseAuth({ ...env, cookies });
   await auth.refreshSession();
   return response;
 }

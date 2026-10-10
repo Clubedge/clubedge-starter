@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 async function loadFreshModule() {
   vi.resetModules();
@@ -24,12 +25,34 @@ describe("getServerEnv", () => {
 
   it("parses and applies defaults once variables are present", async () => {
     vi.stubEnv("DATABASE_URL", "postgresql://localhost/app");
-    vi.stubEnv("STORAGE_PROVIDER", undefined);
+    vi.stubEnv("NODE_ENV", "test");
     const { getServerEnv } = await loadFreshModule();
-    expect(getServerEnv()).toMatchObject({
+    expect(getServerEnv()).toEqual({
       DATABASE_URL: "postgresql://localhost/app",
-      STORAGE_PROVIDER: "s3",
-      STORAGE_REGION: "auto",
+      NODE_ENV: "test",
+    });
+  });
+});
+
+describe("parseEnv", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("names the module whose variables are invalid", async () => {
+    vi.stubEnv("EXAMPLE_URL", "not a url");
+    const { parseEnv } = await loadFreshModule();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(() => parseEnv(z.object({ EXAMPLE_URL: z.url() }), "Example")).toThrow(
+      "Example environment validation failed",
+    );
+  });
+
+  it("accepts optional variables left empty", async () => {
+    vi.stubEnv("EXAMPLE_URL", "");
+    const { optional, parseEnv } = await loadFreshModule();
+    expect(parseEnv(z.object({ EXAMPLE_URL: optional(z.url()) }), "Example")).toEqual({
+      EXAMPLE_URL: "",
     });
   });
 });

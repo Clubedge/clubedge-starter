@@ -1,8 +1,8 @@
 import "@tanstack/react-start/server-only";
 import type { AuthProvider, AuthUser } from "@clubedge/auth";
-import { createSupabaseAuth, createSupabaseServerClient } from "@clubedge/auth/supabase";
+import { createSupabaseAuth, createSupabaseServerClient } from "@clubedge/auth-supabase";
 import { AppError } from "@clubedge/core";
-import { getSupabaseAuthEnv } from "@/env/server";
+import { getSupabaseAuthEnv } from "@/env/auth";
 import { requestCookieStore } from "./cookies";
 
 export type { AuthUser } from "@clubedge/auth";

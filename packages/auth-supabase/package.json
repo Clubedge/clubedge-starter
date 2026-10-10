@@ -1,6 +1,7 @@
 {
-  "name": "@clubedge/cache",
+  "name": "@clubedge/auth-supabase",
   "version": "0.4.0",
+  "description": "Supabase Auth adapter for @clubedge/auth.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -10,6 +11,12 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/auth": "workspace:*",
+    "@clubedge/core": "workspace:*",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.57.0"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

@@ -6,17 +6,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./s3": "./src/s3.ts",
-    "./supabase": "./src/supabase.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.850.0",
-    "@aws-sdk/s3-request-presigner": "^3.850.0",
-    "@supabase/supabase-js": "^2.57.0"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

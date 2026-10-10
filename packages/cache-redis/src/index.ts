@@ -2,9 +2,10 @@ import { createClient } from "redis";
 import {
   validateRateLimitIdentifier,
   validateRateLimitOptions,
+  type Cache,
   type RateLimiter,
   type RateLimitOptions,
-} from "./rate-limit";
+} from "@clubedge/cache";
 
 type RedisClient = ReturnType<typeof createClient>;
 
@@ -40,11 +41,6 @@ export async function connectRedis(url: string): Promise<RedisClient> {
     throw error;
   });
   return entry.connection;
-}
-
-export interface Cache {
-  get<T>(key: string): Promise<T | null>;
-  set(key: string, value: unknown, ttlSeconds: number): Promise<void>;
 }
 
 export function createRedisCache(url: string, prefix = "clubedge:cache:"): Cache {

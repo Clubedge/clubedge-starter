@@ -41,9 +41,15 @@ importers:
       '@clubedge/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@clubedge/auth-supabase':
+        specifier: workspace:*
+        version: link:../../packages/auth-supabase
       '@clubedge/cache':
         specifier: workspace:*
         version: link:../../packages/cache
+      '@clubedge/cache-redis':
+        specifier: workspace:*
+        version: link:../../packages/cache-redis
       '@clubedge/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -53,6 +59,9 @@ importers:
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@clubedge/storage-s3':
+        specifier: workspace:*
+        version: link:../../packages/storage-s3
       '@clubedge/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -105,9 +114,15 @@ importers:
       '@clubedge/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@clubedge/auth-supabase':
+        specifier: workspace:*
+        version: link:../../packages/auth-supabase
       '@clubedge/cache':
         specifier: workspace:*
         version: link:../../packages/cache
+      '@clubedge/cache-redis':
+        specifier: workspace:*
+        version: link:../../packages/cache-redis
       '@clubedge/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -117,6 +132,9 @@ importers:
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@clubedge/storage-s3':
+        specifier: workspace:*
+        version: link:../../packages/storage-s3
       '@clubedge/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -160,6 +178,19 @@ importers:
       '@clubedge/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/auth-supabase:
+    dependencies:
+      '@clubedge/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@clubedge/core':
+        specifier: workspace:*
+        version: link:../core
       '@supabase/ssr':
         specifier: ^0.6.1
         version: 0.6.1(@supabase/supabase-js@2.117.3)
@@ -172,7 +203,16 @@ importers:
         version: 5.9.3
 
   packages/cache:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/cache-redis:
     dependencies:
+      '@clubedge/cache':
+        specifier: workspace:*
+        version: link:../cache
       redis:
         specifier: ^5.8.0
         version: 5.12.1
@@ -210,6 +250,12 @@ importers:
         version: 5.9.3
 
   packages/storage:
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/storage-s3:
     dependencies:
       '@aws-sdk/client-s3':
         specifier: ^3.850.0
@@ -217,6 +263,19 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.850.0
         version: 3.1147.0
+      '@clubedge/storage':
+        specifier: workspace:*
+        version: link:../storage
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/storage-supabase:
+    dependencies:
+      '@clubedge/storage':
+        specifier: workspace:*
+        version: link:../storage
       '@supabase/supabase-js':
         specifier: ^2.57.0
         version: 2.117.3

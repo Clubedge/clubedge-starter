@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+// Workspace packages ship TypeScript source and are compiled by the app. Reading them from
+// package.json keeps this list right when packages are added or removed.
+const { dependencies } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+);
+const workspacePackages = Object.keys(dependencies).filter((name) => name.startsWith("@clubedge/"));
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -15,15 +23,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
-  // Workspace packages ship TypeScript source and are compiled by the app.
-  transpilePackages: [
-    "@clubedge/auth",
-    "@clubedge/cache",
-    "@clubedge/core",
-    "@clubedge/db",
-    "@clubedge/storage",
-    "@clubedge/ui",
-  ],
+  transpilePackages: workspacePackages,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

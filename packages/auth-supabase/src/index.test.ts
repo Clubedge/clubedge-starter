@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { CookieStore } from "./types";
+import type { CookieStore } from "@clubedge/auth";
 
 const supabaseAuth = {
   getUser: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("@supabase/ssr", () => ({
   ),
 }));
 
-const { createSupabaseAuth } = await import("./supabase");
+const { createSupabaseAuth } = await import("./index");
 
 const supabaseUser = { id: "user-1", email: "ada@example.com" };
 

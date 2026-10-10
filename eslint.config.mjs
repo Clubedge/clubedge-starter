@@ -19,7 +19,8 @@ const providerImports = {
 export default defineConfig([
   ...tseslint.configs.recommended,
   {
-    files: ["packages/{auth,cache,core,db,storage}/**/*.ts"],
+    files: ["packages/*/**/*.ts"],
+    ignores: ["packages/ui/**"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [frameworkImports, appImports] }],
     },

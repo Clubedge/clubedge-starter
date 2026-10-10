@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { StorageProvider, UploadInput } from "./types";
+import type { StorageProvider, UploadInput } from "@clubedge/storage";
 
 export interface SupabaseStorageConfig {
   /** Optional so the app can start without storage; operations fail until it is set. */

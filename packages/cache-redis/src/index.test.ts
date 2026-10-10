@@ -13,28 +13,19 @@ const redisClient = {
 vi.mock("redis", () => ({ createClient: vi.fn(() => redisClient) }));
 
 const { createClient } = await import("redis");
-const { createRateLimiter } = await import("./index");
+const { createRedisRateLimiter } = await import("./index");
 
-describe("createRateLimiter", () => {
+describe("createRedisRateLimiter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     redisClient.isReady = false;
   });
 
-  it("uses process memory when no Redis URL is configured", async () => {
-    const limiter = createRateLimiter({ requests: 1, windowSeconds: 60 });
-
-    expect((await limiter.limit("client")).success).toBe(true);
-    expect((await limiter.limit("client")).success).toBe(false);
-    expect(createClient).not.toHaveBeenCalled();
-  });
-
   it("counts in Redis when a URL is configured", async () => {
     redisClient.eval.mockResolvedValueOnce([3, 30_000]);
-    const limiter = createRateLimiter({
+    const limiter = createRedisRateLimiter("redis://localhost:6379", {
       requests: 2,
       windowSeconds: 60,
-      redisUrl: "redis://localhost:6379",
     });
 
     const result = await limiter.limit("client");
@@ -49,8 +40,8 @@ describe("createRateLimiter", () => {
   it("reuses one connection per Redis URL", async () => {
     redisClient.eval.mockResolvedValue([1, 60_000]);
     const url = "redis://reuse.example:6379";
-    const first = createRateLimiter({ redisUrl: url });
-    const second = createRateLimiter({ redisUrl: url });
+    const first = createRedisRateLimiter(url);
+    const second = createRedisRateLimiter(url);
 
     await first.limit("a");
     await second.limit("b");
@@ -61,7 +52,7 @@ describe("createRateLimiter", () => {
 
   it("rejects an unexpected Redis response", async () => {
     redisClient.eval.mockResolvedValueOnce("nope");
-    const limiter = createRateLimiter({ redisUrl: "redis://bad.example:6379" });
+    const limiter = createRedisRateLimiter("redis://bad.example:6379");
     await expect(limiter.limit("client")).rejects.toThrow("invalid rate limit response");
   });
 });
