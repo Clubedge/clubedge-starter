@@ -2,7 +2,7 @@ import { Activity, ArrowUpRight, Blocks, Github, LayoutDashboard } from "lucide-
 
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { siteConfig } from "@/config/site";
-import type { AuthUser } from "@clubedge/auth";
+import type { AuthUser } from "@/server/auth";
 import {
   Sidebar,
   SidebarContent,

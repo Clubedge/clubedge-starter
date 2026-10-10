@@ -16,11 +16,13 @@ const included = [
     name: "Next.js",
     detail: "An App Router web app in apps/web, with server components by default.",
   },
+  // clubedge:if auth!=none
   {
-    name: "Supabase Auth",
+    name: "Authentication",
     detail:
       "Email and password sign-in, with sessions verified on the server and stored in secure cookies.",
   },
+  // clubedge:end
   {
     name: "Drizzle and PostgreSQL",
     detail: "Typed data access that you can extend or swap for your own infrastructure.",
@@ -41,8 +43,8 @@ const included = [
 
 const steps = [
   "Create your project with the command above.",
-  "Add your Supabase URL and publishable key to apps/web/.env.local.",
-  "Start the app, create an account, and sign in.",
+  "Set DATABASE_URL and your providers' keys in apps/web/.env.local, as SETUP.md describes.",
+  "Start the app and open the dashboard.",
 ];
 
 export default function LandingPage() {
@@ -105,9 +107,11 @@ export default function LandingPage() {
             >
               Dashboard
             </Button>
+            {/* clubedge:if auth!=none */}
             <Button render={<Link href="/login" />} size="sm">
               Sign in
             </Button>
+            {/* clubedge:end */}
           </div>
         </nav>
       </header>

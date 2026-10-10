@@ -3,14 +3,17 @@
 ## Architecture rules
 
 - Every package except `packages/ui` is framework-agnostic. Never import `next`, `react`, `server-only`, `@tanstack/*`, or app code (`@/…`) there. Accept configuration, clients, and cookies as function arguments.
-- Interfaces live in `packages/{auth,storage,cache}`; each provider is its own package (`auth-supabase`, `storage-s3`, `storage-supabase`, `cache-redis`) holding that provider's SDK, so `create-clubedge-app` can leave unused providers out. Keep provider SDKs out of the interface packages.
+- Interfaces live in `packages/{auth,storage,cache}`; each provider is its own package holding that provider's SDK, so replacing a provider means swapping one package. Keep provider SDKs out of the interface packages.
 - Each provider module in `src/server/` validates its own environment variables with `parseEnv`; `src/env/server.ts` holds only the core variables.
 - `packages/core` depends on no other workspace package.
-- Each app's `src/server/` is its composition root: the only place that reads environment variables, bridges the framework's cookies to `CookieStore`, and picks providers. Routes, server actions, server functions, and components import from `@/server/*`, never from `@supabase/*`, `@aws-sdk/*`, `redis`, or `postgres`.
-- `apps/web` (Next.js) and `apps/start` (TanStack Start) are the same product. Make user-facing changes in both, keep their markup and redirects identical, and run the shared browser suite against each (`E2E_APP=start pnpm test:e2e`).
+- The app's `src/server/` is its composition root: the only place that reads environment variables, bridges the framework's cookies to `CookieStore`, and picks providers. Routes, server actions, server functions, and components import from `@/server/*`, never from a provider SDK such as `@supabase/*`, `@aws-sdk/*`, `redis`, or `postgres`.
+- `apps/web` (Next.js) and `apps/start` (TanStack Start) are the same product. Make user-facing changes in both, keep their markup and redirects identical, and run the shared browser suite against each (`E2E_APP=start pnpm test:e2e`). <!-- clubedge:only starter-repository -->
+- Files listed under `conditional` in `clubedge.template.json` contain `clubedge:if` blocks and `clubedge:only` lines that create-clubedge-app keeps or drops per framework and module. Keep every block present for the default selection, and use a file under `variants/` when two options need different code. <!-- clubedge:only starter-repository -->
 - Expected failures (bad credentials, invalid codes) are returned as `Result` values from `@clubedge/core`; exceptions are for unexpected errors.
-- Project identity (name, description, links) lives in each app's `src/config/site.json` (keep them identical); `create-clubedge-app` rewrites that file, so do not hard-code the project name elsewhere.
+- Project identity (name, description, links) lives in `src/config/site.json`, so do not hard-code the project name elsewhere.
 - `pnpm lint` enforces these boundaries. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test` before finishing a change.
+
+<!-- clubedge:if framework=next -->
 
 <!-- BEGIN:nextjs-agent-rules -->
 
@@ -21,6 +24,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+<!-- clubedge:end -->
 
 <!-- BEGIN:turborepo-agent-rules -->
 

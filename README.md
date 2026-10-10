@@ -3,57 +3,60 @@
 [![CI](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-Clubedge Starter is a production-oriented, modular React application foundation, available for Next.js and TanStack Start. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.
+Clubedge Starter is a production-oriented, modular React application foundation. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, replaceable infrastructure providers, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.
 
-This is a starter, not a hosted service or a one-command app generator. Fork it or use it as a reference, then adapt the app and provider configuration to your project. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist.
+<!-- clubedge:if starter-repository -->
+
+This repository contains the same application for two frameworks, Next.js (`apps/web`) and TanStack Start (`apps/start`), plus every optional module. [create-clubedge-app](https://github.com/Clubedge/create-clubedge-app) generates a project with one framework and only the modules you choose; sections of this README marked for a framework or module appear only in projects that use it. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist.
+
+<!-- clubedge:end -->
 
 ## Features
 
-- Next.js App Router or TanStack Start, with React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives.
-- pnpm workspaces and Turborepo, with the web app in `apps/web` and reusable UI source in `packages/ui`.
+- Next.js App Router with React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=next -->
+- TanStack Start with React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=tanstack-start -->
+- pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
-- Supabase Auth using cookie based server clients from `@supabase/ssr`.
-- S3 compatible storage (including Cloudflare R2) and Supabase Storage adapters.
-- Optional Redis cache and fixed-window rate limiter using a standard Redis URL.
+- Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase -->
+- S3-compatible storage adapter for AWS S3, Cloudflare R2, and MinIO. <!-- clubedge:only storage=s3 -->
+- Supabase Storage adapter that uses the signed-in user's session. <!-- clubedge:only storage=supabase -->
+- Fixed-window rate limiter and cache on Redis, falling back to process memory without `REDIS_URL`. <!-- clubedge:only cache=redis -->
+- Fixed-window rate limiter and cache in process memory, suited to a single server instance. <!-- clubedge:only cache=memory -->
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
-
-## Stack and provider choices
-
-| Capability              | Included choice                                      | Other supported options                                               |
-| ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Web app                 | Next.js App Router, React, TypeScript                | TanStack Start (`apps/start`), sharing every package.                 |
-| UI                      | Tailwind CSS 4, shadcn/ui, and Base UI               | Add or replace components in your app or shared UI package.           |
-| Database                | PostgreSQL through Drizzle ORM                       | Any reachable PostgreSQL provider; Supabase PostgreSQL is documented. |
-| Authentication          | Supabase Auth with `@supabase/ssr`                   | No alternate auth adapter is currently included.                      |
-| Cache and rate limiting | Optional Redis protocol client                       | Upstash, self-hosted Redis, or a compatible Redis service.            |
-| Object storage          | S3-compatible adapter or Supabase Storage            | AWS S3, Cloudflare R2, and other S3-compatible services.              |
-| Local runtime           | Docker and Next.js standalone or Nitro output        | Run directly with Node.js during development.                         |
-| Verification            | Vitest, Playwright, ESLint, Prettier, GitHub Actions | —                                                                     |
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-  Browser --> Next[Next.js application]
-  Next -->|auth interface and server sessions| Auth[Supabase Auth]
-  Next -->|Drizzle ORM| DB[(PostgreSQL)]
-  Next -->|optional cache and rate limits| Redis[(Redis)]
-  Next -->|storage interface| Storage{Storage provider}
-  Storage --> S3[S3-compatible storage: AWS S3, R2, MinIO]
-  Storage --> SupabaseStorage[Supabase Storage]
+  %% clubedge:if framework=next
+  Browser --> App[Next.js application]
+  %% clubedge:end
+  %% clubedge:if framework=tanstack-start
+  Browser --> App[TanStack Start application]
+  %% clubedge:end
+  App -->|Drizzle ORM| DB[(PostgreSQL)]
+  %% clubedge:if auth=supabase
+  App -->|auth interface and server sessions| Auth[Supabase Auth]
+  %% clubedge:end
+  %% clubedge:if cache=redis
+  App -->|cache and rate limits| Redis[(Redis, or memory)]
+  %% clubedge:end
+  %% clubedge:if storage=s3
+  App -->|storage interface| S3[S3-compatible storage: AWS S3, R2, MinIO]
+  %% clubedge:end
+  %% clubedge:if storage=supabase
+  App -->|storage interface| SupabaseStorage[Supabase Storage]
+  %% clubedge:end
 ```
-
-Drizzle manages application data in PostgreSQL. Supabase Auth manages identity and sessions separately; it is not accessed through Drizzle. The PostgreSQL database may be Supabase PostgreSQL or another PostgreSQL provider.
 
 ### Architecture principles
 
 - **PostgreSQL is the source of truth for application data.** Drizzle centralizes application schema, queries, and migrations.
-- **Authentication stays separate from application data.** Supabase Auth owns credentials and sessions; application tables are managed by Drizzle.
-- **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the rate limiter falls back to a per-process memory window, which is suitable for a single server instance only.
-- **Storage has a provider boundary.** Application code can use the storage interface with S3-compatible services or Supabase Storage; authorization and upload validation remain the caller's responsibility.
-- **Shared packages are framework-agnostic.** Packages under `packages/` receive configuration and request cookies as arguments and never import Next.js, so another app (for example a TanStack Start app) can reuse them unchanged. ESLint enforces these boundaries.
-- **One composition root per app.** Each app's `src/server/` is the only place that reads environment variables and chooses providers. Routes, actions, and components call it rather than a provider SDK.
+- **Authentication stays separate from application data.** The auth provider owns credentials and sessions; application tables are managed by Drizzle. <!-- clubedge:only auth!=none -->
+- **Providers sit behind interfaces.** Interfaces live in `packages/{auth,storage,cache}` and each provider in its own package, so replacing a provider does not touch application code.
+- **Shared packages are framework-agnostic.** Packages under `packages/` receive configuration and request cookies as arguments and never import a web framework. ESLint enforces these boundaries.
+- **One composition root.** `apps/web/src/server/` is the only place that reads environment variables and chooses providers. Routes and components call it rather than a provider SDK.
 - **Keep the baseline focused.** Additional providers, queues, and generator tooling should be added when a real use case calls for them.
 
 ## Quick start
@@ -62,7 +65,7 @@ Drizzle manages application data in PostgreSQL. Supabase Auth manages identity a
 
 - Node.js 22.12 or newer (Node.js 22 LTS recommended).
 - pnpm 10.9.0. The repository pins its package manager version using Corepack.
-- PostgreSQL when using database features. A Supabase project can provide both PostgreSQL and Auth.
+- PostgreSQL when using database features.
 
 ### Install and run
 
@@ -85,13 +88,13 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
-Set `DATABASE_URL` in `apps/web/.env.local`. Supabase Auth is optional for exploring the UI; set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to enable it. See [SETUP.md](SETUP.md) for provider setup and optional integrations. Then start the app:
+Set `DATABASE_URL` in `apps/web/.env.local`, then start the app. [SETUP.md](SETUP.md) describes every variable and provider.
 
 ```sh
 pnpm dev
 ```
 
-Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashboard> for the starter dashboard, or <http://localhost:3000/api/health> for the liveness endpoint. The pages render without connecting to providers. Database, authentication, storage, and Redis operations require their respective configuration.
+Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashboard> for the dashboard, or <http://localhost:3000/api/health> for the liveness endpoint. The pages render without connecting to providers; database and provider operations require their configuration.
 
 ## Common commands
 
@@ -101,7 +104,7 @@ Run these from the repository root:
 | ------------------- | ---------------------------------------------- |
 | `pnpm dev`          | Start the web app in development mode.         |
 | `pnpm build`        | Create a production build.                     |
-| `pnpm start`        | Start the standalone production build.         |
+| `pnpm start`        | Start the production build.                    |
 | `pnpm lint`         | Run ESLint.                                    |
 | `pnpm typecheck`    | Typecheck the workspaces.                      |
 | `pnpm test`         | Run Vitest.                                    |
@@ -117,38 +120,32 @@ Run these from the repository root:
 
 Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically.
 
-## Frameworks
+<!-- clubedge:if starter-repository -->
 
-This repository contains the same application twice, so both stay tested against the shared packages:
+## Working on this repository
 
-| App          | Framework          | Run it                              |
-| ------------ | ------------------ | ----------------------------------- |
-| `apps/web`   | Next.js App Router | `pnpm dev`                          |
-| `apps/start` | TanStack Start     | `pnpm --filter @clubedge/start dev` |
+The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start dev`. It reads `apps/start/.env.local`, copied from `apps/start/.env.example`. Run the browser suite against it with `E2E_APP=start pnpm test:e2e`, and build its image with `docker build -f apps/start/Dockerfile --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .`.
 
-Projects generated by `create-clubedge-app` contain only the framework you choose, always in `apps/web`. The TanStack Start app reads `apps/start/.env.local`; copy `apps/start/.env.example` there. Its variables have no browser prefix (`APP_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) because authentication runs on the server. Run the browser suite against it with `E2E_APP=start pnpm test:e2e`, and build its image with `docker build -f apps/start/Dockerfile --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .`.
+`clubedge.template.json` tells create-clubedge-app what each framework and module owns: packages, files, variant files under `variants/` that replace a default, and files with `clubedge:if` blocks. Write those blocks so the default selection keeps every block; use a variant file when two options need different code. `.github/workflows/starter.yml` generates projects for several combinations and runs their full pipeline.
+
+<!-- clubedge:end -->
 
 ## Repository structure
 
-```text
-apps/web/            Next.js app: routes, actions, UI, and the composition root
-  src/server/        Wires environment, cookies, and providers into the packages
-apps/start/          TanStack Start app with the same pages, built on the same packages
-e2e/                 Playwright suite shared by both apps (E2E_APP selects one)
-packages/core/       Errors, Result type, and HTTP helpers (no dependencies)
-packages/auth/       AuthProvider and CookieStore interfaces
-packages/auth-supabase/  Supabase Auth adapter
-packages/db/         Drizzle schema, client factory, migrations, and seed script
-packages/storage/    StorageProvider interface
-packages/storage-s3/ S3-compatible storage adapter (AWS S3, R2, MinIO)
-packages/cache/      Cache and RateLimiter interfaces, in-memory implementations
-packages/cache-redis/    Redis rate limiter and cache
-packages/ui/         Shared shadcn/ui components, utilities, and global theme styles
-.github/             CI workflow, issue forms, and pull request template
-SETUP.md        Detailed local and provider setup
-CONTRIBUTING.md Contribution workflow and review expectations
-SECURITY.md     Vulnerability reporting guidance
-```
+- `apps/web/`: the web app, with routes, UI, and the composition root in `src/server/`
+- `e2e/`: Playwright browser checks
+- `packages/core/`: errors, `Result` type, and HTTP helpers (no dependencies)
+- `packages/db/`: Drizzle schema, client factory, migrations, and seed script
+- `packages/auth/`: `AuthProvider` and `CookieStore` interfaces <!-- clubedge:only auth!=none -->
+- `packages/auth-supabase/`: Supabase Auth adapter <!-- clubedge:only auth=supabase -->
+- `packages/storage/`: `StorageProvider` interface <!-- clubedge:only storage!=none -->
+- `packages/storage-s3/`: S3-compatible storage adapter <!-- clubedge:only storage=s3 -->
+- `packages/storage-supabase/`: Supabase Storage adapter <!-- clubedge:only storage=supabase -->
+- `packages/cache/`: `Cache` and `RateLimiter` interfaces with in-memory implementations
+- `packages/cache-redis/`: Redis rate limiter and cache <!-- clubedge:only cache=redis -->
+- `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
+- `.github/`: CI workflow, issue forms, and pull request template
+- `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides
 
 The project name, description, service identifier, and documentation links live in `apps/web/src/config/site.json`. Edit that file to rename the app; `create-clubedge-app` writes it for generated projects.
 
@@ -162,7 +159,7 @@ Add a component from the repository root using the web app's config:
 pnpm dlx shadcn@latest add badge -c apps/web
 ```
 
-Shared components are generated under `packages/ui/src/components` and can be imported from `@clubedge/ui/components/<component>`. The two `components.json` files intentionally share the `base-nova` style, neutral color base, Lucide icons, Tailwind v4 stylesheet, and RTL-aware generation setting. The app currently renders English in LTR; set the root document's `lang` and `dir` for the locale used by your application. Put app-only components in `apps/web/src/components`.
+Shared components are generated under `packages/ui/src/components` and can be imported from `@clubedge/ui/components/<component>`. The app and `packages/ui` `components.json` files intentionally share the `base-nova` style, neutral color base, Lucide icons, Tailwind v4 stylesheet, and RTL-aware generation setting. The app currently renders English in LTR; set the root document's `lang` and `dir` for the locale used by your application. Put app-only components in `apps/web/src/components`.
 
 ## Contributing
 

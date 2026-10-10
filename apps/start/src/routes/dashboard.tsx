@@ -7,10 +7,14 @@ import {
   CircleDashed,
   Database,
   Github,
+  // clubedge:if auth!=none
   LockKeyhole,
+  // clubedge:end
   Settings2,
   ShieldCheck,
+  // clubedge:if storage!=none
   Workflow,
+  // clubedge:end
 } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
@@ -55,25 +59,29 @@ const modules = [
     status: "Configure",
     variant: "secondary" as const,
   },
+  // clubedge:if auth!=none
   {
-    name: "Supabase Auth",
+    name: "Authentication",
     description: "Cookie-based sessions and server-validated users.",
     icon: LockKeyhole,
     status: "Optional setup",
     variant: "outline" as const,
   },
+  // clubedge:end
+  // clubedge:if storage!=none
   {
-    name: "Storage adapters",
-    description: "S3-compatible storage or Supabase Storage.",
+    name: "File storage",
+    description: "One storage interface for uploads, downloads, and signed URLs.",
     icon: Workflow,
     status: "Ready to configure",
     variant: "secondary" as const,
   },
+  // clubedge:end
   {
-    name: "Redis cache",
-    description: "Optional cache and distributed rate limiting.",
+    name: "Cache and rate limits",
+    description: "A key-value cache and fixed-window rate limiting.",
     icon: CircleDashed,
-    status: "Optional",
+    status: "Ready",
     variant: "outline" as const,
   },
 ];
@@ -89,11 +97,13 @@ const setupRows = [
     detail: "Set DATABASE_URL in apps/web/.env.local",
     status: "Configure",
   },
+  // clubedge:if auth!=none
   {
     item: "Authentication provider",
-    detail: "Add Supabase URL and publishable key when needed",
+    detail: "Add your provider's keys when you need sign-in",
     status: "Optional",
   },
+  // clubedge:end
 ];
 
 export const Route = createFileRoute("/dashboard")({
@@ -242,7 +252,7 @@ function DashboardPage() {
                     Provider boundaries are ready for your project configuration.
                   </CardDescription>
                 </div>
-                <Badge variant="secondary">4 modules</Badge>
+                <Badge variant="secondary">{modules.length} modules</Badge>
               </CardHeader>
               <CardContent className="px-5 py-2 sm:px-6">
                 {modules.map(({ name, description, icon: Icon, status, variant }, index) => (
