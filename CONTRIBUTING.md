@@ -33,12 +33,13 @@ Run `pnpm test:e2e` for changes that affect browser behavior. It requires a loca
 
 ## Project conventions
 
-- Keep application code in `apps/web` and reusable shadcn/ui code in `packages/ui`.
-- Use the existing auth, storage, cache, errors, and database boundaries rather than scattering provider SDK calls through routes and components.
+- Keep application code in `apps/web`, reusable shadcn/ui code in `packages/ui`, and framework-agnostic infrastructure in `packages/{core,auth,db,storage,cache}`.
+- Reach providers through `apps/web/src/server` rather than scattering provider SDK calls through routes and components. `pnpm lint` enforces these boundaries.
 - Keep server secrets out of client code and out of committed files. Update `.env.example` when adding configuration, using placeholders only.
 - For database changes, update the Drizzle schema and generate, review, and commit the migration. Do not maintain a second migration history for the same application tables.
 - For shared UI changes, preserve compatibility between both `components.json` files and use the established package exports.
 - Update docs when commands, configuration, or behavior change.
+- `clubedge.template.json` tells `create-clubedge-app` how to scaffold this repository. Keep it in step when moving the app, the site config, the environment example, or the Docker image name; `pnpm test` checks it.
 - Follow the existing formatting and TypeScript conventions. Prefer a small dependency footprint and explain new runtime dependencies in the pull request.
 
 ## Pull request checklist
