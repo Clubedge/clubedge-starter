@@ -23,21 +23,51 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
       - run: pnpm build
       - run: pnpm audit --audit-level high
 
+  # The same browser suite runs against every framework.
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, start]
+    env:
+      E2E_APP: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: web
+            build: docker build --tag clubedge-starter:ci .
+          - app: start
+            build: >-
+              docker build --tag clubedge-starter:ci --file apps/start/Dockerfile
+              --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .
     steps:
       - uses: actions/checkout@v4
       - name: Build the production image
-        run: docker build --tag clubedge-starter:ci .
+        run: ${{ matrix.build }}
       - name: Start the image and check health
         run: |
           set -euo pipefail
-          docker run --detach --name app --publish 3000:3000             --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres             clubedge-starter:ci
+          docker run --detach --name app --publish 3000:3000 \
+            --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres \
+            clubedge-starter:ci
           trap 'docker logs app; docker rm --force app' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/api/health; then

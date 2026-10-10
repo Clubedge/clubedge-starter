@@ -3,8 +3,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const webRoot = path.join(repoRoot, "apps", "web");
+const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const standaloneRoot = path.join(webRoot, ".next", "standalone", "apps", "web");
 
 await mkdir(path.join(standaloneRoot, ".next"), { recursive: true });

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import site from "../src/config/site.json";
+import { e2eApp } from "./app";
 
 // The browser suite runs without Supabase credentials, so these checks cover the
 // unconfigured mode: pages stay explorable and redirects stay on this origin.
@@ -33,5 +33,5 @@ test("login explains the rate limit error", async ({ page }) => {
 test("health endpoint reports the configured service id", async ({ request }) => {
   const health = await request.get("/api/health");
   expect(health.ok()).toBeTruthy();
-  expect(await health.json()).toMatchObject({ status: "ok", service: site.serviceId });
+  expect(await health.json()).toMatchObject({ status: "ok", service: e2eApp.site.serviceId });
 });

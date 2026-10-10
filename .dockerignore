@@ -6,3 +6,6 @@ node_modules
 .env*
 coverage
 playwright-report
+.output
+.nitro
+.tanstack

@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "turbo run dev --filter=@clubedge/web",
-    "build": "turbo run build --filter=@clubedge/web",
-    "start": "node scripts/start-standalone.mjs",
+    "build": "turbo run build",
+    "start": "pnpm --filter @clubedge/web start",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
