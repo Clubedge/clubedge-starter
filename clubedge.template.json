@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "clubedge-starter",
+  "packageManager": "pnpm",
+  "app": "apps/web",
+  "siteConfig": "apps/web/src/config/site.json",
+  "env": {
+    "example": ".env.example",
+    "target": "apps/web/.env.local"
+  },
+  "dockerImage": "clubedge-starter",
+  "exclude": ["clubedge.template.json", "scripts/template-manifest.test.ts"]
+}
