@@ -1,3 +1,14 @@
+# Agent guide
+
+## Architecture rules
+
+- `packages/{core,auth,cache,db,storage}` are framework-agnostic. Never import `next`, `react`, `server-only`, `@tanstack/*`, or app code (`@/…`) there. Accept configuration, clients, and cookies as function arguments.
+- `packages/core` depends on no other workspace package.
+- `apps/web/src/server/` is the composition root: the only place that reads environment variables, bridges Next.js cookies to `CookieStore`, and picks providers. Routes, server actions, and components import from `@/server/*`, never from `@supabase/*`, `@aws-sdk/*`, `redis`, or `postgres`.
+- Expected failures (bad credentials, invalid codes) are returned as `Result` values from `@clubedge/core`; exceptions are for unexpected errors.
+- Project identity (name, description, links) lives in `apps/web/src/config/site.json`; `create-clubedge-app` rewrites that file, so do not hard-code the project name elsewhere.
+- `pnpm lint` enforces these boundaries. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test` before finishing a change.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know

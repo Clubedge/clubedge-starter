@@ -15,7 +15,15 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
-  transpilePackages: ["@clubedge/ui"],
+  // Workspace packages ship TypeScript source and are compiled by the app.
+  transpilePackages: [
+    "@clubedge/auth",
+    "@clubedge/cache",
+    "@clubedge/core",
+    "@clubedge/db",
+    "@clubedge/storage",
+    "@clubedge/ui",
+  ],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

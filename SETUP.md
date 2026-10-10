@@ -76,7 +76,7 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-`db:generate` creates migration files from `apps/web/src/db/schema`; review and commit those files. `db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate.
+`db:generate` creates migration files from `packages/db/src/schema` into `packages/db/drizzle`; review and commit those files. `db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate. The database commands run in `packages/db` and read `DATABASE_URL` from `apps/web/.env.local`, so the project keeps one environment file.
 
 ## 5. Configure optional services
 
@@ -158,7 +158,7 @@ This repository is a starting point; review the security and operational choices
 
 - Set production environment variables through your hosting provider's secret manager. Use unique, rotated credentials and TLS for external connections.
 - Set `NEXT_PUBLIC_APP_URL` to the deployed origin and add its `/auth/callback` URL to Supabase's allowed redirect URLs.
-- Make authenticated server routes call `auth.getUser()` or `requireUser()` (which throws a 401 `AppError`), and protect pages with `getPageUser(pathname)`, which redirects signed-out visitors to `/login`. Do not treat cookie contents alone as proof of identity.
+- Make authenticated server routes call `getCurrentUser()` or `requireUser()` from `@/server/auth` (the latter throws a 401 `AppError`), and protect pages with `getPageUser(pathname)`, which redirects signed-out visitors to `/login`. Do not treat cookie contents alone as proof of identity.
 - Authorize storage access and validate upload size, content type, and object ownership in the route or action before using the storage adapter.
 - Configure Redis for rate limiting when you deploy more than one instance; the in-memory fallback does not share counts between instances. Client addresses come from `x-forwarded-for`, so deploy behind a proxy that sets it.
 - Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets.

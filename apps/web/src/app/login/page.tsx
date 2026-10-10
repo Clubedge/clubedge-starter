@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { signIn, signUp } from "@/app/actions/auth";
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { siteConfig } from "@/config/site";
-import { loginUrl, safeRedirectPath } from "@/lib/auth/redirect";
+import { safeRedirectPath } from "@clubedge/core";
+import { loginUrl } from "@/lib/login-url";
 import { hasSupabaseAuthConfig } from "@/env/client";
 import { Card, CardContent } from "@clubedge/ui/components/card";
 

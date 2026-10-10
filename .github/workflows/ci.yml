@@ -3,6 +3,7 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -18,6 +19,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
@@ -25,3 +27,23 @@ jobs:
       - run: pnpm test:e2e
       - run: pnpm build
       - run: pnpm audit --audit-level high
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build --tag clubedge-starter:ci .
+      - name: Start the image and check health
+        run: |
+          set -euo pipefail
+          docker run --detach --name app --publish 3000:3000             --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres             clubedge-starter:ci
+          trap 'docker logs app; docker rm --force app' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The container did not become healthy."
+          exit 1

@@ -42,7 +42,7 @@ import {
 } from "@clubedge/ui/components/breadcrumb";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/components/sidebar";
 import { siteConfig } from "@/config/site";
-import { getPageUser } from "@/lib/auth";
+import { getPageUser } from "@/server/auth";
 import { AccountButton } from "./_components/account-button";
 import { AppSidebar } from "./_components/app-sidebar";
 import { ThemeToggle } from "../theme-toggle";

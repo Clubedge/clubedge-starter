@@ -1,0 +1,6 @@
+# Keep LF endings on every platform so Prettier and shell scripts behave the same everywhere.
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.jpg binary
+*.webp binary
