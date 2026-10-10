@@ -17,14 +17,26 @@ const serverSchema = z.object({
   SUPABASE_STORAGE_BUCKET: z.string().optional().or(z.literal("")),
 });
 
-const parsed = serverSchema.safeParse(process.env);
-if (!parsed.success) {
-  console.error("Invalid server environment:", z.treeifyError(parsed.error));
-  throw new Error("Server environment validation failed. Check your .env.local file.");
+export type ServerEnv = z.infer<typeof serverSchema>;
+
+let cached: ServerEnv | undefined;
+
+/**
+ * Validates server variables on first use rather than at import, so pages that never touch
+ * the database or providers can build and render without them.
+ */
+export function getServerEnv(): ServerEnv {
+  if (cached) return cached;
+
+  const parsed = serverSchema.safeParse(process.env);
+  if (!parsed.success) {
+    console.error("Invalid server environment:", z.treeifyError(parsed.error));
+    throw new Error("Server environment validation failed. Check your .env.local file.");
+  }
+  cached = parsed.data;
+  return cached;
 }
 
-export const env = parsed.data;
-
 export function hasRedisConfig() {
-  return Boolean(env.REDIS_URL);
+  return Boolean(process.env.REDIS_URL);
 }

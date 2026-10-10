@@ -2,7 +2,8 @@ import { Activity, ArrowUpRight, Blocks, Github, LayoutDashboard } from "lucide-
 import Link from "next/link";
 
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
-import { Button } from "@clubedge/ui/components/button";
+import { siteConfig } from "@/config/site";
+import type { AuthUser } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -16,13 +17,15 @@ import {
   SidebarSeparator,
 } from "@clubedge/ui/components/sidebar";
 
+import { AccountButton } from "./account-button";
+
 const navigation = [
   { href: "#overview", label: "Overview", icon: LayoutDashboard },
   { href: "#modules", label: "Modules", icon: Blocks },
   { href: "#activity", label: "Setup status", icon: Activity },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ user }: { user: AuthUser | null }) {
   return (
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
@@ -30,15 +33,15 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="h-12"
-              render={<Link href="#overview" aria-label="Clubedge Starter home" />}
+              render={<Link href="#overview" aria-label={`${siteConfig.name} home`} />}
               size="lg"
-              tooltip="Clubedge Starter"
+              tooltip={siteConfig.name}
             >
               <ClubedgeMark alt="" className="size-8 shrink-0 rounded-lg" />
               <span className="grid min-w-0 text-start leading-tight">
-                <span className="truncate font-semibold">Clubedge</span>
+                <span className="truncate font-semibold">{siteConfig.shortName}</span>
                 <span className="truncate text-xs text-sidebar-foreground/70">
-                  Starter workspace
+                  {siteConfig.workspaceLabel}
                 </span>
               </span>
             </SidebarMenuButton>
@@ -72,13 +75,7 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              render={
-                <Link
-                  href="https://github.com/Clubedge/clubedge-starter"
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
+              render={<Link href={siteConfig.links.repository} target="_blank" rel="noreferrer" />}
               tooltip="Starter repository"
             >
               <Github aria-hidden="true" />
@@ -87,9 +84,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <Button className="w-full" render={<Link href="/login" />} size="sm" variant="outline">
-          Sign in
-        </Button>
+        <AccountButton className="w-full" user={user} />
       </SidebarFooter>
     </Sidebar>
   );

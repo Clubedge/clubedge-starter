@@ -1,18 +1,17 @@
 import "server-only";
 import { createClient } from "redis";
-import { env, hasRedisConfig } from "@/env/server";
+import { getServerEnv, hasRedisConfig } from "@/env/server";
+
+import {
+  createMemoryRateLimiter,
+  validateRateLimitIdentifier,
+  validateRateLimitOptions,
+  type RateLimiter,
+} from "./rate-limit";
+
+export type { RateLimiter, RateLimitResult } from "./rate-limit";
 
 type RedisClient = ReturnType<typeof createClient>;
-type RedisResult = {
-  success: boolean;
-  limit: number;
-  remaining: number;
-  resetAt: number;
-};
-
-type RedisRateLimiter = {
-  limit(identifier: string): Promise<RedisResult>;
-};
 
 const globalForRedis = globalThis as typeof globalThis & {
   clubedgeRedisClient?: RedisClient;
@@ -24,7 +23,7 @@ function getRedisClient(): RedisClient | null {
   if (globalForRedis.clubedgeRedisClient) return globalForRedis.clubedgeRedisClient;
 
   const client = createClient({
-    url: env.REDIS_URL!,
+    url: getServerEnv().REDIS_URL!,
     socket: {
       connectTimeout: 5_000,
       reconnectStrategy: (retries) => Math.min(retries * 250, 3_000),
@@ -78,21 +77,23 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
   await client.set(cacheKey(key), serialized, { EX: ttlSeconds });
 }
 
-/** Null config means unconfigured. Callers can choose an explicit local policy. */
-export function createRateLimiter(requests = 10, windowSeconds = 60): RedisRateLimiter | null {
-  if (!hasRedisConfig()) return null;
-  if (!Number.isInteger(requests) || requests < 1) {
-    throw new Error("Rate limit must allow at least one request.");
-  }
-  if (!Number.isInteger(windowSeconds) || windowSeconds < 1) {
-    throw new Error("Rate limit window must be a positive number of seconds.");
-  }
+/**
+ * Uses Redis when REDIS_URL is configured so limits are shared across instances. Without
+ * Redis it falls back to a per-process memory limiter, which suits a single server only.
+ */
+export function createRateLimiter(requests = 10, windowSeconds = 60): RateLimiter {
+  validateRateLimitOptions({ requests, windowSeconds });
+  // Chosen on first use so module-level limiters do not read the environment at import.
+  let memoryLimiter: RateLimiter | undefined;
 
   return {
     async limit(identifier) {
-      if (identifier.length < 1 || identifier.length > 256) {
-        throw new Error("Rate limit identifier must contain between 1 and 256 characters.");
+      if (!hasRedisConfig()) {
+        memoryLimiter ??= createMemoryRateLimiter({ requests, windowSeconds });
+        return memoryLimiter.limit(identifier);
       }
+
+      validateRateLimitIdentifier(identifier);
       const client = await connectRedis();
       if (!client) throw new Error("REDIS_URL is not configured.");
 

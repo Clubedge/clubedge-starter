@@ -4,10 +4,11 @@ import Link from "next/link";
 import { Button } from "@clubedge/ui/components/button";
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { CopyCommand } from "@/components/landing/copy-command";
+import { siteConfig } from "@/config/site";
 import { ThemeToggle } from "./theme-toggle";
 
-const REPO_URL = "https://github.com/Clubedge/clubedge-starter";
-const SETUP_URL = `${REPO_URL}/blob/main/SETUP.md`;
+const REPO_URL = siteConfig.links.repository;
+const SETUP_URL = siteConfig.links.setupGuide;
 const CREATE_COMMAND = "pnpm dlx @clubedge/create-clubedge-app my-app";
 
 const included = [
@@ -53,13 +54,13 @@ export default function LandingPage() {
           className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
         >
           <Link
-            aria-label="Clubedge Starter home"
+            aria-label={`${siteConfig.name} home`}
             className="flex shrink-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
             href="/"
           >
             <ClubedgeMark alt="" className="size-9 rounded-xl" priority />
             <span className="hidden text-sm font-semibold tracking-tight min-[380px]:inline">
-              Clubedge Starter
+              {siteConfig.name}
             </span>
           </Link>
 
@@ -199,7 +200,9 @@ export default function LandingPage() {
 
       <footer className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-muted-foreground sm:flex-row sm:px-6 lg:px-8">
-          <span>© {new Date().getFullYear()} Clubedge Starter. Licensed under Apache-2.0.</span>
+          <span>
+            © {new Date().getFullYear()} {siteConfig.name}. Licensed under Apache-2.0.
+          </span>
           <div className="flex items-center gap-5">
             <Link
               className="transition-colors hover:text-foreground"
