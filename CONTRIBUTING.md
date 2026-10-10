@@ -33,8 +33,8 @@ Run `pnpm test:e2e` for changes that affect browser behavior. It requires a loca
 
 ## Project conventions
 
-- Keep application code in `apps/web`, reusable shadcn/ui code in `packages/ui`, and framework-agnostic infrastructure in `packages/{core,auth,db,storage,cache}`.
-- Reach providers through `apps/web/src/server` rather than scattering provider SDK calls through routes and components. `pnpm lint` enforces these boundaries.
+- Keep application code in `apps/web` (Next.js) and `apps/start` (TanStack Start), reusable shadcn/ui code in `packages/ui`, and framework-agnostic infrastructure in `packages/{core,auth,db,storage,cache}`. A user-facing change belongs in both apps.
+- Reach providers through each app's `src/server` rather than scattering provider SDK calls through routes and components. `pnpm lint` enforces these boundaries.
 - Keep server secrets out of client code and out of committed files. Update `.env.example` when adding configuration, using placeholders only.
 - For database changes, update the Drizzle schema and generate, review, and commit the migration. Do not maintain a second migration history for the same application tables.
 - For shared UI changes, preserve compatibility between both `components.json` files and use the established package exports.

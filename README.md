@@ -3,13 +3,13 @@
 [![CI](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Clubedge/clubedge-starter/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-Clubedge Starter is a production-oriented, modular Next.js application foundation. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.
+Clubedge Starter is a production-oriented, modular React application foundation, available for Next.js and TanStack Start. It brings together a pnpm monorepo, shared shadcn/ui components, PostgreSQL access through Drizzle, Supabase Auth, optional Redis and storage adapters, and a working example dashboard. It provides engineering conventions and a reference implementation; review its security and deployment choices for your application before production use.
 
 This is a starter, not a hosted service or a one-command app generator. Fork it or use it as a reference, then adapt the app and provider configuration to your project. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist.
 
 ## Features
 
-- Next.js App Router, React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives.
+- Next.js App Router or TanStack Start, with React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives.
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and reusable UI source in `packages/ui`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Supabase Auth using cookie based server clients from `@supabase/ssr`.
@@ -22,13 +22,13 @@ This is a starter, not a hosted service or a one-command app generator. Fork it 
 
 | Capability              | Included choice                                      | Other supported options                                               |
 | ----------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Web app                 | Next.js App Router, React, TypeScript                | —                                                                     |
+| Web app                 | Next.js App Router, React, TypeScript                | TanStack Start (`apps/start`), sharing every package.                 |
 | UI                      | Tailwind CSS 4, shadcn/ui, and Base UI               | Add or replace components in your app or shared UI package.           |
 | Database                | PostgreSQL through Drizzle ORM                       | Any reachable PostgreSQL provider; Supabase PostgreSQL is documented. |
 | Authentication          | Supabase Auth with `@supabase/ssr`                   | No alternate auth adapter is currently included.                      |
 | Cache and rate limiting | Optional Redis protocol client                       | Upstash, self-hosted Redis, or a compatible Redis service.            |
 | Object storage          | S3-compatible adapter or Supabase Storage            | AWS S3, Cloudflare R2, and other S3-compatible services.              |
-| Local runtime           | Docker and Next.js standalone output                 | Run directly with Node.js during development.                         |
+| Local runtime           | Docker and Next.js standalone or Nitro output        | Run directly with Node.js during development.                         |
 | Verification            | Vitest, Playwright, ESLint, Prettier, GitHub Actions | —                                                                     |
 
 ## Architecture
@@ -53,7 +53,7 @@ Drizzle manages application data in PostgreSQL. Supabase Auth manages identity a
 - **Infrastructure dependencies stay optional where practical.** Redis is only needed for distributed cache and rate limiting. Without Redis, the rate limiter falls back to a per-process memory window, which is suitable for a single server instance only.
 - **Storage has a provider boundary.** Application code can use the storage interface with S3-compatible services or Supabase Storage; authorization and upload validation remain the caller's responsibility.
 - **Shared packages are framework-agnostic.** Packages under `packages/` receive configuration and request cookies as arguments and never import Next.js, so another app (for example a TanStack Start app) can reuse them unchanged. ESLint enforces these boundaries.
-- **One composition root per app.** `apps/web/src/server/` is the only place that reads environment variables and chooses providers. Routes, actions, and components call it rather than a provider SDK.
+- **One composition root per app.** Each app's `src/server/` is the only place that reads environment variables and chooses providers. Routes, actions, and components call it rather than a provider SDK.
 - **Keep the baseline focused.** Additional providers, queues, and generator tooling should be added when a real use case calls for them.
 
 ## Quick start
@@ -117,11 +117,24 @@ Run these from the repository root:
 
 Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically.
 
+## Frameworks
+
+This repository contains the same application twice, so both stay tested against the shared packages:
+
+| App          | Framework          | Run it                              |
+| ------------ | ------------------ | ----------------------------------- |
+| `apps/web`   | Next.js App Router | `pnpm dev`                          |
+| `apps/start` | TanStack Start     | `pnpm --filter @clubedge/start dev` |
+
+Projects generated by `create-clubedge-app` contain only the framework you choose, always in `apps/web`. The TanStack Start app reads `apps/start/.env.local`; copy `apps/start/.env.example` there. Its variables have no browser prefix (`APP_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) because authentication runs on the server. Run the browser suite against it with `E2E_APP=start pnpm test:e2e`, and build its image with `docker build -f apps/start/Dockerfile --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .`.
+
 ## Repository structure
 
 ```text
 apps/web/            Next.js app: routes, actions, UI, and the composition root
   src/server/        Wires environment, cookies, and providers into the packages
+apps/start/          TanStack Start app with the same pages, built on the same packages
+e2e/                 Playwright suite shared by both apps (E2E_APP selects one)
 packages/core/       Errors, Result type, and HTTP helpers (no dependencies)
 packages/auth/       AuthProvider and CookieStore interfaces, Supabase adapter
 packages/db/         Drizzle schema, client factory, migrations, and seed script

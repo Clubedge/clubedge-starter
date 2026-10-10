@@ -150,7 +150,29 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-The Playwright configuration starts the local app with a placeholder database URL; browser scenarios should not require real provider credentials.
+The Playwright configuration starts the local app with a placeholder database URL; browser scenarios should not require real provider credentials. Set `E2E_APP=start` to run the same suite against the TanStack Start app.
+
+## 9. TanStack Start app
+
+`apps/start` is the same application built with TanStack Start. It reuses every package and differs only in its framework layer:
+
+| Concern               | Next.js (`apps/web`)                   | TanStack Start (`apps/start`)                                   |
+| --------------------- | -------------------------------------- | --------------------------------------------------------------- |
+| Environment file      | `apps/web/.env.local`                  | `apps/start/.env.local`, from `apps/start/.env.example`         |
+| App URL and Supabase  | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_*` | `APP_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`           |
+| Sign-in and sign-up   | Server actions                         | Form posts to `/auth/sign-in` and `/auth/sign-up` server routes |
+| Session refresh       | `src/proxy.ts`                         | Request middleware in `src/start.ts`                            |
+| Cross-site protection | Built into server actions              | `createCsrfMiddleware` in `src/start.ts`                        |
+| Production output     | Next.js standalone (`pnpm start`)      | Nitro `.output` (`pnpm --filter @clubedge/start start`)         |
+| Docker image          | `Dockerfile`                           | `apps/start/Dockerfile` (see below)                             |
+
+Run it with `pnpm --filter @clubedge/start dev`. The database commands still read `DATABASE_URL` from `apps/web/.env.local`. Build its image from the repository root:
+
+```sh
+docker build -f apps/start/Dockerfile --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start -t clubedge-starter .
+```
+
+In projects generated with the TanStack Start option, the app lives in `apps/web`, its Dockerfile is the root `Dockerfile`, and the build arguments are not needed.
 
 ## Before deploying
 

@@ -52,6 +52,10 @@ export default defineConfig([
   globalIgnores([
     "**/node_modules/**",
     "**/.next/**",
+    "**/.output/**",
+    "**/.nitro/**",
+    "**/.tanstack/**",
+    "**/routeTree.gen.ts",
     "**/.turbo/**",
     ".pnpm-store/**",
     "out/**",

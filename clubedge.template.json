@@ -1,13 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "clubedge-starter",
   "packageManager": "pnpm",
   "app": "apps/web",
+  "appPackage": "@clubedge/web",
   "siteConfig": "apps/web/src/config/site.json",
   "env": {
     "example": ".env.example",
     "target": "apps/web/.env.local"
   },
   "dockerImage": "clubedge-starter",
+  "defaultFramework": "next",
+  "frameworks": {
+    "next": {
+      "name": "Next.js",
+      "app": "apps/web",
+      "envExample": ".env.example",
+      "dockerfile": "Dockerfile"
+    },
+    "tanstack-start": {
+      "name": "TanStack Start",
+      "app": "apps/start",
+      "envExample": "apps/start/.env.example",
+      "dockerfile": "apps/start/Dockerfile"
+    }
+  },
   "exclude": ["clubedge.template.json", "scripts/template-manifest.test.ts"]
 }
