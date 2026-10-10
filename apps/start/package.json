@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env.local .output/server/index.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsr generate && tsc --noEmit"
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",
@@ -19,6 +19,7 @@
     "@clubedge/db": "workspace:*",
     "@clubedge/storage": "workspace:*",
     "@clubedge/storage-s3": "workspace:*",
+    "@clubedge/storage-supabase": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
     "@tanstack/react-start": "1.168.61",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/router-cli": "1.167.41",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^6.1.2",

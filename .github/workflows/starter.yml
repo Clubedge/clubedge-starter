@@ -1,0 +1,138 @@
+# Maintainer checks for the Starter repository. Generated projects only receive ci.yml, which
+# covers their single app; this workflow covers the second framework and module combinations.
+name: Starter
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cli-ref:
+        description: create-clubedge-app branch or tag used to generate projects
+        default: main
+permissions:
+  contents: read
+env:
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+jobs:
+  tanstack-start:
+    runs-on: ubuntu-latest
+    env:
+      E2E_APP: start
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - run: cp apps/start/.env.example apps/start/.env.local
+      - run: pnpm --filter @clubedge/start build
+      - name: Serve the production build
+        run: |
+          set -euo pipefail
+          pnpm --filter @clubedge/start start > "$RUNNER_TEMP/app.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:3000/api/health && break
+            sleep 1
+          done
+          for path in / /login /dashboard /api/health; do
+            curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:3000$path"
+          done
+
+  tanstack-start-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: >-
+          docker build --tag app:ci --file apps/start/Dockerfile
+          --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .
+      - name: Start the image and check health
+        run: |
+          set -euo pipefail
+          docker run --detach --name app --publish 3000:3000 --env DATABASE_URL="$DATABASE_URL" app:ci
+          trap 'docker logs app; docker rm --force app' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The container did not become healthy."
+          exit 1
+
+  # Generates projects from this checkout with create-clubedge-app and runs their full pipeline.
+  generated-project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: next-default, framework: next, modules: "" }
+          - {
+              name: next-minimal,
+              framework: next,
+              modules: --auth none --storage none --cache memory,
+            }
+          - {
+              name: next-supabase-storage,
+              framework: next,
+              modules: --storage supabase --cache memory,
+            }
+          - { name: start-default, framework: tanstack-start, modules: "" }
+          - {
+              name: start-minimal,
+              framework: tanstack-start,
+              modules: --auth none --storage none --cache memory,
+            }
+          - { name: start-supabase-storage, framework: tanstack-start, modules: --storage supabase }
+    name: generated-project (${{ matrix.name }})
+    env:
+      CLI_REF: ${{ inputs.cli-ref || 'main' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$CLI_REF" https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Generate the project
+        run: |
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
+            --framework ${{ matrix.framework }} ${{ matrix.modules }} --no-git --no-install --yes
+      - name: Install
+        working-directory: ${{ runner.temp }}/generated-app
+        run: pnpm install --frozen-lockfile
+      - name: Lint, typecheck, and test
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          pnpm format:check
+          pnpm lint
+          pnpm typecheck
+          pnpm test
+      - name: Browser checks
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+      - name: Build, start, and smoke-test
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          set -euo pipefail
+          pnpm build
+          pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
+          node "$RUNNER_TEMP/cli/scripts/smoke-generated-app.mjs"

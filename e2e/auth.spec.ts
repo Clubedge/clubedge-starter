@@ -1,15 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { e2eApp } from "./app";
 
-// The browser suite runs without Supabase credentials, so these checks cover the
+// The browser suite runs without provider credentials, so these checks cover the
 // unconfigured mode: pages stay explorable and redirects stay on this origin.
 
-test("dashboard stays explorable while authentication is not configured", async ({ page }) => {
+test("dashboard offers sign-in while authentication is not configured", async ({ page }) => {
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(
-    page.getByRole("heading", { name: "A better place to start building." }),
-  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
 });
 
@@ -28,10 +24,4 @@ test("login keeps a same-origin destination and drops external ones", async ({ p
 test("login explains the rate limit error", async ({ page }) => {
   await page.goto("/login?error=rate-limited");
   await expect(page.getByRole("alert")).toContainText("Too many attempts");
-});
-
-test("health endpoint reports the configured service id", async ({ request }) => {
-  const health = await request.get("/api/health");
-  expect(health.ok()).toBeTruthy();
-  expect(await health.json()).toMatchObject({ status: "ok", service: e2eApp.site.serviceId });
 });

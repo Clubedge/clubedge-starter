@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-import type { AuthUser } from "@clubedge/auth";
+import type { AuthUser } from "@/server/auth";
 import { Button } from "@clubedge/ui/components/button";
 
 type AccountButtonProps = {

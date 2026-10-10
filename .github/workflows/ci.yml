@@ -23,35 +23,28 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      # Generated projects build with the env example copied into place; build the same way.
-      - run: cp .env.example apps/web/.env.local && cp apps/start/.env.example apps/start/.env.local
+      # Build the way the app is developed: with the env example copied into place.
+      - run: cp .env.example apps/web/.env.local
       - run: pnpm build
-      - name: Serve both production builds
+      - name: Serve the production build
         run: |
           set -euo pipefail
-          PORT=3001 pnpm --filter @clubedge/web start > "$RUNNER_TEMP/web.log" 2>&1 &
-          PORT=3002 pnpm --filter @clubedge/start start > "$RUNNER_TEMP/start.log" 2>&1 &
-          trap 'tail -n 50 "$RUNNER_TEMP/web.log" "$RUNNER_TEMP/start.log"' EXIT
-          for port in 3001 3002; do
-            for attempt in $(seq 1 30); do
-              curl --fail --silent --output /dev/null "http://127.0.0.1:$port/api/health" && break
-              sleep 1
-            done
-            for path in / /login /dashboard /api/health; do
-              curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:$port$path"
-            done
+          pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:3000/api/health && break
+            sleep 1
           done
+          for path in / /dashboard /api/health; do
+            curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:3000$path"
+          done
+          # clubedge:if auth!=none
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3000/login
+          # clubedge:end
       - run: pnpm audit --audit-level high
 
-  # The same browser suite runs against every framework.
   e2e:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [web, start]
-    env:
-      E2E_APP: ${{ matrix.app }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -65,26 +58,16 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - app: web
-            build: docker build --tag clubedge-starter:ci .
-          - app: start
-            build: >-
-              docker build --tag clubedge-starter:ci --file apps/start/Dockerfile
-              --build-arg APP_DIR=apps/start --build-arg APP_PACKAGE=@clubedge/start .
     steps:
       - uses: actions/checkout@v4
       - name: Build the production image
-        run: ${{ matrix.build }}
+        run: docker build --tag app:ci .
       - name: Start the image and check health
         run: |
           set -euo pipefail
           docker run --detach --name app --publish 3000:3000 \
             --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres \
-            clubedge-starter:ci
+            app:ci
           trap 'docker logs app; docker rm --force app' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/api/health; then
