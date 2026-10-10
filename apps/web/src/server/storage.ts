@@ -1,31 +1,34 @@
 import "server-only";
+import { z } from "zod";
 import type { StorageProvider } from "@clubedge/storage";
-import { createS3Storage } from "@clubedge/storage/s3";
-import { createSupabaseStorage } from "@clubedge/storage/supabase";
-import { getServerEnv } from "@/env/server";
-import { getSupabaseClient } from "./auth";
+import { createS3Storage } from "@clubedge/storage-s3";
+import { optional, parseEnv } from "@/env/server";
 
 export type { SignedUrlOptions, StorageProvider, UploadInput } from "@clubedge/storage";
+
+// S3-compatible storage: AWS S3, Cloudflare R2, MinIO, and similar services.
+const storageEnvSchema = z.object({
+  STORAGE_BUCKET: optional(z.string()),
+  STORAGE_REGION: z.string().default("auto"),
+  STORAGE_ENDPOINT: optional(z.url()),
+  STORAGE_ACCESS_KEY_ID: optional(z.string()),
+  STORAGE_SECRET_ACCESS_KEY: optional(z.string()),
+  STORAGE_PUBLIC_URL: optional(z.url()),
+});
 
 let provider: StorageProvider | undefined;
 
 function resolveProvider(): StorageProvider {
   if (provider) return provider;
-  const env = getServerEnv();
-  provider =
-    env.STORAGE_PROVIDER === "supabase"
-      ? createSupabaseStorage({
-          bucket: env.SUPABASE_STORAGE_BUCKET || undefined,
-          getClient: getSupabaseClient,
-        })
-      : createS3Storage({
-          bucket: env.STORAGE_BUCKET || undefined,
-          region: env.STORAGE_REGION,
-          endpoint: env.STORAGE_ENDPOINT || undefined,
-          accessKeyId: env.STORAGE_ACCESS_KEY_ID || undefined,
-          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY || undefined,
-          publicUrl: env.STORAGE_PUBLIC_URL || undefined,
-        });
+  const env = parseEnv(storageEnvSchema, "Storage");
+  provider = createS3Storage({
+    bucket: env.STORAGE_BUCKET || undefined,
+    region: env.STORAGE_REGION,
+    endpoint: env.STORAGE_ENDPOINT || undefined,
+    accessKeyId: env.STORAGE_ACCESS_KEY_ID || undefined,
+    secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY || undefined,
+    publicUrl: env.STORAGE_PUBLIC_URL || undefined,
+  });
   return provider;
 }
 

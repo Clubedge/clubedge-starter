@@ -1,12 +1,23 @@
 import "server-only";
+import { z } from "zod";
 import {
-  createRateLimiter as createLimiter,
-  createRedisCache,
+  createMemoryCache,
+  createMemoryRateLimiter,
+  type Cache,
   type RateLimiter,
 } from "@clubedge/cache";
-import { getRedisUrl } from "@/env/server";
+import { createRedisCache, createRedisRateLimiter } from "@clubedge/cache-redis";
+import { optional, parseEnv } from "@/env/server";
 
-export type { RateLimiter, RateLimitResult } from "@clubedge/cache";
+export type { Cache, RateLimiter, RateLimitResult } from "@clubedge/cache";
+
+const cacheEnvSchema = z.object({
+  REDIS_URL: optional(z.url({ protocol: /^rediss?$/ })),
+});
+
+function getRedisUrl(): string | undefined {
+  return parseEnv(cacheEnvSchema, "Cache").REDIS_URL || undefined;
+}
 
 /**
  * Uses Redis when REDIS_URL is configured, otherwise a per-process memory limiter. The
@@ -16,23 +27,32 @@ export function createRateLimiter(requests = 10, windowSeconds = 60): RateLimite
   let limiter: RateLimiter | undefined;
   return {
     limit(identifier) {
-      limiter ??= createLimiter({
-        requests,
-        windowSeconds,
-        redisUrl: getRedisUrl(),
-      });
+      if (!limiter) {
+        const url = getRedisUrl();
+        limiter = url
+          ? createRedisRateLimiter(url, { requests, windowSeconds })
+          : createMemoryRateLimiter({ requests, windowSeconds });
+      }
       return limiter.limit(identifier);
     },
   };
 }
 
-/** Cache reads miss and writes are skipped while Redis is not configured. */
-export async function cacheGet<T>(key: string): Promise<T | null> {
-  const url = getRedisUrl();
-  return url ? createRedisCache(url).get<T>(key) : null;
+let cache: Cache | undefined;
+
+/** Redis when REDIS_URL is configured, otherwise per-process memory. Resolved on first use. */
+function resolveCache(): Cache {
+  if (!cache) {
+    const url = getRedisUrl();
+    cache = url ? createRedisCache(url) : createMemoryCache();
+  }
+  return cache;
 }
 
-export async function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
-  const url = getRedisUrl();
-  if (url) await createRedisCache(url).set(key, value, ttlSeconds);
+export function cacheGet<T>(key: string): Promise<T | null> {
+  return resolveCache().get<T>(key);
+}
+
+export function cacheSet(key: string, value: unknown, ttlSeconds: number): Promise<void> {
+  return resolveCache().set(key, value, ttlSeconds);
 }

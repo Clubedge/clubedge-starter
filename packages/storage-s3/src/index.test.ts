@@ -21,7 +21,7 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 }));
 
 const { S3Client } = await import("@aws-sdk/client-s3");
-const { createS3Storage } = await import("./s3");
+const { createS3Storage } = await import("./index");
 
 describe("createS3Storage", () => {
   beforeEach(() => {

@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",
+    "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/cache": "workspace:*",
+    "@clubedge/cache-redis": "workspace:*",
     "@clubedge/core": "workspace:*",
     "@clubedge/db": "workspace:*",
     "@clubedge/storage": "workspace:*",
+    "@clubedge/storage-s3": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
     "@tanstack/react-start": "1.168.61",

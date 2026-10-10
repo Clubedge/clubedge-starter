@@ -7,7 +7,7 @@ import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { siteConfig } from "@/config/site";
 import { safeRedirectPath } from "@clubedge/core";
 import { loginUrl } from "@/lib/login-url";
-import { hasSupabaseAuthConfig } from "@/env/client";
+import { isAuthConfigured } from "@/server/auth";
 import { Card, CardContent } from "@clubedge/ui/components/card";
 
 import { EmailField, PasswordField, SubmitButton } from "./_components/auth-form-controls";
@@ -67,6 +67,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const error = params.error ? errorMessages[params.error] : undefined;
   const checkEmail = Boolean(params["check-email"]);
   const next = safeRedirectPath(params.next);
+  const hasAuthConfig = isAuthConfigured();
 
   return (
     <main className="flex min-h-svh flex-col items-center bg-background px-4 py-10 sm:justify-center">
@@ -93,7 +94,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
         <Card className="rounded-xl border-border/70 p-0 shadow-sm">
           <CardContent className="grid gap-5 p-6 sm:p-8">
-            {!hasSupabaseAuthConfig && (
+            {!hasAuthConfig && (
               <Notice icon={<Info />} role="status" tone="warning">
                 Authentication is not configured yet. Add your Supabase URL and publishable key to{" "}
                 <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
@@ -117,7 +118,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <input name="next" type="hidden" value={next} />
               <EmailField />
               <PasswordField isSignUp={isSignUp} />
-              <SubmitButton disabled={!hasSupabaseAuthConfig}>
+              <SubmitButton disabled={!hasAuthConfig}>
                 {isSignUp ? "Create account" : "Sign in"}
               </SubmitButton>
             </form>

@@ -94,9 +94,9 @@ When Redis is not configured, cache reads return a miss and `createRateLimiter()
 
 ### Object storage
 
-Set `STORAGE_PROVIDER=s3` for AWS S3 or an S3-compatible provider such as Cloudflare R2. Configure `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ENDPOINT` when required, and the access key, secret, and optional public URL. For R2, use the account's S3 API endpoint and region `auto`.
+The storage adapter works with AWS S3 and S3-compatible providers such as Cloudflare R2 and MinIO. Configure `STORAGE_BUCKET`, `STORAGE_REGION`, `STORAGE_ENDPOINT` when required, and the access key, secret, and optional public URL. For R2, use the account's S3 API endpoint and region `auto`.
 
-Set `STORAGE_PROVIDER=supabase` to select the Supabase Storage adapter and configure `SUPABASE_STORAGE_BUCKET`. This adapter uses the configured Supabase server client. Choose a bucket policy that matches your application's access model.
+Projects can use Supabase Storage instead; `create-clubedge-app --storage supabase` selects that adapter.
 
 The storage adapter does not authorize users or validate uploads. Before calling it, the route or action must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
 

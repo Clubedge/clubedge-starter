@@ -136,10 +136,13 @@ apps/web/            Next.js app: routes, actions, UI, and the composition root
 apps/start/          TanStack Start app with the same pages, built on the same packages
 e2e/                 Playwright suite shared by both apps (E2E_APP selects one)
 packages/core/       Errors, Result type, and HTTP helpers (no dependencies)
-packages/auth/       AuthProvider and CookieStore interfaces, Supabase adapter
+packages/auth/       AuthProvider and CookieStore interfaces
+packages/auth-supabase/  Supabase Auth adapter
 packages/db/         Drizzle schema, client factory, migrations, and seed script
-packages/storage/    StorageProvider interface, S3 and Supabase Storage adapters
-packages/cache/      Rate limiters (memory and Redis) and Redis cache
+packages/storage/    StorageProvider interface
+packages/storage-s3/ S3-compatible storage adapter (AWS S3, R2, MinIO)
+packages/cache/      Cache and RateLimiter interfaces, in-memory implementations
+packages/cache-redis/    Redis rate limiter and cache
 packages/ui/         Shared shadcn/ui components, utilities, and global theme styles
 .github/             CI workflow, issue forms, and pull request template
 SETUP.md        Detailed local and provider setup

@@ -6,7 +6,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { StorageProvider, UploadInput } from "./types";
+import type { StorageProvider, UploadInput } from "@clubedge/storage";
 
 export interface S3StorageConfig {
   /** Optional so the app can start without storage; operations fail until it is set. */

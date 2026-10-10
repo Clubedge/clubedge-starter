@@ -1,15 +1,18 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import type { AuthProvider, AuthUser, CookieStore } from "@clubedge/auth";
-import { createSupabaseAuth, createSupabaseServerClient } from "@clubedge/auth/supabase";
+import { createSupabaseAuth, createSupabaseServerClient } from "@clubedge/auth-supabase";
 import { AppError } from "@clubedge/core";
-import { clientEnv, hasSupabaseAuthConfig } from "@/env/client";
+import { getSupabaseAuthEnv } from "@/env/auth";
 import { loginUrl } from "@/lib/login-url";
 
 export type { AuthUser } from "@clubedge/auth";
 
-export const isAuthConfigured = hasSupabaseAuthConfig;
+export function isAuthConfigured(): boolean {
+  return getSupabaseAuthEnv() !== null;
+}
 
 /** Bridges Next.js request cookies to the framework-agnostic CookieStore. */
 async function nextCookieStore(): Promise<CookieStore> {
@@ -27,12 +30,9 @@ async function nextCookieStore(): Promise<CookieStore> {
 }
 
 function supabaseConfig(cookieStore: CookieStore) {
-  if (!hasSupabaseAuthConfig) throw new Error("Supabase Auth is not configured.");
-  return {
-    url: clientEnv.NEXT_PUBLIC_SUPABASE_URL!,
-    publishableKey: clientEnv.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    cookies: cookieStore,
-  };
+  const env = getSupabaseAuthEnv();
+  if (!env) throw new Error("Supabase Auth is not configured.");
+  return { ...env, cookies: cookieStore };
 }
 
 /** Request-scoped auth provider. Throws when authentication is not configured. */
@@ -46,7 +46,7 @@ export async function getSupabaseClient() {
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  if (!isAuthConfigured) return null;
+  if (!isAuthConfigured()) return null;
   return (await getAuth()).getUser();
 }
 
@@ -62,7 +62,10 @@ export async function requireUser(): Promise<AuthUser> {
  * Returns null while authentication is not configured so the starter stays explorable.
  */
 export async function getPageUser(pathname: string): Promise<AuthUser | null> {
-  if (!isAuthConfigured) return null;
+  // Render per request: configuration is read at run time, so a page prerendered at build
+  // time without auth settings must never be served once they are set.
+  await connection();
+  if (!isAuthConfigured()) return null;
   const user = await getCurrentUser();
   if (!user) redirect(loginUrl({ next: pathname }));
   return user;
