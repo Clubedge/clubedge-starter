@@ -23,7 +23,24 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # Generated projects build with the env example copied into place; build the same way.
+      - run: cp .env.example apps/web/.env.local && cp apps/start/.env.example apps/start/.env.local
       - run: pnpm build
+      - name: Serve both production builds
+        run: |
+          set -euo pipefail
+          PORT=3001 pnpm --filter @clubedge/web start > "$RUNNER_TEMP/web.log" 2>&1 &
+          PORT=3002 pnpm --filter @clubedge/start start > "$RUNNER_TEMP/start.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/web.log" "$RUNNER_TEMP/start.log"' EXIT
+          for port in 3001 3002; do
+            for attempt in $(seq 1 30); do
+              curl --fail --silent --output /dev/null "http://127.0.0.1:$port/api/health" && break
+              sleep 1
+            done
+            for path in / /login /dashboard /api/health; do
+              curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:$port$path"
+            done
+          done
       - run: pnpm audit --audit-level high
 
   # The same browser suite runs against every framework.
