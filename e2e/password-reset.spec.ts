@@ -21,17 +21,15 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await expect(page).toHaveURL(/\/forgot-password$/);
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page).toHaveURL(/\/login\?notice=reset-sent$/);
+  // Supabase sends its email during the request, and dev servers compile routes on first use.
+  await expect(page).toHaveURL(/\/login\?notice=reset-sent$/, { timeout: 20_000 });
   await expect(page.getByRole("status")).toContainText("we sent it a link");
 
-  const link = await emailedLink(email, /reset/i);
-  console.info(`Reset link: ${link}`);
-  await page.goto(link);
-  console.info(`Opened: ${page.url()}`);
+  await page.goto(await emailedLink(email, /reset/i));
   await expect(page).toHaveURL(/\/reset-password/);
   await page.getByLabel("New password").fill("second password 2");
   await page.getByRole("button", { name: "Update password" }).click();
-  await expect(page).toHaveURL(/\/login\?notice=password-updated$/);
+  await expect(page).toHaveURL(/\/login\?notice=password-updated$/, { timeout: 20_000 });
 
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("first password 1");
