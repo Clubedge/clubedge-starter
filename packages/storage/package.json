@@ -6,7 +6,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./file-system": "./src/file-system.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

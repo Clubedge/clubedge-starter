@@ -20,3 +20,5 @@ routeTree.gen.ts
 # Supabase CLI working files
 supabase/.temp/
 supabase/.branches/
+# Local database and files for --infra local
+.data/

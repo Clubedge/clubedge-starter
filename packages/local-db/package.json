@@ -1,0 +1,24 @@
+{
+  "name": "@clubedge/local-db",
+  "version": "0.6.0",
+  "description": "PostgreSQL for development without Docker: PGlite served over the PostgreSQL protocol.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "scripts": {
+    "dev": "tsx scripts/serve.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8"
+  },
+  "devDependencies": {
+    "postgres": "^3.4.7",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

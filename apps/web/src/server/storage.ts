@@ -2,6 +2,9 @@ import "server-only";
 import { z } from "zod";
 import type { StorageProvider } from "@clubedge/storage";
 import { createS3Storage } from "@clubedge/storage-s3";
+// clubedge:if infra=local
+import { createFileSystemStorage } from "@clubedge/storage/file-system";
+// clubedge:end
 import { optional, parseEnv } from "@/env/server";
 
 export type { SignedUrlOptions, StorageProvider, UploadInput } from "@clubedge/storage";
@@ -14,6 +17,9 @@ const storageEnvSchema = z.object({
   STORAGE_ACCESS_KEY_ID: optional(z.string()),
   STORAGE_SECRET_ACCESS_KEY: optional(z.string()),
   STORAGE_PUBLIC_URL: optional(z.url()),
+  // clubedge:if infra=local
+  STORAGE_DIRECTORY: optional(z.string()),
+  // clubedge:end
 });
 
 let provider: StorageProvider | undefined;
@@ -21,6 +27,13 @@ let provider: StorageProvider | undefined;
 function resolveProvider(): StorageProvider {
   if (provider) return provider;
   const env = parseEnv(storageEnvSchema, "Storage");
+  // clubedge:if infra=local
+  // In development without an object storage service, a local folder stands in for S3.
+  if (env.STORAGE_DIRECTORY) {
+    provider = createFileSystemStorage({ directory: env.STORAGE_DIRECTORY });
+    return provider;
+  }
+  // clubedge:end
   provider = createS3Storage({
     bucket: env.STORAGE_BUCKET || undefined,
     region: env.STORAGE_REGION,
