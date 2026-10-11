@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { safeRedirectPath } from "@clubedge/core";
 import { loginUrl } from "@/lib/login-url";
-import { getCurrentUser, isAuthConfigured } from "./auth";
+import { getAuth, getCurrentUser, isAuthConfigured } from "./auth";
 
 // Server functions are RPC endpoints that route loaders call. The build replaces their
 // bodies with network stubs in the browser bundle, so this file is safe to import anywhere.
@@ -21,7 +21,11 @@ export const getPageUser = createServerFn({ method: "GET" })
     return user;
   });
 
-/** Lets the login page explain that authentication still needs configuring. */
-export const getAuthStatus = createServerFn({ method: "GET" }).handler(() => ({
-  configured: isAuthConfigured(),
-}));
+/**
+ * Lets the login page explain that authentication still needs configuring, and offer password
+ * reset when the provider can send reset emails.
+ */
+export const getAuthStatus = createServerFn({ method: "GET" }).handler(() => {
+  const configured = isAuthConfigured();
+  return { configured, canResetPassword: configured && getAuth().canResetPassword };
+});

@@ -27,6 +27,8 @@ export function createSupabaseAuth(config: SupabaseAuthConfig): AuthProvider {
   const supabase = createSupabaseServerClient(config);
 
   return {
+    // Supabase sends its own reset emails, configured in the Supabase project.
+    canResetPassword: true,
     async getUser() {
       const { data, error } = await supabase.auth.getUser();
       if (error || !data.user) return null;
@@ -52,6 +54,16 @@ export function createSupabaseAuth(config: SupabaseAuthConfig): AuthProvider {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) return err("invalid-code");
       return ok(data.user ? toAuthUser(data.user) : null);
+    },
+    async requestPasswordReset({ email, redirectTo }) {
+      // The link goes through the auth callback, which creates a session for resetPassword.
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      // Never reveal whether the address has an account; log other failures for operators.
+      if (error) console.error("Supabase could not send the password reset email", error.message);
+    },
+    async resetPassword({ password }) {
+      const { error } = await supabase.auth.updateUser({ password });
+      return error ? err("invalid-reset") : ok(undefined);
     },
     async refreshSession() {
       // getUser() validates the JWT with Supabase and rotates the cookies when needed.

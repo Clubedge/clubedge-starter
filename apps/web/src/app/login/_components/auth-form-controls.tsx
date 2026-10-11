@@ -8,13 +8,19 @@ import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
 
-export function PasswordField({ isSignUp }: { isSignUp: boolean }) {
+export function PasswordField({
+  isSignUp,
+  label = "Password",
+}: {
+  isSignUp: boolean;
+  label?: string;
+}) {
   const [visible, setVisible] = useState(false);
   const { pending } = useFormStatus();
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="password">Password</Label>
+      <Label htmlFor="password">{label}</Label>
       <div className="relative">
         <Input
           aria-describedby={isSignUp ? "password-hint" : undefined}

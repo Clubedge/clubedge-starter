@@ -2,7 +2,12 @@ import { randomBytes } from "node:crypto";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { CookieStore, CookieToSet } from "@clubedge/auth";
-import { createBetterAuth, createBetterAuthServer, type BetterAuthServer } from "./index";
+import {
+  createBetterAuth,
+  createBetterAuthServer,
+  type AuthEmail,
+  type BetterAuthServer,
+} from "./index";
 
 // Real Better Auth on its in-memory database: these tests exercise the cookie bridge and the
 // AuthProvider contract end to end, without PostgreSQL.
@@ -108,11 +113,137 @@ describe("Better Auth adapter", () => {
     expect(jar.writes).toEqual([]);
   });
 
-  it("has no email-link codes to exchange", async () => {
+  it("rejects codes that are not email verification tokens", async () => {
     const auth = createBetterAuth({ server, cookies: cookieJar().store });
     expect(await auth.exchangeCodeForSession("anything")).toEqual({
       ok: false,
       error: "invalid-code",
     });
+  });
+});
+
+describe("Better Auth emails", () => {
+  /** A server that keeps the emails it sends, and the first link in the latest one. */
+  function serverWithEmail({ requireEmailVerification = false } = {}) {
+    const sent: AuthEmail[] = [];
+    const emailServer = createBetterAuthServer({
+      database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+      secret: randomBytes(32).toString("hex"),
+      baseUrl: "http://localhost:3000",
+      sendEmail: async (email) => {
+        sent.push(email);
+      },
+      requireEmailVerification,
+      appName: "Clubedge",
+    });
+    // Emails are sent in the background; wait until the expected number has arrived.
+    async function emails(count: number) {
+      for (let attempt = 0; attempt < 50 && sent.length < count; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      expect(sent).toHaveLength(count);
+      return sent;
+    }
+    const linkIn = (email: AuthEmail) => new URL(/https?:\/\/\S+/.exec(email.text)![0]);
+    return { emailServer, emails, linkIn };
+  }
+
+  it("resets a password through the emailed link, once", async () => {
+    const { emailServer, emails, linkIn } = serverWithEmail();
+    await createBetterAuth({ server: emailServer, cookies: cookieJar().store }).signUp({
+      ...credentials,
+      emailRedirectTo: "http://localhost:3000/auth/callback",
+    });
+    const auth = createBetterAuth({ server: emailServer, cookies: cookieJar().store });
+    expect(auth.canResetPassword).toBe(true);
+
+    await auth.requestPasswordReset({ email: credentials.email, redirectTo: "ignored" });
+    const [, reset] = await emails(2); // The first email is the sign-up verification.
+    expect(reset!.subject).toBe("Reset your Clubedge password");
+    const link = linkIn(reset!);
+    expect(`${link.origin}${link.pathname}`).toBe("http://localhost:3000/reset-password");
+    const token = link.searchParams.get("token")!;
+
+    expect(await auth.resetPassword({ password: "a brand new password", token })).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(
+      (await auth.signInWithPassword({ ...credentials, password: "a brand new password" })).ok,
+    ).toBe(true);
+    expect(await auth.signInWithPassword(credentials)).toEqual({
+      ok: false,
+      error: "invalid-credentials",
+    });
+    expect(await auth.resetPassword({ password: "yet another password", token })).toEqual({
+      ok: false,
+      error: "invalid-reset",
+    });
+  });
+
+  it("answers reset requests for unknown addresses the same way, without sending", async () => {
+    const { emailServer, emails } = serverWithEmail();
+    const auth = createBetterAuth({ server: emailServer, cookies: cookieJar().store });
+    await expect(
+      auth.requestPasswordReset({ email: "nobody@example.com", redirectTo: "x" }),
+    ).resolves.toBeUndefined();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await emails(0);
+  });
+
+  it("offers no password reset without an email sender", async () => {
+    const auth = createBetterAuth({ server, cookies: cookieJar().store });
+    expect(auth.canResetPassword).toBe(false);
+    await expect(
+      auth.requestPasswordReset({ email: credentials.email, redirectTo: "x" }),
+    ).resolves.toBeUndefined();
+    expect(
+      await auth.resetPassword({ password: "a brand new password", token: "anything" }),
+    ).toEqual({
+      ok: false,
+      error: "invalid-reset",
+    });
+  });
+
+  it("requires a confirmed email when configured, and signs in from the emailed link", async () => {
+    const { emailServer, emails, linkIn } = serverWithEmail({ requireEmailVerification: true });
+    const jar = cookieJar();
+    const auth = createBetterAuth({ server: emailServer, cookies: jar.store });
+
+    const signUp = await auth.signUp({
+      ...credentials,
+      emailRedirectTo: "http://localhost:3000/auth/callback",
+    });
+    expect(signUp).toMatchObject({ ok: true, value: { needsConfirmation: true } });
+    expect(await auth.getUser()).toBeNull();
+    expect(await auth.signInWithPassword(credentials)).toEqual({
+      ok: false,
+      error: "email-not-verified",
+    });
+
+    const [verification] = await emails(1);
+    expect(verification!.subject).toBe("Confirm your email for Clubedge");
+    const link = linkIn(verification!);
+    expect(`${link.origin}${link.pathname}`).toBe("http://localhost:3000/auth/callback");
+
+    const exchanged = await auth.exchangeCodeForSession(link.searchParams.get("code")!);
+    expect(exchanged).toMatchObject({ ok: true, value: { email: credentials.email } });
+    expect(await auth.getUser()).toMatchObject({ email: credentials.email });
+    expect(await auth.exchangeCodeForSession("not-a-token")).toEqual({
+      ok: false,
+      error: "invalid-code",
+    });
+  });
+
+  it("still signs up directly and sends a confirmation email when verification is optional", async () => {
+    const { emailServer, emails } = serverWithEmail();
+    const auth = createBetterAuth({ server: emailServer, cookies: cookieJar().store });
+    const signUp = await auth.signUp({
+      ...credentials,
+      emailRedirectTo: "http://localhost:3000/auth/callback",
+    });
+    expect(signUp).toMatchObject({ ok: true, value: { needsConfirmation: false } });
+    expect(await auth.getUser()).toMatchObject({ email: credentials.email });
+    await emails(1);
   });
 });

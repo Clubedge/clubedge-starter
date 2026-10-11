@@ -3,8 +3,15 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { parseSetCookieHeader, splitSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import type { AuthProvider, AuthUser, CookieStore, CookieToSet } from "@clubedge/auth";
 import { err, ok } from "@clubedge/core";
+import { passwordResetEmail, verificationEmail, type AuthEmailSender } from "./emails";
 import { betterAuthTables } from "./schema";
 
+export {
+  passwordResetEmail,
+  verificationEmail,
+  type AuthEmail,
+  type AuthEmailSender,
+} from "./emails";
 export { betterAuthTables } from "./schema";
 
 type DatabaseAdapter = Parameters<typeof betterAuth>[0]["database"];
@@ -16,6 +23,15 @@ export interface BetterAuthServerConfig {
   secret: string;
   /** The app's public origin, such as https://app.example. */
   baseUrl: string;
+  /**
+   * Sends verification and password reset emails. Without it, sign-up never asks for
+   * verification and password reset is unavailable.
+   */
+  sendEmail?: AuthEmailSender;
+  /** Refuse sign-in until the email address is confirmed. Needs `sendEmail`. */
+  requireEmailVerification?: boolean;
+  /** The product name used in email subjects. */
+  appName?: string;
 }
 
 /** Stores Better Auth's tables in a Drizzle PostgreSQL database (see ./schema). */
@@ -23,13 +39,73 @@ export function drizzleDatabase(db: Parameters<typeof drizzleAdapter>[0]): Datab
   return drizzleAdapter(db, { provider: "pg", schema: betterAuthTables });
 }
 
+/**
+ * Sends without waiting, so how long a request takes does not reveal whether an account
+ * exists. Failures are logged, never shown to the visitor.
+ */
+function sendInBackground(sendEmail: AuthEmailSender, email: Parameters<AuthEmailSender>[0]) {
+  void sendEmail(email).catch((error: unknown) =>
+    console.error("Could not send auth email", error),
+  );
+}
+
 /** One Better Auth server per process; `createBetterAuth` adapts it per request. */
-export function createBetterAuthServer({ database, secret, baseUrl }: BetterAuthServerConfig) {
+export function createBetterAuthServer({
+  database,
+  secret,
+  baseUrl,
+  sendEmail,
+  requireEmailVerification = false,
+  appName = "App",
+}: BetterAuthServerConfig) {
+  const link = (path: string, params: Record<string, string>) => {
+    const url = new URL(path, baseUrl);
+    for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
+    return url.toString();
+  };
   return betterAuth({
     database,
     secret,
     baseURL: baseUrl,
-    emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128 },
+    emailAndPassword: {
+      enabled: true,
+      minPasswordLength: 8,
+      maxPasswordLength: 128,
+      requireEmailVerification: Boolean(sendEmail) && requireEmailVerification,
+      ...(sendEmail
+        ? {
+            resetPasswordTokenExpiresIn: 60 * 60,
+            // The link opens the app's reset page, which sends the token back with the new password.
+            sendResetPassword: async ({ user, token }) =>
+              sendInBackground(
+                sendEmail,
+                passwordResetEmail({
+                  to: user.email,
+                  url: link("/reset-password", { token }),
+                  appName,
+                }),
+              ),
+          }
+        : {}),
+    },
+    ...(sendEmail
+      ? {
+          emailVerification: {
+            sendOnSignUp: true,
+            autoSignInAfterVerification: true,
+            // The link goes through the app's auth callback, like Supabase's confirmation links.
+            sendVerificationEmail: async ({ user, token }) =>
+              sendInBackground(
+                sendEmail,
+                verificationEmail({
+                  to: user.email,
+                  url: link("/auth/callback", { code: token }),
+                  appName,
+                }),
+              ),
+          },
+        }
+      : {}),
     advanced: { database: { generateId: "uuid" } },
     // The app rate-limits sign-in and sign-up itself, per client address.
     rateLimit: { enabled: false },
@@ -70,6 +146,22 @@ function isApiError(error: unknown): boolean {
   return error instanceof Error && error.name === "APIError";
 }
 
+function apiErrorCode(error: unknown): string | undefined {
+  const body = (error as { body?: { code?: unknown } }).body;
+  return typeof body?.code === "string" ? body.code : undefined;
+}
+
+/** The cookies a response set, as a request header, to read the session they created. */
+function responseCookieHeaders(headers: Headers): Headers {
+  const cookies = splitSetCookieHeader(headers.get("set-cookie") ?? "").flatMap((cookie) =>
+    // Values come back decoded; encode them as requestHeaders does.
+    [...parseSetCookieHeader(cookie)].map(
+      ([name, attributes]) => `${name}=${encodeURIComponent(attributes.value)}`,
+    ),
+  );
+  return new Headers(cookies.length ? { cookie: cookies.join("; ") } : {});
+}
+
 export function createBetterAuth({
   server,
   cookies,
@@ -77,7 +169,9 @@ export function createBetterAuth({
   server: BetterAuthServer;
   cookies: CookieStore;
 }): AuthProvider {
+  const canResetPassword = Boolean(server.options.emailAndPassword?.sendResetPassword);
   return {
+    canResetPassword,
     async getUser() {
       const session = await server.api.getSession({ headers: requestHeaders(cookies) });
       return session ? toAuthUser(session.user) : null;
@@ -92,6 +186,8 @@ export function createBetterAuth({
         applyCookies(cookies, headers);
         return ok(toAuthUser(response.user));
       } catch (error) {
+        if (isApiError(error) && apiErrorCode(error) === "EMAIL_NOT_VERIFIED")
+          return err("email-not-verified");
         if (isApiError(error)) return err("invalid-credentials");
         throw error;
       }
@@ -105,16 +201,48 @@ export function createBetterAuth({
           returnHeaders: true,
         });
         applyCookies(cookies, headers);
-        // Sign-up signs the user in; email verification is not required by default.
-        return ok({ user: toAuthUser(response.user), needsConfirmation: false });
+        // Without required verification, sign-up signs the user in and returns a session token.
+        return ok({ user: toAuthUser(response.user), needsConfirmation: !response.token });
       } catch (error) {
         if (isApiError(error)) return err("signup-failed");
         throw error;
       }
     },
-    async exchangeCodeForSession() {
-      // Email-link flows are not enabled, so there is never a code to exchange.
-      return err("invalid-code");
+    async exchangeCodeForSession(code) {
+      // The code is an email verification token; verifying it also signs the user in.
+      try {
+        const { headers } = await server.api.verifyEmail({
+          query: { token: code },
+          headers: requestHeaders(cookies),
+          returnHeaders: true,
+        });
+        applyCookies(cookies, headers);
+        const session = await server.api.getSession({ headers: responseCookieHeaders(headers) });
+        return ok(session ? toAuthUser(session.user) : null);
+      } catch (error) {
+        if (isApiError(error)) return err("invalid-code");
+        throw error;
+      }
+    },
+    async requestPasswordReset({ email }) {
+      if (!canResetPassword) return;
+      try {
+        // sendResetPassword (above) builds the link to the app's /reset-password page.
+        await server.api.requestPasswordReset({ body: { email } });
+      } catch (error) {
+        // Never reveal whether the address has an account.
+        if (!isApiError(error)) throw error;
+      }
+    },
+    async resetPassword({ password, token }) {
+      if (!token) return err("invalid-reset");
+      try {
+        await server.api.resetPassword({ body: { newPassword: password, token } });
+        return ok(undefined);
+      } catch (error) {
+        if (isApiError(error)) return err("invalid-reset");
+        throw error;
+      }
     },
     async refreshSession() {
       // Reading the session extends it when due and returns the refreshed cookies.

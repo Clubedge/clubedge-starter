@@ -222,15 +222,33 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { infra: docker, framework: next, modules: --auth better-auth }
-          - { infra: docker, framework: tanstack-start, modules: --auth better-auth }
-          - { infra: local, framework: next, modules: --auth better-auth }
-          - { infra: local, framework: tanstack-start, modules: --auth better-auth }
-          - { infra: supabase, framework: next, modules: --auth supabase --storage supabase }
+          # mail-api is the local inbox the browser tests read emails from; local mode has none,
+          # because it prints emails to the log.
+          - {
+              infra: docker,
+              framework: next,
+              modules: --auth better-auth,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: tanstack-start,
+              modules: --auth better-auth,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - { infra: local, framework: next, modules: --auth better-auth, mail-api: "" }
+          - { infra: local, framework: tanstack-start, modules: --auth better-auth, mail-api: "" }
+          - {
+              infra: supabase,
+              framework: next,
+              modules: --auth supabase --storage supabase,
+              mail-api: "http://127.0.0.1:54324",
+            }
           - {
               infra: supabase,
               framework: tanstack-start,
               modules: --auth supabase --storage supabase,
+              mail-api: "http://127.0.0.1:54324",
             }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -294,11 +312,21 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm check:services
-      - name: Sign up, out, and in
+      - name: Sign up, out, and in, and reset a password through the emailed link
         working-directory: ${{ runner.temp }}/generated-app
+        env:
+          E2E_MAIL_API: ${{ matrix.mail-api }}
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts
+          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts
+      - name: Sign in only after confirming the email address
+        if: matrix.infra == 'docker'
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          E2E_MAIL_API: ${{ matrix.mail-api }}
+          E2E_EMAIL_VERIFICATION: "1"
+          BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: "true"
+        run: pnpm test:e2e e2e/email-verification.spec.ts
       - name: Restart the local database and keep its data
         if: matrix.infra == 'local'
         working-directory: ${{ runner.temp }}/generated-app

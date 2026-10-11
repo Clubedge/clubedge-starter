@@ -6,6 +6,8 @@ const supabaseAuth = {
   signInWithPassword: vi.fn(),
   signUp: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
+  updateUser: vi.fn(),
   signOut: vi.fn(),
 };
 let cookieMethods: { getAll(): unknown; setAll(values: unknown): void } | undefined;
@@ -122,5 +124,48 @@ describe("createSupabaseAuth", () => {
     const { auth } = setup();
     supabaseAuth.signOut.mockResolvedValueOnce({ error: new Error("network") });
     await expect(auth.signOut()).rejects.toThrow("network");
+  });
+
+  it("sends reset emails through the auth callback without revealing failures", async () => {
+    const { auth } = setup();
+    expect(auth.canResetPassword).toBe(true);
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+    await auth.requestPasswordReset({
+      email: "ada@example.com",
+      redirectTo: "http://localhost:3000/auth/callback?next=/reset-password",
+    });
+    expect(supabaseAuth.resetPasswordForEmail).toHaveBeenCalledWith("ada@example.com", {
+      redirectTo: "http://localhost:3000/auth/callback?next=/reset-password",
+    });
+
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    supabaseAuth.resetPasswordForEmail.mockResolvedValueOnce({
+      data: null,
+      error: { message: "rate limited" },
+    });
+    await expect(
+      auth.requestPasswordReset({ email: "ada@example.com", redirectTo: "x" }),
+    ).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it("sets the new password with the session the reset link created", async () => {
+    const { auth } = setup();
+    supabaseAuth.updateUser.mockResolvedValueOnce({ data: { user: supabaseUser }, error: null });
+    expect(await auth.resetPassword({ password: "a brand new password" })).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(supabaseAuth.updateUser).toHaveBeenCalledWith({ password: "a brand new password" });
+
+    supabaseAuth.updateUser.mockResolvedValueOnce({
+      data: { user: null },
+      error: { message: "Auth session missing" },
+    });
+    expect(await auth.resetPassword({ password: "a brand new password" })).toEqual({
+      ok: false,
+      error: "invalid-reset",
+    });
   });
 });

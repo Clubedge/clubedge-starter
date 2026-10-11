@@ -19,6 +19,8 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase -->
 - Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth -->
+- Password reset by email, and email verification that can be required before sign-in. <!-- clubedge:only auth=better-auth && email!=none -->
+- Password reset by email, sent by Supabase. <!-- clubedge:only auth=supabase -->
 - S3-compatible storage adapter for AWS S3, Cloudflare R2, and MinIO. <!-- clubedge:only storage=s3 -->
 - Supabase Storage adapter that uses the signed-in user's session. <!-- clubedge:only storage=supabase -->
 - Fixed-window rate limiter and cache on Redis, falling back to process memory without `REDIS_URL`. <!-- clubedge:only cache=redis -->

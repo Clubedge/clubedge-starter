@@ -22,7 +22,8 @@ smtp_port = 54325
 
 [auth]
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://127.0.0.1:3000/auth/callback"]
+# Patterns, so links can carry a next page, such as the password reset page.
+additional_redirect_urls = ["http://localhost:3000/auth/callback**", "http://127.0.0.1:3000/auth/callback**"]
 
 [auth.email]
 # Sign-up signs the user in directly during local development.

@@ -48,11 +48,29 @@ export interface SignUpOutcome {
 export interface AuthProvider {
   /** Returns the user verified with the provider, not just decoded from a cookie. */
   getUser(): Promise<AuthUser | null>;
-  signInWithPassword(credentials: Credentials): Promise<Result<AuthUser, "invalid-credentials">>;
+  signInWithPassword(
+    credentials: Credentials,
+  ): Promise<Result<AuthUser, "invalid-credentials" | "email-not-verified">>;
   signUp(
     credentials: Credentials & { emailRedirectTo: string },
   ): Promise<Result<SignUpOutcome, "signup-failed">>;
   exchangeCodeForSession(code: string): Promise<Result<AuthUser | null, "invalid-code">>;
+  /** Whether this provider can email password reset links. */
+  readonly canResetPassword: boolean;
+  /**
+   * Emails a password reset link. Never reveals whether the address has an account. Providers
+   * that confirm links through the app's auth callback (Supabase) send the user to `redirectTo`;
+   * Better Auth links to the app's /reset-password page itself.
+   */
+  requestPasswordReset(input: { email: string; redirectTo: string }): Promise<void>;
+  /**
+   * Sets a new password from a reset link: with the link's token (Better Auth), or with the
+   * session the link created through the auth callback (Supabase).
+   */
+  resetPassword(input: {
+    password: string;
+    token?: string;
+  }): Promise<Result<void, "invalid-reset">>;
   /** Validates the session and writes refreshed cookies; call it from request middleware. */
   refreshSession(): Promise<void>;
   signOut(): Promise<void>;

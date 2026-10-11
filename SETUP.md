@@ -64,13 +64,13 @@ The app is available at <http://localhost:3000> and the liveness endpoint at <ht
 
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase; never use a service role key.
 
-In Supabase Auth URL configuration, add this redirect URL for local email confirmation:
+In Supabase Auth URL configuration, add this redirect URL for local email confirmation and password reset links:
 
 ```text
-http://localhost:3000/auth/callback
+http://localhost:3000/auth/callback**
 ```
 
-For deployed environments, add your deployed origin followed by `/auth/callback`. Until the Supabase variables are set, the dashboard stays viewable as a demo and the login page explains what is missing; once they are set, the dashboard redirects signed-out visitors to the login page.
+For deployed environments, add your deployed origin followed by `/auth/callback**`. The `**` lets links carry the page to open next, such as `/reset-password`. Supabase sends the confirmation and password reset emails itself; configure its SMTP settings in the Supabase project to send them from your own domain. Until the Supabase variables are set, the dashboard stays viewable as a demo and the login page explains what is missing; once they are set, the dashboard redirects signed-out visitors to the login page.
 
 <!-- clubedge:end -->
 
@@ -84,7 +84,13 @@ Better Auth keeps users, passwords, and sessions in your PostgreSQL database, in
 openssl rand -base64 32
 ```
 
-Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Sign-up signs the user in immediately; add email verification in `packages/auth-better-auth` if your application needs it. Signing in again on another device creates another session row, and signing out deletes it.
+Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Signing in again on another device creates another session row, and signing out deletes it.
+
+Sign-up signs the user in immediately; add email verification in `packages/auth-better-auth` if your application needs it. <!-- clubedge:only email=none -->
+Better Auth sends its emails through the [email module](#email): <!-- clubedge:only email!=none -->
+
+- **Password reset:** "Forgot password?" on the login page emails a link to `/reset-password`, valid for one hour and usable once. <!-- clubedge:only email!=none -->
+- **Email verification:** every new account gets a confirmation link. Sign-up signs the user in right away unless `BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true`, which refuses sign-in until the link is opened. <!-- clubedge:only email!=none -->
 
 <!-- clubedge:end -->
 

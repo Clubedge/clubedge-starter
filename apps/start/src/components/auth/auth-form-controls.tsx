@@ -27,13 +27,19 @@ export function AuthForm({ action, children }: { action: string; children: React
   );
 }
 
-export function PasswordField({ isSignUp }: { isSignUp: boolean }) {
+export function PasswordField({
+  isSignUp,
+  label = "Password",
+}: {
+  isSignUp: boolean;
+  label?: string;
+}) {
   const [visible, setVisible] = useState(false);
   const pending = useContext(PendingContext);
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="password">Password</Label>
+      <Label htmlFor="password">{label}</Label>
       <div className="relative">
         <Input
           aria-describedby={isSignUp ? "password-hint" : undefined}
