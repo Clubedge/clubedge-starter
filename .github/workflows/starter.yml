@@ -239,7 +239,7 @@ jobs:
           - {
               name: next-supabase-storage,
               framework: next,
-              modules: --storage supabase --cache memory --jobs pg-boss,
+              modules: --storage supabase --cache memory --jobs pg-boss --observability otel,
             }
           - { name: start-default, framework: tanstack-start, modules: "" }
           - {
@@ -247,7 +247,11 @@ jobs:
               framework: tanstack-start,
               modules: --auth none --storage none --cache memory --email none,
             }
-          - { name: start-supabase-storage, framework: tanstack-start, modules: --storage supabase }
+          - {
+              name: start-supabase-storage,
+              framework: tanstack-start,
+              modules: --storage supabase --observability sentry,
+            }
           - {
               name: next-better-auth,
               framework: next,
@@ -367,25 +371,25 @@ jobs:
           - {
               infra: docker,
               framework: next,
-              modules: --auth better-auth --payments stripe --jobs pg-boss,
+              modules: --auth better-auth --payments stripe --jobs pg-boss --observability otel,
               mail-api: "http://127.0.0.1:8025",
             }
           - {
               infra: docker,
               framework: tanstack-start,
-              modules: --auth better-auth --payments stripe --jobs pg-boss,
+              modules: --auth better-auth --payments stripe --jobs pg-boss --observability sentry,
               mail-api: "http://127.0.0.1:8025",
             }
           - {
               infra: local,
               framework: next,
-              modules: --auth better-auth --jobs pg-boss,
+              modules: --auth better-auth --jobs pg-boss --observability sentry,
               mail-api: "",
             }
           - {
               infra: local,
               framework: tanstack-start,
-              modules: --auth better-auth --jobs pg-boss,
+              modules: --auth better-auth --jobs pg-boss --observability otel,
               mail-api: "",
             }
           - {
@@ -475,6 +479,17 @@ jobs:
         env:
           E2E_DATABASE: "1"
         run: pnpm test:e2e e2e/jobs.spec.ts
+      # Request traces to e2e/telemetry-fake.ts, a stand-in for an OpenTelemetry collector and for
+      # Sentry; each project reads only its own provider's variables.
+      - name: Send request traces to the observability provider
+        if: contains(matrix.modules, '--observability')
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          E2E_OBSERVABILITY: "1"
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4319
+          SENTRY_DSN: http://public@127.0.0.1:4319/1
+          SENTRY_TRACES_SAMPLE_RATE: "1"
+        run: pnpm test:e2e e2e/observability.spec.ts
       - name: Sign in only after confirming the email address
         if: matrix.infra == 'docker'
         working-directory: ${{ runner.temp }}/generated-app

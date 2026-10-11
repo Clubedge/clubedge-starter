@@ -27,7 +27,8 @@ export interface PgBossJobsConfig {
   maxConnections?: number;
   /** How often an idle worker checks for new jobs. Default 2 seconds. */
   pollingIntervalSeconds?: number;
-  onError?: (error: Error) => void;
+  /** Receives pg-boss's own errors, and each failed job attempt with the job's name. */
+  onError?: (error: unknown, context?: { job: string; attempt: number }) => void;
 }
 
 const STATES: Record<JobWithMetadata["state"], JobState> = {
@@ -57,7 +58,8 @@ export function createPgBossJobs({
   schema = "pgboss",
   maxConnections = 4,
   pollingIntervalSeconds = 2,
-  onError = (error) => console.error("Background jobs:", error),
+  onError = (error, context) =>
+    console.error(context ? `Background job "${context.job}" failed:` : "Background jobs:", error),
 }: PgBossJobsConfig): JobQueue & { boss: PgBoss } {
   if (!connectionString && !db) throw new Error("Background jobs need a connectionString or db.");
   const byName = new Map(definitions.map((definition) => [definition.name, definition]));
@@ -71,7 +73,7 @@ export function createPgBossJobs({
     schedule: worker,
   });
   // pg-boss reports background failures as events; without a listener they would crash Node.
-  boss.on("error", onError);
+  boss.on("error", (error) => onError(error));
 
   let ready: Promise<void> | undefined;
   let working: Promise<void> | undefined;
@@ -105,13 +107,19 @@ export function createPgBossJobs({
 
   async function execute(definition: JobDefinition, job: Job<object>) {
     const timeout = (definition.timeoutSeconds ?? JOB_DEFAULTS.timeoutSeconds) * 1000;
-    return toOutput(
-      await definition.run(job.data, {
-        id: job.id,
-        attempt: job.retryCount + 1,
-        signal: job.signal ?? AbortSignal.timeout(timeout),
-      }),
-    );
+    const attempt = job.retryCount + 1;
+    try {
+      return toOutput(
+        await definition.run(job.data, {
+          id: job.id,
+          attempt,
+          signal: job.signal ?? AbortSignal.timeout(timeout),
+        }),
+      );
+    } catch (error) {
+      onError(error, { job: definition.name, attempt });
+      throw error;
+    }
   }
 
   const toRecord = (job: JobWithMetadata<object>): JobRecord => ({

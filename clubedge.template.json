@@ -273,6 +273,49 @@
         }
       }
     },
+    "observability": {
+      "name": "Observability",
+      "default": "none",
+      "options": {
+        "otel": {
+          "name": "OpenTelemetry (OTLP to any collector)",
+          "packages": {
+            "@clubedge/observability": "packages/observability",
+            "@clubedge/observability-otel": "packages/observability-otel"
+          },
+          "files": [
+            "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/server/observability.ts",
+            "apps/web/src/instrumentation.ts",
+            "apps/web/src/server/observability.ts",
+            "e2e/observability.spec.ts",
+            "e2e/telemetry-fake.ts"
+          ]
+        },
+        "sentry": {
+          "name": "Sentry",
+          "packages": {
+            "@clubedge/observability": "packages/observability",
+            "@clubedge/observability-sentry": "packages/observability-sentry"
+          },
+          "files": [
+            "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/server/observability.ts",
+            "apps/web/src/instrumentation.ts",
+            "apps/web/src/server/observability.ts",
+            "e2e/observability.spec.ts",
+            "e2e/telemetry-fake.ts"
+          ],
+          "replace": {
+            "apps/start/src/server/observability.ts": "apps/start/src/server/variants/observability.sentry.ts",
+            "apps/web/src/server/observability.ts": "apps/web/src/server/variants/observability.sentry.ts"
+          }
+        },
+        "none": {
+          "name": "None"
+        }
+      }
+    },
     "infra": {
       "name": "Local infrastructure",
       "default": "docker",
@@ -362,10 +405,12 @@
     "apps/start/src/routes/index.tsx",
     "apps/start/src/server/auth-email.ts",
     "apps/start/src/server/storage.ts",
+    "apps/start/src/start.ts",
     "apps/web/scripts/check-services.ts",
     "apps/web/src/app/dashboard/page.tsx",
     "apps/web/src/app/page.tsx",
     "apps/web/src/env/auth.ts",
+    "apps/web/src/instrumentation.ts",
     "apps/web/src/server/auth-email.ts",
     "apps/web/src/server/storage.ts",
     "docker-compose.dev.yml",

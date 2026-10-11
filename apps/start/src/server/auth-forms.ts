@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 import { z } from "zod";
-import { getClientIp, safeRedirectPath } from "@clubedge/core";
+import { getClientIp, safeRedirectPath, reportError } from "@clubedge/core";
 import { getAppUrl } from "@/env/server";
 import { loginUrl } from "@/lib/login-url";
 import { getAuth, isAuthConfigured } from "./auth";
@@ -49,7 +49,7 @@ async function isRateLimited(request: Request, action: "sign-in" | "sign-up" | "
     return !result.success;
   } catch (error) {
     // Fail open: an unavailable limiter backend should not lock every user out.
-    console.error("Rate limiter unavailable", error);
+    reportError(error, { message: "Rate limiter unavailable" });
     return false;
   }
 }
@@ -142,7 +142,7 @@ export async function handleResetPassword(request: Request): Promise<Response> {
     // A Supabase reset link signed the user in; sign out so the new password is used next.
     await auth.signOut();
   } catch (error) {
-    console.error("Sign-out after password reset failed", error);
+    reportError(error, { message: "Sign-out after password reset failed" });
   }
   return seeOther(loginUrl({ notice: "password-updated" }));
 }
@@ -152,7 +152,7 @@ export async function handleSignOut(): Promise<Response> {
   try {
     await getAuth().signOut();
   } catch (error) {
-    console.error("Sign-out failed", error);
+    reportError(error, { message: "Sign-out failed" });
   }
   return seeOther("/login");
 }

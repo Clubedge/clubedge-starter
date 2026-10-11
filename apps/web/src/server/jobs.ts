@@ -4,6 +4,7 @@ import type { JobQueue } from "@clubedge/jobs";
 import { createPgBossJobs } from "@clubedge/jobs-pg-boss";
 import { jobs } from "@/jobs";
 import { getServerEnv, optional, parseEnv } from "@/env/server";
+import { reportError } from "@clubedge/core";
 
 export type { JobRecord } from "@clubedge/jobs";
 
@@ -41,6 +42,11 @@ export function getJobs(): JobQueue {
     jobs,
     worker: isWorkerEnabled(),
     maxConnections: env.NODE_ENV === "production" ? 4 : 2,
+    onError: (error, context) =>
+      reportError(error, {
+        message: context ? `Background job "${context.job}" failed` : "Background jobs error",
+        attributes: context,
+      }),
   });
   return globalForJobs.clubedgeJobs;
 }
@@ -52,7 +58,9 @@ export function startJobsWorker() {
     getJobs()
       .startWorker()
       .catch((error: unknown) => {
-        console.error("Background jobs: the worker could not start, retrying in 5 seconds.", error);
+        reportError(error, {
+          message: "Background jobs: the worker could not start, retrying in 5 seconds.",
+        });
         setTimeout(start, 5_000).unref();
       });
   void start();

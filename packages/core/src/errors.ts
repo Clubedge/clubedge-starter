@@ -1,3 +1,5 @@
+import { reportError } from "./telemetry";
+
 export class AppError extends Error {
   constructor(
     message: string,
@@ -15,6 +17,6 @@ export function errorResponse(error: unknown) {
   const status = known ? error.status : 500;
   const message = known ? error.message : "An unexpected error occurred.";
   const code = known ? error.code : "INTERNAL_ERROR";
-  if (!known) console.error("Unhandled application error", error);
+  if (!known) reportError(error, { message: "Unhandled application error" });
   return Response.json({ error: { code, message } }, { status });
 }

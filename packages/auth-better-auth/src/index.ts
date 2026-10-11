@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { parseSetCookieHeader, splitSetCookieHeader, toCookieOptions } from "better-auth/cookies";
 import type { AuthProvider, AuthUser, CookieStore, CookieToSet } from "@clubedge/auth";
-import { err, ok } from "@clubedge/core";
+import { err, ok, reportError } from "@clubedge/core";
 import { passwordResetEmail, verificationEmail, type AuthEmailSender } from "./emails";
 import { betterAuthTables } from "./schema";
 
@@ -45,7 +45,7 @@ export function drizzleDatabase(db: Parameters<typeof drizzleAdapter>[0]): Datab
  */
 function sendInBackground(sendEmail: AuthEmailSender, email: Parameters<AuthEmailSender>[0]) {
   void sendEmail(email).catch((error: unknown) =>
-    console.error("Could not send auth email", error),
+    reportError(error, { message: "Could not send auth email" }),
   );
 }
 

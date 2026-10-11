@@ -47,6 +47,8 @@ The variables are:
 - `RESEND_API_KEY` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=resend -->
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_<PLAN>` (for payments): see [Payments](#payments). <!-- clubedge:only payments=stripe -->
 - `JOBS_WORKER` and `CRON_SECRET` (optional): see [Background jobs](#background-jobs). <!-- clubedge:only jobs=pg-boss -->
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (to send traces and errors): see [Observability](#observability). <!-- clubedge:only observability=otel -->
+- `SENTRY_DSN` (to send errors and traces): see [Observability](#observability). <!-- clubedge:only observability=sentry -->
 - `STORAGE_*` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=supabase -->
 
@@ -265,6 +267,38 @@ Where no server keeps running, as on Vercel and Netlify, there is no worker: `JO
 Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`. To use another queue, implement that interface in a new package and return it from `apps/web/src/server/jobs.ts`; job definitions, the routes, and the jobs card stay the same.
 
 <!-- clubedge:end -->
+<!-- clubedge:if observability!=none -->
+
+## Observability
+
+Server errors and traces go to the tool you chose. Errors that escape a page, route, server action, or server function are sent with the request's method and path, and so are errors the app handles and reports with `reportError` from `@clubedge/core`, such as a failed webhook, email, or background job. Every request is traced, and so are calls through the email, storage, and payments composition roots, as spans such as `email.send` and `storage.upload`. Wrap your own work with `traced("name", () => work())` from `@clubedge/core`. Until the tool is configured nothing is sent, and errors keep going to the server log.
+
+<!-- clubedge:end -->
+<!-- clubedge:if observability=otel -->
+
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. <!-- clubedge:only framework=tanstack-start -->
+
+To see traces during development, run [Jaeger](https://www.jaegertracing.io), set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, and open http://localhost:16686:
+
+```sh
+docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:latest
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if observability=sentry -->
+
+Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
+Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=tanstack-start -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if observability!=none -->
+
+Only server-side errors are reported; errors in the browser are not. On Vercel and Netlify, a function can stop right after it responds, so spans still waiting in a batch at that moment can be lost.
+
+Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/web/src/server/observability.ts`; error reports and spans across the app stay the same.
+
+<!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
 
 ## File storage
@@ -404,6 +438,8 @@ Production needs these variables:
 - `STRIPE_SECRET_KEY` (live mode), `STRIPE_WEBHOOK_SECRET` from the production webhook endpoint, and `STRIPE_PRICE_<PLAN>` for each plan. <!-- clubedge:only payments=stripe -->
 - `REDIS_URL`, when you run more than one instance. <!-- clubedge:only cache=redis -->
 - `CRON_SECRET`, where no worker runs and a scheduler calls `/api/jobs/run`. <!-- clubedge:only jobs=pg-boss -->
+- `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_EXPORTER_OTLP_HEADERS` if your collector needs a key. <!-- clubedge:only observability=otel -->
+- `SENTRY_DSN`, and `SENTRY_ENVIRONMENT` to tell environments apart. <!-- clubedge:only observability=sentry -->
 - The `STORAGE_*` variables for your S3-compatible bucket. <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET`. <!-- clubedge:only storage=supabase -->
 

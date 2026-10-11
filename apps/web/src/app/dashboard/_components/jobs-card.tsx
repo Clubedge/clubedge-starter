@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@clubedge/ui/components/card";
+import { reportError } from "@clubedge/core";
 
 const timeFormat = new Intl.DateTimeFormat("en", { timeStyle: "medium", timeZone: "UTC" });
 
@@ -20,7 +21,7 @@ async function recentJobs(requestedBy: string): Promise<JobRecord[] | null> {
   try {
     return await getJobs().recent(sampleJob, { data: { requestedBy }, limit: 5 });
   } catch (error) {
-    console.error("Background jobs: could not list recent jobs.", error);
+    reportError(error, { message: "Background jobs: could not list recent jobs." });
     return null;
   }
 }

@@ -1,12 +1,12 @@
 import { PGlite } from "@electric-sql/pglite";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineJob, type JobDefinition } from "@clubedge/jobs";
 import { createPgBossJobs, fromPglite } from "./index";
 
 // pg-boss runs its real SQL against an in-process PostgreSQL, so no database server is needed.
 const queues: { stop(): Promise<void> }[] = [];
 
-function createQueue(jobs: JobDefinition[], worker = false) {
+function createQueue(jobs: JobDefinition[], worker = false, onError = vi.fn()) {
   const pglite = new PGlite();
   const queue = createPgBossJobs({
     db: fromPglite(pglite),
@@ -14,6 +14,7 @@ function createQueue(jobs: JobDefinition[], worker = false) {
     jobs,
     worker,
     pollingIntervalSeconds: 0.5,
+    onError,
   });
   queues.push(queue);
   return queue;
@@ -65,7 +66,8 @@ describe("createPgBossJobs", () => {
         return { ok: true };
       },
     });
-    const queue = createQueue([flaky], true);
+    const onError = vi.fn();
+    const queue = createQueue([flaky], true, onError);
     await queue.startWorker();
 
     await queue.enqueue(flaky, {});
@@ -75,6 +77,14 @@ describe("createPgBossJobs", () => {
     );
     expect(job).toMatchObject({ attempts: 2, output: { ok: true } });
     expect(calls).toBe(2);
+    // The failed first attempt is reported with the job's name.
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "first attempt fails" }),
+      {
+        job: "flaky",
+        attempt: 1,
+      },
+    );
   }, 30_000);
 
   it("filters recent jobs by data and throttles by key", async () => {

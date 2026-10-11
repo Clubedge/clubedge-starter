@@ -1,4 +1,5 @@
 import { getBilling, isPaymentsConfigured, WebhookVerificationError } from "@/server/payments";
+import { reportError } from "@clubedge/core";
 
 /**
  * The payment provider's webhook. The body is read as raw text, because the signature covers
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
     if (error instanceof WebhookVerificationError) {
       return Response.json({ error: "Invalid signature." }, { status: 400 });
     }
-    console.error("Payment webhook failed", error);
+    reportError(error, { message: "Payment webhook failed" });
     return Response.json({ error: "Webhook failed." }, { status: 500 });
   }
 }

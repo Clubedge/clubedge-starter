@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 import type { AuthProvider, AuthUser } from "@clubedge/auth";
 import { createSupabaseAuth, createSupabaseServerClient } from "@clubedge/auth-supabase";
-import { AppError } from "@clubedge/core";
+import { AppError, reportError } from "@clubedge/core";
 import { getSupabaseAuthEnv } from "@/env/auth";
 import { requestCookieStore } from "./cookies";
 
@@ -34,7 +34,7 @@ export async function refreshAuthSession(): Promise<void> {
     await getAuth().refreshSession();
   } catch (error) {
     // Pages still render; protected handlers re-check the user and reject when needed.
-    console.error("Session refresh failed", error);
+    reportError(error, { message: "Session refresh failed" });
   }
 }
 

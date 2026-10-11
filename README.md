@@ -29,6 +29,8 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - Subscriptions with Stripe Checkout and the customer portal, kept in sync by verified webhooks, behind a provider-neutral payments interface. <!-- clubedge:only payments=stripe -->
 - Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss -->
+- Server error reporting and request tracing with OpenTelemetry, to any OTLP collector, behind a provider-neutral observability interface. <!-- clubedge:only observability=otel -->
+- Server error reporting and request tracing with Sentry, behind a provider-neutral observability interface. <!-- clubedge:only observability=sentry -->
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
 - A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release.
@@ -227,6 +229,9 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/payments-stripe/`: Stripe payment provider <!-- clubedge:only payments=stripe -->
 - `packages/jobs/`: `JobQueue` interface, job definitions, and an in-memory queue for tests <!-- clubedge:only jobs!=none -->
 - `packages/jobs-pg-boss/`: pg-boss job queue <!-- clubedge:only jobs=pg-boss -->
+- `packages/observability/`: `ObservabilityProvider` interface and an in-memory provider for tests <!-- clubedge:only observability!=none -->
+- `packages/observability-otel/`: OpenTelemetry provider (OTLP/HTTP traces and error logs) <!-- clubedge:only observability=otel -->
+- `packages/observability-sentry/`: Sentry provider <!-- clubedge:only observability=sentry -->
 - `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
 - `.github/`: CI workflow, issue forms, and pull request template
 - `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides

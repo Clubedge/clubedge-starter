@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getClientIp, safeRedirectPath } from "@clubedge/core";
+import { getClientIp, safeRedirectPath, reportError } from "@clubedge/core";
 import { clientEnv } from "@/env/client";
 import { loginUrl } from "@/lib/login-url";
 import { getAuth } from "@/server/auth";
@@ -40,7 +40,7 @@ async function isRateLimited(action: "sign-in" | "sign-up" | "password-reset") {
     return !result.success;
   } catch (error) {
     // Fail open: an unavailable limiter backend should not lock every user out.
-    console.error("Rate limiter unavailable", error);
+    reportError(error, { message: "Rate limiter unavailable" });
     return false;
   }
 }
@@ -110,7 +110,7 @@ export async function resetPassword(formData: FormData) {
     // A Supabase reset link signed the user in; sign out so the new password is used next.
     await auth.signOut();
   } catch (error) {
-    console.error("Sign-out after password reset failed", error);
+    reportError(error, { message: "Sign-out after password reset failed" });
   }
   redirect(loginUrl({ notice: "password-updated" }));
 }
@@ -126,7 +126,7 @@ export async function signOut() {
     const auth = await getAuth();
     await auth.signOut();
   } catch (error) {
-    console.error("Sign-out failed", error);
+    reportError(error, { message: "Sign-out failed" });
   }
   redirect("/login");
 }
