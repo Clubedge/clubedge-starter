@@ -28,6 +28,7 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Email over SMTP, for any provider or a local inbox; development prints emails to the server log until SMTP is configured. <!-- clubedge:only email=smtp -->
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - Subscriptions with Stripe Checkout and the customer portal, kept in sync by verified webhooks, behind a provider-neutral payments interface. <!-- clubedge:only payments=stripe -->
+- Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss -->
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
 - A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release.
@@ -224,6 +225,8 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/email-resend/`: Resend email provider <!-- clubedge:only email=resend -->
 - `packages/payments/`: `PaymentProvider` interface, billing logic, and the subscription tables <!-- clubedge:only payments!=none -->
 - `packages/payments-stripe/`: Stripe payment provider <!-- clubedge:only payments=stripe -->
+- `packages/jobs/`: `JobQueue` interface, job definitions, and an in-memory queue for tests <!-- clubedge:only jobs!=none -->
+- `packages/jobs-pg-boss/`: pg-boss job queue <!-- clubedge:only jobs=pg-boss -->
 - `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
 - `.github/`: CI workflow, issue forms, and pull request template
 - `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides

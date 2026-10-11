@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
     // Vite resolves externals from this app, so it is also a direct dependency here.
     environments: { ssr: { resolve: { external: ["use-sync-external-store"] } } },
     // The Start plugin must come before the React plugin.
-    plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
+    // Nitro runs the plugins in src/nitro/plugins once when the server starts.
+    plugins: [tailwindcss(), tanstackStart(), nitro({ serverDir: "./src/nitro" }), viteReact()],
   };
 });

@@ -51,6 +51,10 @@ import { getPageUser } from "@/server/auth.functions";
 import { BillingCard } from "@/components/billing/billing-card";
 import { getBillingStatus } from "@/server/billing.functions";
 // clubedge:end
+// clubedge:if jobs!=none
+import { JobsCard } from "@/components/jobs/jobs-card";
+import { getJobsStatus } from "@/server/jobs.functions";
+// clubedge:end
 import { AccountButton } from "@/components/dashboard/account-button";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -115,6 +119,9 @@ export const Route = createFileRoute("/dashboard")({
     user: await getPageUser({ data: { pathname: "/dashboard" } }),
     // clubedge:if payments!=none
     billing: await getBillingStatus(),
+    // clubedge:end
+    // clubedge:if jobs!=none
+    jobs: await getJobsStatus(),
     // clubedge:end
   }),
   component: DashboardPage,
@@ -255,6 +262,10 @@ function DashboardPage() {
 
           {/* clubedge:if payments!=none */}
           <BillingCard billing={data.billing} />
+          {/* clubedge:end */}
+
+          {/* clubedge:if jobs!=none */}
+          <JobsCard status={data.jobs} />
           {/* clubedge:end */}
 
           <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" id="modules">
