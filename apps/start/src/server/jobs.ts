@@ -53,15 +53,27 @@ export function getJobs(): JobQueue {
 
 /** Starts the worker when this server should run one, retrying until the database answers. */
 export function startJobsWorker() {
-  if (!isWorkerEnabled()) return;
+  let jobs: JobQueue;
+  try {
+    if (!isWorkerEnabled()) return;
+    jobs = getJobs();
+  } catch (error) {
+    // Invalid configuration, such as a missing DATABASE_URL, is reported once; the rest of the
+    // app keeps serving instead of failing to start.
+    reportError(error, { message: "Background jobs: the worker did not start." });
+    return;
+  }
   const start = () =>
-    getJobs()
-      .startWorker()
-      .catch((error: unknown) => {
-        reportError(error, {
-          message: "Background jobs: the worker could not start, retrying in 5 seconds.",
-        });
-        setTimeout(start, 5_000).unref();
+    jobs.startWorker().catch((error: unknown) => {
+      reportError(error, {
+        message: "Background jobs: the worker could not start, retrying in 5 seconds.",
       });
+      setTimeout(start, 5_000).unref();
+    });
   void start();
+}
+
+/** Stops the worker, if this process created a queue. */
+export async function stopJobsWorker() {
+  await globalForJobs.clubedgeJobs?.stop();
 }

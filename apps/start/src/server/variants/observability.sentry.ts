@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 import { z } from "zod";
-import { setTelemetry } from "@clubedge/core";
+import { reportError, setTelemetry } from "@clubedge/core";
 import type { ObservabilityProvider } from "@clubedge/observability";
 import { createSentryObservability } from "@clubedge/observability-sentry";
 import { optional, parseEnv } from "@/env/server";
@@ -25,7 +25,15 @@ const globalForObservability = globalThis as typeof globalThis & {
 export function startObservability(): ObservabilityProvider | null {
   if (globalForObservability.clubedgeObservability !== undefined)
     return globalForObservability.clubedgeObservability;
-  const env = parseEnv(observabilityEnvSchema, "Observability");
+  let env: z.infer<typeof observabilityEnvSchema>;
+  try {
+    env = parseEnv(observabilityEnvSchema, "Observability");
+  } catch (error) {
+    // An invalid variable leaves observability off rather than stopping the server.
+    reportError(error, { message: "Observability did not start." });
+    globalForObservability.clubedgeObservability = null;
+    return null;
+  }
   const provider = env.SENTRY_DSN
     ? createSentryObservability({
         dsn: env.SENTRY_DSN,
