@@ -100,10 +100,9 @@ jobs:
           echo "The container did not become healthy."
           exit 1
 
-  # Generates a project per deployment platform and checks its config: Vercel's against its
-  # published schema, the others on the fields that matter. TanStack Start projects for
-  # serverless platforms also build with that platform's preset. The image's migrator itself is
-  # exercised by the docker jobs.
+  # Generates a project per deployment platform and checks the fields that matter in its config.
+  # TanStack Start projects for serverless platforms also build with that platform's preset. The
+  # image's migrator itself is exercised by the docker jobs.
   deploy-config:
     name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }})
     runs-on: ubuntu-latest
@@ -181,8 +180,13 @@ jobs:
           PY
               ;;
             vercel)
-              curl --fail --silent --show-error https://openapi.vercel.sh/vercel.json > "$RUNNER_TEMP/schema.json"
-              npx --yes ajv-cli@5 validate --strict=false -s "$RUNNER_TEMP/schema.json" -d apps/web/vercel.json
+              FRAMEWORK=${{ matrix.framework }} python3 - <<'PY'
+          import json, os
+          config = json.load(open("apps/web/vercel.json"))
+          expected = "nextjs" if os.environ["FRAMEWORK"] == "next" else None
+          assert config["framework"] == expected, config
+          assert config["buildCommand"].startswith("pnpm --dir ../.. db:migrate && "), config
+          PY
               ;;
             netlify)
               python3 - <<'PY'
