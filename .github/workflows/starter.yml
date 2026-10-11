@@ -306,6 +306,20 @@ jobs:
           pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
           trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
           node "$RUNNER_TEMP/cli/scripts/smoke-generated-app.mjs"
+      # Pages that need no database must keep working when it is not configured, so a mistake
+      # in the environment never takes the whole app down at startup.
+      - name: Serve pages without a database configured
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          set -euo pipefail
+          DATABASE_URL= PORT=3100 pnpm start > "$RUNNER_TEMP/no-database.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/no-database.log"' EXIT
+          for attempt in $(seq 1 60); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:3100/api/health && break
+            sleep 1
+          done
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3100/api/health
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3100/
 
   # Signs up, out, and back in through the real forms, with Better Auth on PostgreSQL.
   better-auth-flow:

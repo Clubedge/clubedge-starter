@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { setTelemetry } from "@clubedge/core";
+import { reportError, setTelemetry } from "@clubedge/core";
 import type { ObservabilityProvider } from "@clubedge/observability";
 import { createOtelObservability, parseOtlpHeaders } from "@clubedge/observability-otel";
 import { siteConfig } from "@/config/site";
@@ -22,7 +22,15 @@ const globalForObservability = globalThis as typeof globalThis & {
 export function startObservability(): ObservabilityProvider | null {
   if (globalForObservability.clubedgeObservability !== undefined)
     return globalForObservability.clubedgeObservability;
-  const env = parseEnv(observabilityEnvSchema, "Observability");
+  let env: z.infer<typeof observabilityEnvSchema>;
+  try {
+    env = parseEnv(observabilityEnvSchema, "Observability");
+  } catch (error) {
+    // An invalid variable leaves observability off rather than stopping the server.
+    reportError(error, { message: "Observability did not start." });
+    globalForObservability.clubedgeObservability = null;
+    return null;
+  }
   const provider = env.OTEL_EXPORTER_OTLP_ENDPOINT
     ? createOtelObservability({
         endpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT,
