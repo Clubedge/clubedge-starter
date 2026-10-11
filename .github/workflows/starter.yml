@@ -180,7 +180,7 @@ jobs:
       - name: Generate the project
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
-            --framework ${{ matrix.framework }} --auth better-auth --no-git --no-install --yes
+            --framework ${{ matrix.framework }} --auth better-auth --infra none --no-git --no-install --yes
       - name: Install and migrate
         working-directory: ${{ runner.temp }}/generated-app
         run: |
