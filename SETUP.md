@@ -46,6 +46,7 @@ The variables are:
 - `SMTP_URL` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=resend -->
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_<PLAN>` (for payments): see [Payments](#payments). <!-- clubedge:only payments=stripe -->
+- `JOBS_WORKER` and `CRON_SECRET` (optional): see [Background jobs](#background-jobs). <!-- clubedge:only jobs=pg-boss -->
 - `STORAGE_*` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=supabase -->
 
@@ -237,6 +238,33 @@ Turn on the customer portal in the dashboard's billing settings, so "Manage bill
 Payments go through the provider-neutral `PaymentProvider` interface in `packages/payments`. To use another provider, implement that interface in a new package and return it from `apps/web/src/server/payments.ts`; billing logic, the tables, the routes, and the billing card stay the same.
 
 <!-- clubedge:end -->
+<!-- clubedge:if jobs=pg-boss -->
+
+## Background jobs
+
+Jobs run outside requests, with retries, in a worker that starts inside the app server: `pnpm dev` and the production server both run it, so there is no separate process to deploy. [pg-boss](https://github.com/timgit/pg-boss) stores them in your PostgreSQL, and creates and upgrades its own tables in the `pgboss` schema when the app starts.
+
+Define a job in `apps/web/src/jobs` and add it to the list in `apps/web/src/jobs/index.ts`:
+
+```ts
+import { defineJob } from "@clubedge/jobs";
+
+export const welcomeEmail = defineJob<{ userId: string }>({
+  name: "welcome-email",
+  retryLimit: 3,
+  async run({ userId }) {
+    // Look the user up and send the email.
+  },
+});
+```
+
+Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own.
+
+Where no server keeps running, as on Vercel and Netlify, there is no worker: `JOBS_WORKER` defaults to `off` there, and you can set it yourself anywhere. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` every minute or so with the header `Authorization: Bearer <CRON_SECRET>`, from Vercel Cron, a Netlify scheduled function, or any scheduler. Each call runs the jobs that are due. Scheduled jobs need a worker.
+
+Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`. To use another queue, implement that interface in a new package and return it from `apps/web/src/server/jobs.ts`; job definitions, the routes, and the jobs card stay the same.
+
+<!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
 
 ## File storage
@@ -338,6 +366,8 @@ Render runs `node /app/migrate.mjs` as the pre-deploy command before each deploy
 
 Vercel has no step that runs before a release, so the build command applies migrations (`pnpm db:migrate`) against the `DATABASE_URL` of the deployment's environment. Give Preview deployments their own database, or remove the migration step from `buildCommand` and run migrations yourself. Serverless functions open a connection per instance: use your provider's pooled connection URL (for example Supabase's transaction pooler or Neon's pooled endpoint).
 
+Vercel runs no worker for [background jobs](#background-jobs). Set `CRON_SECRET` and add `"crons": [{ "path": "/api/jobs/run", "schedule": "* * * * *" }]` to `vercel.json`; Vercel Cron sends the secret itself. Cron jobs more frequent than daily need a paid Vercel plan; otherwise call the endpoint from another scheduler. <!-- clubedge:only jobs=pg-boss -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=netlify -->
 
@@ -345,6 +375,8 @@ Vercel has no step that runs before a release, so the build command applies migr
 `apps/web/netlify.toml` deploys the app to [Netlify](https://www.netlify.com). Import the repository, set the site's Base directory to `apps/web`, add the production variables listed below, and deploy. The build detects Netlify and writes its functions and static assets. <!-- clubedge:only framework=tanstack-start -->
 
 Netlify has no step that runs before a release, so the build command applies migrations (`pnpm db:migrate`) against the `DATABASE_URL` of the deploy context. Give deploy previews their own database, or remove the migration step from the build command and run migrations yourself. Serverless functions open a connection per instance: use your provider's pooled connection URL (for example Supabase's transaction pooler or Neon's pooled endpoint).
+
+Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER=off` and `CRON_SECRET`, then call `/api/jobs/run` every minute from a [scheduled function](https://docs.netlify.com/build/functions/scheduled-functions/) or another scheduler, with the header `Authorization: Bearer <CRON_SECRET>`. <!-- clubedge:only jobs=pg-boss -->
 
 <!-- clubedge:end -->
 
@@ -371,6 +403,7 @@ Production needs these variables:
 - `RESEND_API_KEY` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=resend -->
 - `STRIPE_SECRET_KEY` (live mode), `STRIPE_WEBHOOK_SECRET` from the production webhook endpoint, and `STRIPE_PRICE_<PLAN>` for each plan. <!-- clubedge:only payments=stripe -->
 - `REDIS_URL`, when you run more than one instance. <!-- clubedge:only cache=redis -->
+- `CRON_SECRET`, where no worker runs and a scheduler calls `/api/jobs/run`. <!-- clubedge:only jobs=pg-boss -->
 - The `STORAGE_*` variables for your S3-compatible bucket. <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET`. <!-- clubedge:only storage=supabase -->
 

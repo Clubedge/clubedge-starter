@@ -239,7 +239,7 @@ jobs:
           - {
               name: next-supabase-storage,
               framework: next,
-              modules: --storage supabase --cache memory,
+              modules: --storage supabase --cache memory --jobs pg-boss,
             }
           - { name: start-default, framework: tanstack-start, modules: "" }
           - {
@@ -256,7 +256,7 @@ jobs:
           - {
               name: start-better-auth,
               framework: tanstack-start,
-              modules: --auth better-auth --cache memory,
+              modules: --auth better-auth --cache memory --jobs pg-boss,
             }
     name: generated-project (${{ matrix.name }})
     env:
@@ -367,27 +367,37 @@ jobs:
           - {
               infra: docker,
               framework: next,
-              modules: --auth better-auth --payments stripe,
+              modules: --auth better-auth --payments stripe --jobs pg-boss,
               mail-api: "http://127.0.0.1:8025",
             }
           - {
               infra: docker,
               framework: tanstack-start,
-              modules: --auth better-auth --payments stripe,
+              modules: --auth better-auth --payments stripe --jobs pg-boss,
               mail-api: "http://127.0.0.1:8025",
             }
-          - { infra: local, framework: next, modules: --auth better-auth, mail-api: "" }
-          - { infra: local, framework: tanstack-start, modules: --auth better-auth, mail-api: "" }
+          - {
+              infra: local,
+              framework: next,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
+          - {
+              infra: local,
+              framework: tanstack-start,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
           - {
               infra: supabase,
               framework: next,
-              modules: --auth supabase --storage supabase,
+              modules: --auth supabase --storage supabase --jobs pg-boss,
               mail-api: "http://127.0.0.1:54324",
             }
           - {
               infra: supabase,
               framework: tanstack-start,
-              modules: --auth supabase --storage supabase,
+              modules: --auth supabase --storage supabase --jobs pg-boss,
               mail-api: "http://127.0.0.1:54324",
             }
     env:
@@ -460,6 +470,11 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts
+      - name: Run a background job in the dev server's worker
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          E2E_DATABASE: "1"
+        run: pnpm test:e2e e2e/jobs.spec.ts
       - name: Sign in only after confirming the email address
         if: matrix.infra == 'docker'
         working-directory: ${{ runner.temp }}/generated-app

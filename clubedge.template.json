@@ -240,6 +240,39 @@
         }
       }
     },
+    "jobs": {
+      "name": "Background jobs",
+      "default": "none",
+      "options": {
+        "pg-boss": {
+          "name": "pg-boss (jobs stored in PostgreSQL)",
+          "packages": {
+            "@clubedge/jobs": "packages/jobs",
+            "@clubedge/jobs-pg-boss": "packages/jobs-pg-boss"
+          },
+          "files": [
+            "apps/start/src/components/jobs",
+            "apps/start/src/jobs",
+            "apps/start/src/nitro/plugins/jobs.ts",
+            "apps/start/src/routes/api/jobs",
+            "apps/start/src/routes/jobs",
+            "apps/start/src/server/jobs-forms.ts",
+            "apps/start/src/server/jobs.functions.ts",
+            "apps/start/src/server/jobs.ts",
+            "apps/web/src/app/api/jobs",
+            "apps/web/src/app/dashboard/_components/jobs-actions.ts",
+            "apps/web/src/app/dashboard/_components/jobs-card.tsx",
+            "apps/web/src/instrumentation.ts",
+            "apps/web/src/jobs",
+            "apps/web/src/server/jobs.ts",
+            "e2e/jobs.spec.ts"
+          ]
+        },
+        "none": {
+          "name": "None"
+        }
+      }
+    },
     "infra": {
       "name": "Local infrastructure",
       "default": "docker",
