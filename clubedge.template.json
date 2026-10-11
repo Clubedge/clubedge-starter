@@ -268,6 +268,14 @@
         "render": {
           "name": "Render",
           "files": ["render.yaml"]
+        },
+        "vercel": {
+          "name": "Vercel",
+          "files": ["apps/start/vercel.json", "apps/web/vercel.json"]
+        },
+        "netlify": {
+          "name": "Netlify",
+          "files": ["apps/start/netlify.toml", "apps/web/netlify.toml"]
         }
       }
     }

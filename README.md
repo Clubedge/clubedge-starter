@@ -33,6 +33,8 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `railway.json`: migrations run before each deploy. <!-- clubedge:only deploy=railway -->
 - Deployment to Render with a `render.yaml` Blueprint: migrations run before each deploy. <!-- clubedge:only deploy=render -->
+- Deployment to Vercel with `apps/web/vercel.json`: migrations run during the build. <!-- clubedge:only deploy=vercel -->
+- Deployment to Netlify with `apps/web/netlify.toml`: migrations run during the build. <!-- clubedge:only deploy=netlify -->
 
 ## Architecture
 

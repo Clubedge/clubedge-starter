@@ -22,3 +22,6 @@ supabase/.temp/
 supabase/.branches/
 # Local database and files for --infra local
 .data/
+# Build output of the Vercel and Netlify presets
+.vercel/
+.netlify/
