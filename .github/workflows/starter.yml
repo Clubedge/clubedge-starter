@@ -15,6 +15,22 @@ permissions:
 env:
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
 jobs:
+  # Unit tests on Windows: the local database server, folder storage (junctions instead of
+  # symlinks), and scripts must work for developers on Windows too.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
   tanstack-start:
     runs-on: ubuntu-latest
     env:
