@@ -258,6 +258,7 @@
             "apps/start/src/routes/jobs",
             "apps/start/src/server/jobs-forms.ts",
             "apps/start/src/server/jobs.functions.ts",
+            "apps/start/src/server/jobs.test.ts",
             "apps/start/src/server/jobs.ts",
             "apps/web/src/app/api/jobs",
             "apps/web/src/app/dashboard/_components/jobs-actions.ts",
@@ -285,6 +286,7 @@
           },
           "files": [
             "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/server/observability.test.ts",
             "apps/start/src/server/observability.ts",
             "apps/web/src/instrumentation.ts",
             "apps/web/src/server/observability.ts",
@@ -300,6 +302,7 @@
           },
           "files": [
             "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/server/observability.test.ts",
             "apps/start/src/server/observability.ts",
             "apps/web/src/instrumentation.ts",
             "apps/web/src/server/observability.ts",
