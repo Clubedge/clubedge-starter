@@ -1,0 +1,22 @@
+{
+  "name": "@clubedge/email-smtp",
+  "version": "0.8.0",
+  "description": "SMTP provider for @clubedge/email, for any SMTP server.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/email": "workspace:*",
+    "nodemailer": "^10.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

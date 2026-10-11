@@ -1,0 +1,18 @@
+{
+  "name": "@clubedge/email",
+  "version": "0.8.0",
+  "description": "Email interface, console and in-memory providers, and message templates.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

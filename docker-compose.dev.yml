@@ -37,6 +37,19 @@ services:
     ports:
       - "127.0.0.1:9090:9090"
   # clubedge:end
+  # clubedge:if email=smtp
+  # Catches every email the app sends over SMTP; read them at http://localhost:8025.
+  mail:
+    image: axllent/mailpit:v1
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  # clubedge:end
 
 volumes:
   postgres-data:

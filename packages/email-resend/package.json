@@ -1,0 +1,21 @@
+{
+  "name": "@clubedge/email-resend",
+  "version": "0.8.0",
+  "description": "Resend provider for @clubedge/email, through Resend's HTTP API.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/email": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

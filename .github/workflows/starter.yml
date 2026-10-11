@@ -94,7 +94,7 @@ jobs:
           - {
               name: next-minimal,
               framework: next,
-              modules: --auth none --storage none --cache memory,
+              modules: --auth none --storage none --cache memory --email none,
             }
           - {
               name: next-supabase-storage,
@@ -105,10 +105,14 @@ jobs:
           - {
               name: start-minimal,
               framework: tanstack-start,
-              modules: --auth none --storage none --cache memory,
+              modules: --auth none --storage none --cache memory --email none,
             }
           - { name: start-supabase-storage, framework: tanstack-start, modules: --storage supabase }
-          - { name: next-better-auth, framework: next, modules: --auth better-auth --storage none }
+          - {
+              name: next-better-auth,
+              framework: next,
+              modules: --auth better-auth --storage none --email resend,
+            }
           - {
               name: start-better-auth,
               framework: tanstack-start,

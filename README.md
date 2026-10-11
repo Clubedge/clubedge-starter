@@ -23,6 +23,8 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Supabase Storage adapter that uses the signed-in user's session. <!-- clubedge:only storage=supabase -->
 - Fixed-window rate limiter and cache on Redis, falling back to process memory without `REDIS_URL`. <!-- clubedge:only cache=redis -->
 - Fixed-window rate limiter and cache in process memory, suited to a single server instance. <!-- clubedge:only cache=memory -->
+- Email over SMTP, for any provider or a local inbox; development prints emails to the server log until SMTP is configured. <!-- clubedge:only email=smtp -->
+- Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
 
@@ -46,6 +48,12 @@ flowchart TB
   %% clubedge:end
   %% clubedge:if cache=redis
   App -->|cache and rate limits| Redis[(Redis, or memory)]
+  %% clubedge:end
+  %% clubedge:if email=smtp
+  App -->|email interface| SMTP[SMTP server, or the log]
+  %% clubedge:end
+  %% clubedge:if email=resend
+  App -->|email interface| Resend[Resend, or the log]
   %% clubedge:end
   %% clubedge:if storage=s3
   App -->|storage interface| S3[S3-compatible storage: AWS S3, R2, MinIO]
@@ -201,6 +209,9 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/storage-supabase/`: Supabase Storage adapter <!-- clubedge:only storage=supabase -->
 - `packages/cache/`: `Cache` and `RateLimiter` interfaces with in-memory implementations
 - `packages/cache-redis/`: Redis rate limiter and cache <!-- clubedge:only cache=redis -->
+- `packages/email/`: `EmailProvider` interface with console and in-memory providers <!-- clubedge:only email!=none -->
+- `packages/email-smtp/`: SMTP email provider <!-- clubedge:only email=smtp -->
+- `packages/email-resend/`: Resend email provider <!-- clubedge:only email=resend -->
 - `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
 - `.github/`: CI workflow, issue forms, and pull request template
 - `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides

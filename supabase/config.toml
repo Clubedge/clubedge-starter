@@ -15,6 +15,10 @@ port = 54323
 # Captures sign-up and password emails locally; open it from `pnpm infra:status`.
 [inbucket]
 port = 54324
+# clubedge:if email=smtp
+# The app's own email goes to the same inbox over SMTP.
+smtp_port = 54325
+# clubedge:end
 
 [auth]
 site_url = "http://localhost:3000"
