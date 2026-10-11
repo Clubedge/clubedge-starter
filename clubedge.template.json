@@ -249,6 +249,27 @@
           }
         }
       }
+    },
+    "deploy": {
+      "name": "Deployment",
+      "default": "docker",
+      "options": {
+        "docker": {
+          "name": "Docker image, on any container host"
+        },
+        "fly": {
+          "name": "Fly.io",
+          "files": ["fly.toml"]
+        },
+        "railway": {
+          "name": "Railway",
+          "files": ["railway.json"]
+        },
+        "render": {
+          "name": "Render",
+          "files": ["render.yaml"]
+        }
+      }
     }
   },
   "conditional": [
@@ -271,6 +292,7 @@
     "apps/web/src/server/auth-email.ts",
     "apps/web/src/server/storage.ts",
     "docker-compose.dev.yml",
+    "render.yaml",
     "supabase/config.toml"
   ],
   "exclude": [

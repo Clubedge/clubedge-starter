@@ -27,5 +27,11 @@
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "clubedge": {
+    "migrations": {
+      "folder": "drizzle",
+      "table": "__drizzle_migrations_better_auth"
+    }
   }
 }

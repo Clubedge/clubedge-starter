@@ -29,6 +29,10 @@ This repository contains the same application for two frameworks, Next.js (`apps
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - Zod environment validation, security headers, structured errors, and `/api/health`.
 - Docker support, GitHub Actions CI, Vitest, Playwright, ESLint, and Prettier.
+- A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release.
+- Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
+- Deployment to Railway with `railway.json`: migrations run before each deploy. <!-- clubedge:only deploy=railway -->
+- Deployment to Render with a `render.yaml` Blueprint: migrations run before each deploy. <!-- clubedge:only deploy=render -->
 
 ## Architecture
 
