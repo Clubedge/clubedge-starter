@@ -14,6 +14,9 @@ import { createSmtpEmail } from "@clubedge/email-smtp";
 // clubedge:if email=resend
 import { createResendEmail } from "@clubedge/email-resend";
 // clubedge:end
+// clubedge:if payments=stripe
+import { createStripePayments } from "@clubedge/payments-stripe";
+// clubedge:end
 // clubedge:if storage=s3 && infra=local
 import { createFileSystemStorage } from "@clubedge/storage/file-system";
 // clubedge:end
@@ -97,6 +100,23 @@ async function main() {
         });
         await email.verify();
         return "API key accepted";
+      },
+    },
+    // clubedge:end
+    // clubedge:if payments=stripe
+    {
+      name: "Payments (Stripe)",
+      skip: env.STRIPE_SECRET_KEY ? undefined : "STRIPE_SECRET_KEY is not set",
+      async run() {
+        // A read-only request that checks the key; nothing is charged or created.
+        const stripe = createStripePayments({
+          secretKey: env.STRIPE_SECRET_KEY!,
+          webhookSecret: env.STRIPE_WEBHOOK_SECRET || "unused",
+          prices: {},
+          apiBase: env.STRIPE_API_BASE || undefined,
+        });
+        await stripe.verify();
+        return "secret key accepted";
       },
     },
     // clubedge:end

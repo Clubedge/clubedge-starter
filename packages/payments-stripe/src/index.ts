@@ -12,8 +12,21 @@ export interface StripePaymentsConfig {
   webhookSecret: string;
   /** The app's plan ids mapped to Stripe price ids, such as { pro: "price_..." }. */
   prices: Record<string, string>;
+  /** Sends API requests to another server, such as stripe-mock or a test double. */
+  apiBase?: string;
   /** For tests: a client to use instead of one created from the secret key. */
   client?: Stripe;
+}
+
+function createClient(secretKey: string, apiBase: string | undefined) {
+  if (!apiBase) return new Stripe(secretKey);
+  const url = new URL(apiBase);
+  const https = url.protocol === "https:";
+  return new Stripe(secretKey, {
+    host: url.hostname,
+    port: Number(url.port) || (https ? 443 : 80),
+    protocol: https ? "https" : "http",
+  });
 }
 
 const SUBSCRIPTION_EVENTS = new Set([
@@ -43,9 +56,13 @@ export function createStripePayments({
   secretKey,
   webhookSecret,
   prices,
+  apiBase,
   client,
-}: StripePaymentsConfig): PaymentProvider {
-  const stripe = client ?? new Stripe(secretKey);
+}: StripePaymentsConfig): PaymentProvider & {
+  /** Checks the secret key with a read-only request, for `pnpm check:services`. */
+  verify(): Promise<void>;
+} {
+  const stripe = client ?? createClient(secretKey, apiBase);
   const plansByPrice = new Map(Object.entries(prices).map(([plan, price]) => [price, plan]));
 
   function snapshot(subscription: Stripe.Subscription): SubscriptionSnapshot {
@@ -65,6 +82,10 @@ export function createStripePayments({
 
   return {
     id: "stripe",
+
+    async verify() {
+      await stripe.balance.retrieve();
+    },
 
     async createCheckout({ userId, email, planId, successUrl, cancelUrl, customerId }) {
       const price = prices[planId];

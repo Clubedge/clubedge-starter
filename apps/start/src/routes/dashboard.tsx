@@ -47,6 +47,10 @@ import {
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/components/sidebar";
 import { siteConfig } from "@/config/site";
 import { getPageUser } from "@/server/auth.functions";
+// clubedge:if payments!=none
+import { BillingCard } from "@/components/billing/billing-card";
+import { getBillingStatus } from "@/server/billing.functions";
+// clubedge:end
 import { AccountButton } from "@/components/dashboard/account-button";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
@@ -107,12 +111,18 @@ const setupRows = [
 ];
 
 export const Route = createFileRoute("/dashboard")({
-  loader: () => getPageUser({ data: { pathname: "/dashboard" } }),
+  loader: async () => ({
+    user: await getPageUser({ data: { pathname: "/dashboard" } }),
+    // clubedge:if payments!=none
+    billing: await getBillingStatus(),
+    // clubedge:end
+  }),
   component: DashboardPage,
 });
 
 function DashboardPage() {
-  const user = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  const user = data.user;
 
   return (
     <SidebarProvider defaultOpen>
@@ -242,6 +252,10 @@ function DashboardPage() {
               </CardContent>
             </Card>
           </section>
+
+          {/* clubedge:if payments!=none */}
+          <BillingCard billing={data.billing} />
+          {/* clubedge:end */}
 
           <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" id="modules">
             <Card className="gap-0 py-0">

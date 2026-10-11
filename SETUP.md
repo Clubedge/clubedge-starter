@@ -45,6 +45,7 @@ The variables are:
 - `REDIS_URL` (optional): see [Redis](#redis). <!-- clubedge:only cache=redis -->
 - `SMTP_URL` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=resend -->
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_<PLAN>` (for payments): see [Payments](#payments). <!-- clubedge:only payments=stripe -->
 - `STORAGE_*` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=supabase -->
 
@@ -209,6 +210,33 @@ Set `RESEND_API_KEY` to a [Resend](https://resend.com) API key and `EMAIL_FROM` 
 Without a provider configured, development prints each email to the server log, so you can open links from the terminal, and production refuses to send. `pnpm check:services` confirms that the provider accepts the settings without sending anything.
 
 <!-- clubedge:end -->
+<!-- clubedge:if payments!=none -->
+
+## Payments
+
+The plans users can buy are in `apps/web/src/config/plans.ts`, with the app's own ids. The dashboard's billing card offers checkout for each plan, then shows the subscription and opens billing management. Server code reads a user's plan with `getBilling().subscriptionFor(userId)` and `isEntitled` from `@/server/payments`, and the `subscriptions` table keeps it in sync through the provider's webhook at `/api/webhooks/payments`.
+
+<!-- clubedge:end -->
+<!-- clubedge:if payments=stripe -->
+
+[Stripe](https://stripe.com) runs checkout and billing management. In test mode:
+
+1. Copy the secret key from the dashboard's API keys into `STRIPE_SECRET_KEY`.
+2. Create a recurring price for each plan and put its id in `STRIPE_PRICE_<PLAN>`, such as `STRIPE_PRICE_PRO`.
+3. Forward webhooks to your machine with the [Stripe CLI](https://docs.stripe.com/stripe-cli), and put the signing secret it prints in `STRIPE_WEBHOOK_SECRET`:
+
+```sh
+stripe listen --forward-to localhost:3000/api/webhooks/payments
+```
+
+Turn on the customer portal in the dashboard's billing settings, so "Manage billing" works. In production, add a webhook endpoint for `https://<your-domain>/api/webhooks/payments` with the events `checkout.session.completed` and `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, and `.resumed`, and use its signing secret. Every webhook's signature is verified, each event is applied once, and subscription events read the subscription's current state from Stripe, so retried or out-of-order deliveries are safe.
+
+<!-- clubedge:end -->
+<!-- clubedge:if payments!=none -->
+
+Payments go through the provider-neutral `PaymentProvider` interface in `packages/payments`. To use another provider, implement that interface in a new package and return it from `apps/web/src/server/payments.ts`; billing logic, the tables, the routes, and the billing card stay the same.
+
+<!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
 
 ## File storage
@@ -341,6 +369,7 @@ Production needs these variables:
 - `BETTER_AUTH_SECRET`, at least 32 random characters, different from development. <!-- clubedge:only auth=better-auth -->
 - `SMTP_URL` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=resend -->
+- `STRIPE_SECRET_KEY` (live mode), `STRIPE_WEBHOOK_SECRET` from the production webhook endpoint, and `STRIPE_PRICE_<PLAN>` for each plan. <!-- clubedge:only payments=stripe -->
 - `REDIS_URL`, when you run more than one instance. <!-- clubedge:only cache=redis -->
 - The `STORAGE_*` variables for your S3-compatible bucket. <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET`. <!-- clubedge:only storage=supabase -->

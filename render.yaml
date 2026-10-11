@@ -44,6 +44,14 @@ services:
       - key: EMAIL_FROM
         sync: false
       # clubedge:end
+      # clubedge:if payments=stripe
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      # clubedge:end
       # clubedge:if cache=redis
       - key: REDIS_URL
         sync: false

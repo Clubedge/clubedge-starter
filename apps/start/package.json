@@ -22,6 +22,8 @@
     "@clubedge/email": "workspace:*",
     "@clubedge/email-resend": "workspace:*",
     "@clubedge/email-smtp": "workspace:*",
+    "@clubedge/payments": "workspace:*",
+    "@clubedge/payments-stripe": "workspace:*",
     "@clubedge/storage": "workspace:*",
     "@clubedge/storage-s3": "workspace:*",
     "@clubedge/storage-supabase": "workspace:*",
