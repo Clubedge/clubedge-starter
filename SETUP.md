@@ -262,6 +262,62 @@ pnpm docker:start
 The image runs the Next.js standalone output as an unprivileged user. Ensure the configured database and provider hosts are reachable from the container. <!-- clubedge:only framework=next -->
 The image runs the self-contained Nitro server bundle as an unprivileged user, with no `node_modules`. Ensure the configured database and provider hosts are reachable from the container. <!-- clubedge:only framework=tanstack-start -->
 
+The image also contains the production migrator, which applies every package's migrations with only `DATABASE_URL`:
+
+```sh
+docker run --rm --env DATABASE_URL="postgresql://..." <image> node /app/migrate.mjs
+```
+
+Run it before a new version starts serving; it skips migrations that are already applied.
+
+## Deploy
+
+<!-- clubedge:if deploy=docker -->
+
+Run the production image on any host or orchestrator that runs containers: build it with `pnpm docker:build` or in CI, push it to a registry, and start it with the production environment. Before each release, run the migrator above as a one-off task (a Kubernetes Job, an ECS task, or `docker run`), then roll out the new containers. Point the platform's health check at `/api/health`.
+
+<!-- clubedge:end -->
+<!-- clubedge:if deploy=fly -->
+
+`fly.toml` deploys the production image to [Fly.io](https://fly.io):
+
+```sh
+fly launch --no-deploy        # creates the app; keep the existing fly.toml
+fly secrets set DATABASE_URL="postgresql://..."
+fly deploy
+```
+
+Set the other production variables listed below with `fly secrets set`. Each deploy runs `node /app/migrate.mjs` as its release command, in a temporary machine, before the new version replaces the old one; a failed migration stops the deploy. Health checks call `/api/health`.
+
+<!-- clubedge:end -->
+<!-- clubedge:if deploy=railway -->
+
+`railway.json` deploys the production image to [Railway](https://railway.com): create a project from this repository, add the production variables listed below to the service, and deploy. Railway runs `node /app/migrate.mjs` as the pre-deploy command, so a failed migration stops the release, and checks `/api/health` before switching traffic.
+
+<!-- clubedge:end -->
+<!-- clubedge:if deploy=render -->
+
+`render.yaml` is a [Render](https://render.com) Blueprint: in the dashboard, choose New, then Blueprint, and select this repository. Render asks for each variable marked `sync: false` and generates `BETTER_AUTH_SECRET`. <!-- clubedge:only auth=better-auth -->
+`render.yaml` is a [Render](https://render.com) Blueprint: in the dashboard, choose New, then Blueprint, and select this repository. Render asks for each variable marked `sync: false`. <!-- clubedge:only auth!=better-auth -->
+
+Render runs `node /app/migrate.mjs` as the pre-deploy command before each deploy goes live, and a failed migration stops the deploy. Pre-deploy commands need a paid instance type. On the free type, remove `preDeployCommand` from `render.yaml` and apply migrations yourself before deploying, from your machine or CI, with `DATABASE_URL` set to the production database: `pnpm db:migrate`, or the migrator in the image as shown above. Health checks call `/api/health`.
+
+<!-- clubedge:end -->
+
+Production needs these variables:
+
+- `DATABASE_URL`, pointing at a managed PostgreSQL database.
+- `NEXT_PUBLIC_APP_URL`, the deployed origin. <!-- clubedge:only framework=next -->
+- `APP_URL`, the deployed origin. <!-- clubedge:only framework=tanstack-start -->
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=next && auth=supabase -->
+- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=tanstack-start && auth=supabase -->
+- `BETTER_AUTH_SECRET`, at least 32 random characters, different from development. <!-- clubedge:only auth=better-auth -->
+- `SMTP_URL` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=smtp -->
+- `RESEND_API_KEY` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=resend -->
+- `REDIS_URL`, when you run more than one instance. <!-- clubedge:only cache=redis -->
+- The `STORAGE_*` variables for your S3-compatible bucket. <!-- clubedge:only storage=s3 -->
+- `SUPABASE_STORAGE_BUCKET`. <!-- clubedge:only storage=supabase -->
+
 ## Checks
 
 Run the checks relevant to your change before opening a pull request:

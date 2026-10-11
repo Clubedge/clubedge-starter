@@ -58,10 +58,28 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Build the production image
         run: docker build --tag app:ci .
+      - name: Run the image's migrations twice; the second run changes nothing
+        run: |
+          set -euo pipefail
+          for run in 1 2; do
+            docker run --rm --network host               --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app               app:ci node /app/migrate.mjs
+          done
+          PGPASSWORD=postgres psql --host 127.0.0.1 --username postgres --dbname app             --command "select count(*) from public.users"
       - name: Start the image and check health
         run: |
           set -euo pipefail

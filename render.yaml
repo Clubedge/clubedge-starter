@@ -1,0 +1,66 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec). Create it from the dashboard with
+# New > Blueprint; Render asks for every variable marked sync: false.
+services:
+  - type: web
+    name: app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    # Applies migrations before each deploy goes live. Pre-deploy commands need a paid instance
+    # type; on the free type, remove this line and migrate before deploying (see SETUP.md).
+    preDeployCommand: node /app/migrate.mjs
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL # clubedge:only framework=next
+        sync: false # clubedge:only framework=next
+      - key: APP_URL # clubedge:only framework=tanstack-start
+        sync: false # clubedge:only framework=tanstack-start
+      # clubedge:if auth=supabase && framework=next
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if auth=supabase && framework=tanstack-start
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if auth=better-auth
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # clubedge:end
+      # clubedge:if email=smtp
+      - key: SMTP_URL
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # clubedge:end
+      # clubedge:if email=resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # clubedge:end
+      # clubedge:if cache=redis
+      - key: REDIS_URL
+        sync: false
+      # clubedge:end
+      # clubedge:if storage=s3
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if storage=supabase
+      - key: SUPABASE_STORAGE_BUCKET
+        sync: false
+      # clubedge:end

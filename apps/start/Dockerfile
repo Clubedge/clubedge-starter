@@ -25,6 +25,10 @@ COPY --from=deps /app/ .
 COPY --from=pruner /app/out/full/ .
 COPY tsconfig.base.json ./
 RUN pnpm build
+# The production migrator (node /app/migrate.mjs): one bundled file plus every package's
+# migrations, so release commands can migrate before a new version starts.
+COPY scripts/migrate.mjs scripts/build-migrator.mjs ./scripts/
+RUN node scripts/build-migrator.mjs /app/.migrator
 
 # Nitro bundles the server and its dependencies into .output, so no node_modules are needed.
 FROM node:22-alpine AS runner
@@ -33,6 +37,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 app
 COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/.output ./.output
+COPY --from=builder --chown=app:nodejs /app/.migrator ./
 USER app
 EXPOSE 3000
 CMD ["node", ".output/server/index.mjs"]
