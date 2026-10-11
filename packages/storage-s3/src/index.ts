@@ -13,6 +13,11 @@ export interface S3StorageConfig {
   bucket?: string;
   region: string;
   endpoint?: string;
+  /**
+   * Address buckets as https://endpoint/bucket rather than https://bucket.endpoint. Defaults to
+   * true with a custom endpoint, which local servers (s3mock), MinIO, and R2 all accept.
+   */
+  forcePathStyle?: boolean;
   accessKeyId?: string;
   secretAccessKey?: string;
   /** Public base URL for uploaded objects, such as a CDN or R2 public bucket. */
@@ -25,7 +30,7 @@ function bodyForS3(body: UploadInput["body"]) {
   return body;
 }
 
-/** Works with AWS S3 and S3-compatible services such as Cloudflare R2 and MinIO. */
+/** Works with AWS S3 and S3-compatible services such as Cloudflare R2, MinIO, and s3mock. */
 export function createS3Storage(config: S3StorageConfig): StorageProvider {
   let s3Client: S3Client | undefined;
 
@@ -33,6 +38,7 @@ export function createS3Storage(config: S3StorageConfig): StorageProvider {
     s3Client ??= new S3Client({
       region: config.region,
       ...(config.endpoint ? { endpoint: config.endpoint } : {}),
+      forcePathStyle: config.forcePathStyle ?? Boolean(config.endpoint),
       credentials:
         config.accessKeyId && config.secretAccessKey
           ? { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey }
