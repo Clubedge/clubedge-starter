@@ -111,6 +111,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { deploy: docker, framework: next }
           - { deploy: fly, framework: next }
           - { deploy: railway, framework: next }
           - { deploy: render, framework: next }
@@ -196,6 +197,15 @@ jobs:
           PY
               ;;
           esac
+      - name: Lint the deploy workflow
+        working-directory: ${{ runner.temp }}/app
+        run: |
+          set -euo pipefail
+          bash <(curl --fail --silent --show-error https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7 "$RUNNER_TEMP"
+          "$RUNNER_TEMP/actionlint" .github/workflows/deploy.yml
+          ! grep -n "clubedge:" .github/workflows/deploy.yml
+          # Exactly one job: the selected platform's.
+          test "$(grep -cE '^  [a-z]+:$' .github/workflows/deploy.yml)" = 1
       - name: Build with the platform's preset
         if: matrix.framework == 'tanstack-start'
         working-directory: ${{ runner.temp }}/app
@@ -442,13 +452,14 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm check:services
-      - name: Sign up, out, and in, and reset a password through the emailed link
+      - name: Sign up, out, and in, reset a password through the emailed link, and check readiness
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}
+          E2E_DATABASE: "1"
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts
+          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts
       - name: Sign in only after confirming the email address
         if: matrix.infra == 'docker'
         working-directory: ${{ runner.temp }}/generated-app

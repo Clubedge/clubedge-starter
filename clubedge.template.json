@@ -283,6 +283,7 @@
   "conditional": [
     ".env.example",
     ".github/workflows/ci.yml",
+    ".github/workflows/deploy.yml",
     "AGENTS.md",
     "README.md",
     "SETUP.md",
