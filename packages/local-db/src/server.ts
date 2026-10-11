@@ -43,6 +43,8 @@ export async function serveLocalPostgres(
   }
 
   async function run(socket: Socket, messages: Uint8Array[]) {
+    // Requests still queued when their client disconnected are dropped.
+    if (socket.destroyed) return;
     await acquire(socket);
     try {
       for (const message of messages) {
@@ -66,6 +68,8 @@ export async function serveLocalPostgres(
   }
 
   const sockets = new Set<Socket>();
+  // Settles once a connection's queued work, including its disconnect cleanup, has finished.
+  const connections = new Set<Promise<void>>();
   const server: Server = createServer((socket) => {
     sockets.add(socket);
     socket.setNoDelay(true);
@@ -118,11 +122,16 @@ export async function serveLocalPostgres(
       }
     });
 
-    socket.on("error", () => socket.destroy());
-    socket.on("close", () => {
-      sockets.delete(socket);
-      queue = queue.then(() => disconnect(socket)).catch(() => undefined);
+    const finished = new Promise<void>((resolve) => {
+      socket.on("close", () => {
+        sockets.delete(socket);
+        queue = queue.then(() => disconnect(socket)).catch(() => undefined);
+        void queue.then(resolve);
+      });
     });
+    connections.add(finished);
+    void finished.then(() => connections.delete(finished));
+    socket.on("error", () => socket.destroy());
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -133,10 +142,12 @@ export async function serveLocalPostgres(
 
   return {
     port: typeof address === "object" && address ? address.port : port,
-    close: () =>
-      new Promise<void>((resolve) => {
-        for (const socket of sockets) socket.destroy();
-        server.close(() => resolve());
-      }),
+    async close() {
+      const closed = new Promise<void>((resolve) => server.close(() => resolve()));
+      for (const socket of sockets) socket.destroy();
+      await closed;
+      // Let queued work and rollbacks finish, so the caller can then close PGlite safely.
+      await Promise.all(connections);
+    },
   };
 }

@@ -89,3 +89,31 @@ describe("serveLocalPostgres", () => {
     }
   });
 });
+
+describe("LocalPostgresServer.close", () => {
+  it("finishes the rollback of open transactions before it resolves", async () => {
+    const db = await PGlite.create();
+    const server = await serveLocalPostgres(db, { port: 0 });
+    const client = postgres(`postgresql://postgres:postgres@127.0.0.1:${server.port}/postgres`, {
+      max: 1,
+      prepare: false,
+    });
+    try {
+      const reserved = await client.reserve();
+      await reserved`begin`;
+      await reserved`create table pending (id int)`;
+      expect(db.isInTransaction()).toBe(true);
+
+      await server.close();
+
+      // The caller can close PGlite right away: nothing is left running on it.
+      expect(db.isInTransaction()).toBe(false);
+      expect((await db.query("select to_regclass('pending') as name")).rows).toEqual([
+        { name: null },
+      ]);
+    } finally {
+      await client.end({ timeout: 0 });
+      await db.close();
+    }
+  });
+});
