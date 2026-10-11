@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:services": "tsx scripts/check-services.ts"
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",
@@ -33,6 +34,7 @@
     "@tailwindcss/postcss": "^4.1.13",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "tailwindcss": "^4.1.13"
+    "tailwindcss": "^4.1.13",
+    "tsx": "^4.20.5"
   }
 }

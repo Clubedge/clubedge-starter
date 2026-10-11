@@ -13,7 +13,9 @@ export default defineConfig({
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     env: {
-      DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
+      // A placeholder unless set, so pages render without a database.
+      DATABASE_URL:
+        process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
       // Next.js reads NEXT_PUBLIC_APP_URL; TanStack Start reads APP_URL.
       NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000",
       APP_URL: "http://127.0.0.1:3000",

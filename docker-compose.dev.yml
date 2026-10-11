@@ -1,0 +1,42 @@
+# Local services for development. `pnpm infra:up` starts them and waits until they are ready,
+# `pnpm infra:down` stops them, and `pnpm infra:reset` also deletes their data. Ports listen on
+# 127.0.0.1 only. This file is for development; production uses managed services.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  # clubedge:if cache=redis
+  redis:
+    image: redis:8
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  # clubedge:end
+  # clubedge:if storage=s3
+  # S3-compatible storage for development, with the "app" bucket created at startup.
+  storage:
+    image: adobe/s3mock:5
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: app
+    ports:
+      - "127.0.0.1:9090:9090"
+  # clubedge:end
+
+volumes:
+  postgres-data:

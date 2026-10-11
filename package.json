@@ -27,7 +27,12 @@
     "test:e2e:ui": "playwright test --ui",
     "docker:dev": "docker compose up --build",
     "docker:build": "docker build -t clubedge-starter .",
-    "docker:start": "docker run --rm -p 3000:3000 --env-file apps/web/.env.local clubedge-starter"
+    "docker:start": "docker run --rm -p 3000:3000 --env-file apps/web/.env.local clubedge-starter",
+    "check:services": "pnpm --filter @clubedge/web check:services",
+    "infra:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "infra:down": "docker compose -f docker-compose.dev.yml down",
+    "infra:reset": "docker compose -f docker-compose.dev.yml down --volumes",
+    "infra:logs": "docker compose -f docker-compose.dev.yml logs --follow"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

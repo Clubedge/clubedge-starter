@@ -1,0 +1,40 @@
+# Local Supabase stack for development: `pnpm infra:up` runs `supabase start`, and
+# `pnpm infra:status` prints the local URLs and keys. Docs: https://supabase.com/docs/guides/local-development
+project_id = "clubedge-app"
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+major_version = 17
+
+[studio]
+port = 54323
+
+# Captures sign-up and password emails locally; open it from `pnpm infra:status`.
+[inbucket]
+port = 54324
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://127.0.0.1:3000/auth/callback"]
+
+[auth.email]
+# Sign-up signs the user in directly during local development.
+enable_confirmations = false
+
+# clubedge:if storage=supabase
+[storage.buckets.app]
+public = false
+# clubedge:end
+
+# Not used by the app; disabled so the stack starts faster.
+[realtime]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

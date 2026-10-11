@@ -160,6 +160,35 @@
           }
         }
       }
+    },
+    "infra": {
+      "name": "Local infrastructure",
+      "default": "docker",
+      "options": {
+        "docker": {
+          "name": "Docker Compose",
+          "files": ["docker-compose.dev.yml"],
+          "scripts": {
+            "infra:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+            "infra:down": "docker compose -f docker-compose.dev.yml down",
+            "infra:reset": "docker compose -f docker-compose.dev.yml down --volumes",
+            "infra:logs": "docker compose -f docker-compose.dev.yml logs --follow"
+          }
+        },
+        "supabase": {
+          "name": "Supabase CLI",
+          "files": ["supabase"],
+          "scripts": {
+            "infra:up": "npx --yes supabase@2 start",
+            "infra:down": "npx --yes supabase@2 stop",
+            "infra:reset": "npx --yes supabase@2 stop --no-backup",
+            "infra:status": "npx --yes supabase@2 status"
+          }
+        },
+        "none": {
+          "name": "None (bring your own services)"
+        }
+      }
     }
   },
   "conditional": [
@@ -169,12 +198,16 @@
     "README.md",
     "SETUP.md",
     "apps/start/.env.example",
+    "apps/start/scripts/check-services.ts",
     "apps/start/src/env/auth.ts",
     "apps/start/src/routes/dashboard.tsx",
     "apps/start/src/routes/index.tsx",
+    "apps/web/scripts/check-services.ts",
     "apps/web/src/app/dashboard/page.tsx",
     "apps/web/src/app/page.tsx",
-    "apps/web/src/env/auth.ts"
+    "apps/web/src/env/auth.ts",
+    "docker-compose.dev.yml",
+    "supabase/config.toml"
   ],
   "exclude": [
     ".github/workflows/starter.yml",

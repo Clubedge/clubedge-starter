@@ -31,7 +31,10 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
-The example file leaves provider URLs and keys blank so the app can build and start without connecting to real services. At minimum, set `DATABASE_URL`. The variables are:
+The example file points at the local services described in [Local services](#local-services) and leaves provider keys blank, so the app builds and starts before anything is configured. <!-- clubedge:only infra!=none -->
+The example file leaves provider URLs and keys blank so the app can build and start without connecting to real services. At minimum, set `DATABASE_URL`. <!-- clubedge:only infra=none -->
+
+The variables are:
 
 - `DATABASE_URL` (required): PostgreSQL connection URL, such as a Supabase transaction pooler URL.
 - `NEXT_PUBLIC_APP_URL` (recommended): the app's origin, defaulting to `http://localhost:3000`. <!-- clubedge:only framework=next -->
@@ -80,6 +83,45 @@ openssl rand -base64 32
 ```
 
 Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Sign-up signs the user in immediately; add email verification in `packages/auth-better-auth` if your application needs it. Signing in again on another device creates another session row, and signing out deletes it.
+
+<!-- clubedge:end -->
+
+## Local services
+
+<!-- clubedge:if infra=docker -->
+
+`docker-compose.dev.yml` runs the services this project uses on your machine, listening on `127.0.0.1` only. Install Docker Desktop (or Docker Engine with Compose), then:
+
+```sh
+pnpm infra:up      # start and wait until every service is healthy
+pnpm db:migrate    # create the tables
+pnpm check:services
+```
+
+- PostgreSQL 17 on port 5432, database `app`, user and password `postgres`. Data survives restarts in a Docker volume.
+- Redis on port 6379. <!-- clubedge:only cache=redis -->
+- S3-compatible storage (adobe/s3mock) on port 9090 with the bucket `app`. It accepts any credentials and is for development only. <!-- clubedge:only storage=s3 -->
+
+`pnpm infra:down` stops the services, `pnpm infra:reset` also deletes their data, and `pnpm infra:logs` follows their logs. The file is for development; in production, point the same variables at managed services.
+
+<!-- clubedge:end -->
+<!-- clubedge:if infra=supabase -->
+
+`supabase/config.toml` configures the Supabase CLI's local stack: PostgreSQL, Auth, Storage, the Studio dashboard, and an inbox that captures emails. The CLI runs it in Docker, so install Docker Desktop first. Then:
+
+```sh
+pnpm infra:up       # start the stack (the first run downloads its images)
+pnpm infra:status   # print the local URLs and keys
+pnpm db:migrate
+pnpm check:services
+```
+
+The database is on port 54322 and the API on port 54321, matching the example environment. Copy the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data.
+
+<!-- clubedge:end -->
+<!-- clubedge:if infra=none -->
+
+This project does not include local service definitions. Point `DATABASE_URL` and the provider variables at services you run yourself or at hosted ones, such as Supabase or Neon for PostgreSQL and Upstash for Redis, then run `pnpm check:services` to confirm the app can reach them.
 
 <!-- clubedge:end -->
 

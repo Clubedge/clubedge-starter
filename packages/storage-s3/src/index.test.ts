@@ -37,6 +37,28 @@ describe("createS3Storage", () => {
     expect(S3Client).toHaveBeenCalledTimes(1);
   });
 
+  it("uses path-style addressing with a custom endpoint unless told otherwise", async () => {
+    send.mockResolvedValue({});
+    await createS3Storage({ bucket: "files", region: "auto" }).delete("a.txt");
+    await createS3Storage({
+      bucket: "files",
+      region: "auto",
+      endpoint: "http://localhost:9090",
+    }).delete("a.txt");
+    await createS3Storage({
+      bucket: "files",
+      region: "auto",
+      endpoint: "https://r2.example",
+      forcePathStyle: false,
+    }).delete("a.txt");
+
+    expect(vi.mocked(S3Client).mock.calls.map(([options]) => options?.forcePathStyle)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+  });
+
   it("uploads to the configured bucket and builds the public URL", async () => {
     const storage = createS3Storage({
       bucket: "files",

@@ -93,7 +93,36 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
-Set `DATABASE_URL` in `apps/web/.env.local`, then start the app. [SETUP.md](SETUP.md) describes every variable and provider.
+<!-- clubedge:if infra=docker -->
+
+Start PostgreSQL and the other local services with Docker, apply the migrations, and check that the app can reach every service. The example environment already points at them.
+
+```sh
+pnpm infra:up
+pnpm db:migrate
+pnpm check:services
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if infra=supabase -->
+
+Start the local Supabase stack (it needs Docker), copy the publishable key that `pnpm infra:status` prints into `apps/web/.env.local`, and apply the migrations.
+
+```sh
+pnpm infra:up
+pnpm infra:status
+pnpm db:migrate
+pnpm check:services
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if infra=none -->
+
+Set `DATABASE_URL` and your providers' settings in `apps/web/.env.local`, then run `pnpm db:migrate` and `pnpm check:services`.
+
+<!-- clubedge:end -->
+
+Then start the app. [SETUP.md](SETUP.md) describes every variable and provider.
 
 ```sh
 pnpm dev
@@ -124,6 +153,14 @@ Run these from the repository root:
 | `pnpm db:seed`      | Seed the configured database.                  |
 
 Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically.
+
+Local services:
+
+- `pnpm check:services`: check every configured service with a real round trip.
+- `pnpm infra:up` and `pnpm infra:down`: start and stop the local services from `docker-compose.dev.yml`. <!-- clubedge:only infra=docker -->
+- `pnpm infra:reset`: stop them and delete their data. `pnpm infra:logs` follows their logs. <!-- clubedge:only infra=docker -->
+- `pnpm infra:up` and `pnpm infra:down`: start and stop the local Supabase stack. <!-- clubedge:only infra=supabase -->
+- `pnpm infra:status`: print its URLs and keys. `pnpm infra:reset` stops it and deletes its data. <!-- clubedge:only infra=supabase -->
 
 <!-- clubedge:if starter-repository -->
 
