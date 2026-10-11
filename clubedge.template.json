@@ -229,6 +229,7 @@
   ],
   "exclude": [
     ".github/workflows/starter.yml",
+    "ROADMAP.md",
     "clubedge.template.json",
     "scripts/template-manifest.test.ts"
   ]

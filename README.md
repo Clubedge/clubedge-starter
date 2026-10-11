@@ -7,7 +7,7 @@ Clubedge Starter is a production-oriented, modular React application foundation.
 
 <!-- clubedge:if starter-repository -->
 
-This repository contains the same application for two frameworks, Next.js (`apps/web`) and TanStack Start (`apps/start`), plus every optional module. [create-clubedge-app](https://github.com/Clubedge/create-clubedge-app) generates a project with one framework and only the modules you choose; sections of this README marked for a framework or module appear only in projects that use it. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist.
+This repository contains the same application for two frameworks, Next.js (`apps/web`) and TanStack Start (`apps/start`), plus every optional module. [create-clubedge-app](https://github.com/Clubedge/create-clubedge-app) generates a project with one framework and only the modules you choose; sections of this README marked for a framework or module appear only in projects that use it. Contributions and bug reports are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Repository maintainers can use [PUBLISHING.md](PUBLISHING.md) for the GitHub launch checklist, and [ROADMAP.md](ROADMAP.md) describes the planned phases.
 
 <!-- clubedge:end -->
 
