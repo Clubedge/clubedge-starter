@@ -205,6 +205,25 @@
         }
       }
     },
+    "payments": {
+      "name": "Payments",
+      "default": "none",
+      "options": {
+        "stripe": {
+          "name": "Stripe",
+          "packages": {
+            "@clubedge/payments": "packages/payments",
+            "@clubedge/payments-stripe": "packages/payments-stripe"
+          },
+          "requires": {
+            "auth": ["supabase", "better-auth"]
+          }
+        },
+        "none": {
+          "name": "None"
+        }
+      }
+    },
     "infra": {
       "name": "Local infrastructure",
       "default": "docker",
