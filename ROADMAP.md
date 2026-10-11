@@ -41,9 +41,19 @@ Every phase follows the rules the existing modules already follow:
 
 ## Phase 10.2: Observability
 
-**Module:** `observability`, with the options `sentry`, `otel` (OpenTelemetry export to any collector), and `none` (default). It covers error reporting from both frameworks, request tracing through the composition roots, and structured logs that already flow through `@clubedge/core` errors. It starts from the same startup hooks as the jobs worker.
+**Module:** `observability`, with the options `otel` (OpenTelemetry over OTLP/HTTP to any collector), `sentry`, and `none` (default).
 
-**Tests:** an in-memory exporter in unit tests and a check that nothing is sent when the module is `none`.
+**Scope:**
+
+- `@clubedge/core` gets dependency-free hooks: `reportError`, `traced`, and `withSpans`, which default to the console. Packages and app code call them, so nothing outside the provider imports a vendor SDK, and leaving the module out removes every SDK.
+- `packages/observability` (the `ObservabilityProvider` interface and an in-memory provider for tests), `packages/observability-otel`, and `packages/observability-sentry`.
+- The provider starts from the same startup hooks as the jobs worker: `instrumentation.ts` (with `onRequestError`) in Next.js, and a Nitro plugin plus request and server-function middleware in TanStack Start.
+- Each request is traced, as are calls through the email, storage, and payments composition roots; Next.js and pg-boss spans join the same traces. Handled and unhandled server errors are reported once, with the request's method and path.
+- Nothing is sent until `OTEL_EXPORTER_OTLP_ENDPOINT` or `SENTRY_DSN` is set.
+
+**Tests:** in-memory exporters for OpenTelemetry and an in-memory transport for Sentry in unit tests; a browser test checks that request traces reach a fake collector and a fake Sentry, for both frameworks.
+
+**Later:** browser error reporting, and source maps for Sentry.
 
 ## Ongoing
 
