@@ -40,3 +40,18 @@ describe("parseSender", () => {
     expect(() => parseSender("a b@example.com")).toThrow("EMAIL_FROM must be an address");
   });
 });
+
+describe("parseSender on hostile input", () => {
+  it("answers long repetitive strings quickly", () => {
+    const started = performance.now();
+    expect(() => parseSender(`<${"!@".repeat(50_000)}`)).toThrow("EMAIL_FROM");
+    expect(() => parseSender(`${" ".repeat(50_000)}x`)).toThrow("EMAIL_FROM");
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("rejects addresses with several @ signs or none", () => {
+    expect(() => parseSender("a@b@example.com")).toThrow("EMAIL_FROM");
+    expect(() => parseSender("Name <>")).toThrow("EMAIL_FROM");
+    expect(() => parseSender("@example.com")).toThrow("EMAIL_FROM");
+  });
+});

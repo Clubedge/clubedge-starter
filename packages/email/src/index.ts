@@ -36,11 +36,15 @@ export function createMemoryEmail(): EmailProvider & { sent: EmailMessage[] } {
 
 /** The sender as "Name <address>" or a bare address, checked before any provider uses it. */
 export function parseSender(from: string): { name?: string; address: string } {
-  const named = /^\s*(.*?)\s*<([^<>\s]+@[^<>\s]+)>\s*$/.exec(from);
-  if (named) return { ...(named[1] ? { name: named[1] } : {}), address: named[2]! };
-  const address = from.trim();
-  if (!/^[^<>\s@]+@[^<>\s@]+$/.test(address)) {
-    throw new Error(`EMAIL_FROM must be an address or "Name <address>", got "${from}".`);
-  }
-  return { address };
+  // Plain string handling rather than a regular expression, so no input can make it slow.
+  const value = from.trim();
+  const open = value.lastIndexOf("<");
+  const named = open !== -1 && value.endsWith(">");
+  const name = named ? value.slice(0, open).trim() : "";
+  const address = named ? value.slice(open + 1, -1).trim() : value;
+  const at = address.indexOf("@");
+  const valid =
+    at > 0 && at === address.lastIndexOf("@") && at < address.length - 1 && !/[\s<>]/.test(address);
+  if (!valid) throw new Error(`EMAIL_FROM must be an address or "Name <address>", got "${from}".`);
+  return { ...(name ? { name } : {}), address };
 }
