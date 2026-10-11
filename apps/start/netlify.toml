@@ -1,0 +1,6 @@
+# Netlify (https://docs.netlify.com/configure-builds/file-based-configuration/). Set the site's
+# base directory to apps/web; the build detects Netlify and writes its functions and assets.
+[build]
+  # Migrations run during the build, against the DATABASE_URL set for the deploy context.
+  command = "pnpm --dir ../.. db:migrate && pnpm run build"
+  publish = "dist"

@@ -100,15 +100,24 @@ jobs:
           echo "The container did not become healthy."
           exit 1
 
-  # Generates a project per deployment platform and checks the fields that matter in its config. The image's migrator itself is
-  # exercised by the docker jobs.
+  # Generates a project per deployment platform and checks the fields that matter in its config.
+  # TanStack Start projects for serverless platforms also build with that platform's preset. The
+  # image's migrator itself is exercised by the docker jobs.
   deploy-config:
-    name: deploy-config (${{ matrix.deploy }})
+    name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        deploy: [fly, railway, render]
+        include:
+          - { deploy: fly, framework: next }
+          - { deploy: railway, framework: next }
+          - { deploy: render, framework: next }
+          - { deploy: vercel, framework: next }
+          - { deploy: vercel, framework: tanstack-start }
+          - { deploy: netlify, framework: next }
+          - { deploy: netlify, framework: tanstack-start }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
     steps:
@@ -126,12 +135,21 @@ jobs:
           pnpm build
       - name: Generate the project
         run: |
-          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --deploy ${{ matrix.deploy }} --auth better-auth --no-git --no-install --yes
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth better-auth             --no-git --no-install --yes
       - name: Check the platform config
         working-directory: ${{ runner.temp }}/app
         run: |
           set -euo pipefail
-          ! grep -rn "clubedge:" fly.toml railway.json render.yaml 2>/dev/null
+          configs="fly.toml railway.json render.yaml apps/web/vercel.json apps/web/netlify.toml"
+          ! grep -n "clubedge:" $configs 2>/dev/null
+          # Only the selected platform's file is present.
+          for config in $configs; do
+            case "$config" in
+              *fly.toml) want=fly ;; *railway.json) want=railway ;; *render.yaml) want=render ;;
+              *vercel.json) want=vercel ;; *netlify.toml) want=netlify ;;
+            esac
+            if [ "$want" = "${{ matrix.deploy }}" ]; then test -f "$config"; else test ! -e "$config"; fi
+          done
           case "${{ matrix.deploy }}" in
             fly)
               python3 - <<'PY'
@@ -161,14 +179,38 @@ jobs:
           assert "SUPABASE_URL" not in keys and "NEXT_PUBLIC_SUPABASE_URL" not in keys, keys
           PY
               ;;
+            vercel)
+              FRAMEWORK=${{ matrix.framework }} python3 - <<'PY'
+          import json, os
+          config = json.load(open("apps/web/vercel.json"))
+          expected = "nextjs" if os.environ["FRAMEWORK"] == "next" else None
+          assert config["framework"] == expected, config
+          assert config["buildCommand"].startswith("pnpm --dir ../.. db:migrate && "), config
+          PY
+              ;;
+            netlify)
+              python3 - <<'PY'
+          import tomllib
+          build = tomllib.load(open("apps/web/netlify.toml", "rb"))["build"]
+          assert "db:migrate" in build["command"] and build["publish"], build
+          PY
+              ;;
           esac
-          for other in fly.toml railway.json render.yaml; do
-            case "$other" in
-              fly.toml) [ "${{ matrix.deploy }}" = fly ] || test ! -e "$other" ;;
-              railway.json) [ "${{ matrix.deploy }}" = railway ] || test ! -e "$other" ;;
-              render.yaml) [ "${{ matrix.deploy }}" = render ] || test ! -e "$other" ;;
-            esac
-          done
+      - name: Build with the platform's preset
+        if: matrix.framework == 'tanstack-start'
+        working-directory: ${{ runner.temp }}/app
+        env:
+          NITRO_PRESET: ${{ matrix.deploy }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm --filter @clubedge/web build
+          if [ "${{ matrix.deploy }}" = vercel ]; then
+            test -f apps/web/.vercel/output/config.json
+          else
+            test -d apps/web/.netlify/functions-internal/server
+            test -d apps/web/dist
+          fi
 
   # Generates projects from this checkout with create-clubedge-app and runs their full pipeline.
   generated-project:
