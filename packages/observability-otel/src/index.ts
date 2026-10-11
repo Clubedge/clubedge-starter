@@ -56,6 +56,13 @@ export function parseOtlpHeaders(value: string | undefined): Record<string, stri
   return headers;
 }
 
+/** "http://collector:4318/" -> "http://collector:4318", without a regular expression. */
+export function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") end--;
+  return url.slice(0, end);
+}
+
 const toAttributes = (attributes: TelemetryAttributes = {}): Attributes =>
   Object.fromEntries(Object.entries(attributes).filter(([, value]) => value !== undefined));
 
@@ -83,7 +90,7 @@ export function createOtelObservability({
 }: OtelObservabilityConfig): ObservabilityProvider {
   if (!endpoint && !(spanExporter && logExporter))
     throw new Error("OpenTelemetry needs an OTLP endpoint.");
-  const base = endpoint?.replace(/\/+$/, "");
+  const base = withoutTrailingSlashes(endpoint ?? "");
   const resource = resourceFromAttributes({
     [ATTR_SERVICE_NAME]: serviceName,
     ...(serviceVersion ? { [ATTR_SERVICE_VERSION]: serviceVersion } : {}),

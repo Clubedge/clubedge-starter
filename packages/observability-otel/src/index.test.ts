@@ -1,7 +1,7 @@
 import { InMemoryLogRecordExporter } from "@opentelemetry/sdk-logs";
 import { InMemorySpanExporter } from "@opentelemetry/sdk-trace-base";
 import { describe, expect, it } from "vitest";
-import { createOtelObservability, parseOtlpHeaders } from "./index";
+import { createOtelObservability, parseOtlpHeaders, withoutTrailingSlashes } from "./index";
 
 function createProvider() {
   const spans = new InMemorySpanExporter();
@@ -77,5 +77,16 @@ describe("parseOtlpHeaders", () => {
     });
     expect(parseOtlpHeaders(undefined)).toEqual({});
     expect(parseOtlpHeaders("=nokey,novalue")).toEqual({});
+  });
+});
+
+describe("withoutTrailingSlashes", () => {
+  it("removes trailing slashes only, quickly even for long runs", () => {
+    expect(withoutTrailingSlashes("http://collector:4318/")).toBe("http://collector:4318");
+    expect(withoutTrailingSlashes("http://collector:4318/otlp//")).toBe(
+      "http://collector:4318/otlp",
+    );
+    expect(withoutTrailingSlashes("http://collector:4318")).toBe("http://collector:4318");
+    expect(withoutTrailingSlashes("/".repeat(100_000) + "x")).toHaveLength(100_001);
   });
 });
