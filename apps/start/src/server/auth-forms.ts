@@ -15,6 +15,14 @@ const credentialsSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+const emailSchema = z.object({ email: z.email() });
+
+const newPasswordSchema = z.object({
+  password: z.string().min(8).max(128),
+  // Better Auth's reset links carry a token; Supabase's create a session instead.
+  token: z.string().min(1).optional(),
+});
+
 // Ten attempts per minute per client address and action.
 const authRateLimiter = createRateLimiter(10, 60);
 
@@ -34,7 +42,7 @@ function readCredentials(formData: FormData) {
   });
 }
 
-async function isRateLimited(request: Request, action: "sign-in" | "sign-up") {
+async function isRateLimited(request: Request, action: "sign-in" | "sign-up" | "password-reset") {
   const ip = getClientIp(request.headers);
   try {
     const result = await authRateLimiter.limit(`auth:${action}:${ip}`);
@@ -59,7 +67,7 @@ export async function handleSignIn(request: Request): Promise<Response> {
   if (!parsed.success) return seeOther(loginUrl({ error: "invalid-input", next }));
 
   const result = await getAuth().signInWithPassword(parsed.data);
-  if (!result.ok) return seeOther(loginUrl({ error: "invalid-credentials", next }));
+  if (!result.ok) return seeOther(loginUrl({ error: result.error, next }));
 
   await ensureUserProfile(result.value);
   return seeOther(next);
@@ -89,6 +97,54 @@ export async function handleSignUp(request: Request): Promise<Response> {
 
   await ensureUserProfile(result.value.user);
   return seeOther(next);
+}
+
+export async function handleForgotPassword(request: Request): Promise<Response> {
+  const formData = await request.formData();
+  if (!isAuthConfigured() || !getAuth().canResetPassword) return seeOther("/login");
+  if (await isRateLimited(request, "password-reset")) {
+    return seeOther("/forgot-password?error=rate-limited");
+  }
+  const parsed = emailSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) return seeOther("/forgot-password?error=invalid-input");
+
+  // Supabase's link signs the user in through the callback, then opens the reset page.
+  const callbackUrl = new URL("/auth/callback", getAppUrl());
+  callbackUrl.searchParams.set("next", "/reset-password");
+  await getAuth().requestPasswordReset({
+    email: parsed.data.email,
+    redirectTo: callbackUrl.toString(),
+  });
+  // The same answer whether or not the address has an account.
+  return seeOther(loginUrl({ notice: "reset-sent" }));
+}
+
+function resetPasswordUrl(token: FormDataEntryValue | undefined, error: string) {
+  const params = new URLSearchParams({ error });
+  if (typeof token === "string") params.set("token", token);
+  return `/reset-password?${params}`;
+}
+
+export async function handleResetPassword(request: Request): Promise<Response> {
+  const formData = await request.formData();
+  if (!isAuthConfigured()) return seeOther("/login");
+  const token = formData.get("token") || undefined;
+  if (await isRateLimited(request, "password-reset")) {
+    return seeOther(resetPasswordUrl(token, "rate-limited"));
+  }
+  const parsed = newPasswordSchema.safeParse({ password: formData.get("password"), token });
+  if (!parsed.success) return seeOther(resetPasswordUrl(token, "invalid-input"));
+
+  const auth = getAuth();
+  const result = await auth.resetPassword(parsed.data);
+  if (!result.ok) return seeOther(resetPasswordUrl(undefined, "invalid-reset"));
+  try {
+    // A Supabase reset link signed the user in; sign out so the new password is used next.
+    await auth.signOut();
+  } catch (error) {
+    console.error("Sign-out after password reset failed", error);
+  }
+  return seeOther(loginUrl({ notice: "password-updated" }));
 }
 
 export async function handleSignOut(): Promise<Response> {

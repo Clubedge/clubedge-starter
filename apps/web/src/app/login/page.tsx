@@ -1,22 +1,23 @@
 import { CircleAlert, Info, MailCheck } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
 import { signIn, signUp } from "@/app/actions/auth";
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { siteConfig } from "@/config/site";
 import { safeRedirectPath } from "@clubedge/core";
 import { loginUrl } from "@/lib/login-url";
-import { isAuthConfigured } from "@/server/auth";
+import { getAuth, isAuthConfigured } from "@/server/auth";
 import { Card, CardContent } from "@clubedge/ui/components/card";
 
 import { EmailField, PasswordField, SubmitButton } from "./_components/auth-form-controls";
+import { Notice } from "./_components/notice";
 
 type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
     mode?: string;
     "check-email"?: string;
+    notice?: string;
     next?: string;
   }>;
 };
@@ -27,39 +28,14 @@ const errorMessages: Record<string, string> = {
   "signup-failed": "We could not create your account. Please check your details and try again.",
   "auth-callback": "That sign-in link could not be verified. Request a new one.",
   "rate-limited": "Too many attempts. Wait a minute and try again.",
+  "email-not-verified":
+    "Confirm your email address first: open the link we sent when you signed up.",
 };
 
-type NoticeTone = "error" | "info" | "warning";
-
-const noticeStyles: Record<NoticeTone, string> = {
-  error: "border-destructive/30 bg-destructive/5 text-destructive",
-  info: "border-primary/30 bg-primary/5 text-foreground",
-  warning: "border-amber-500/30 bg-amber-500/5 text-foreground",
+const notices: Record<string, string> = {
+  "reset-sent": "If an account uses that email, we sent it a link to choose a new password.",
+  "password-updated": "Password updated. Sign in with your new password.",
 };
-
-function Notice({
-  children,
-  icon,
-  role,
-  tone,
-}: {
-  children: ReactNode;
-  icon: ReactNode;
-  role: "alert" | "status";
-  tone: NoticeTone;
-}) {
-  return (
-    <div
-      className={`flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-5 ${noticeStyles[tone]}`}
-      role={role}
-    >
-      <span aria-hidden="true" className="mt-0.5 shrink-0 [&>svg]:size-4">
-        {icon}
-      </span>
-      <div className="min-w-0">{children}</div>
-    </div>
-  );
-}
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
@@ -68,6 +44,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const checkEmail = Boolean(params["check-email"]);
   const next = safeRedirectPath(params.next);
   const hasAuthConfig = isAuthConfigured();
+  const notice = params.notice ? notices[params.notice] : undefined;
+  const canResetPassword = hasAuthConfig && (await getAuth()).canResetPassword;
 
   return (
     <main className="flex min-h-svh flex-col items-center bg-background px-4 py-10 sm:justify-center">
@@ -108,6 +86,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 {error}
               </Notice>
             )}
+            {notice && (
+              <Notice icon={<MailCheck />} role="status" tone="info">
+                {notice}
+              </Notice>
+            )}
             {checkEmail && (
               <Notice icon={<MailCheck />} role="status" tone="info">
                 Account created. Check your inbox for the confirmation link to finish signing up.
@@ -118,6 +101,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <input name="next" type="hidden" value={next} />
               <EmailField />
               <PasswordField isSignUp={isSignUp} />
+              {!isSignUp && canResetPassword && (
+                <Link
+                  className="-mt-3 justify-self-end text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  href="/forgot-password"
+                >
+                  Forgot password?
+                </Link>
+              )}
               <SubmitButton disabled={!hasAuthConfig}>
                 {isSignUp ? "Create account" : "Sign in"}
               </SubmitButton>

@@ -8,6 +8,8 @@ import {
   drizzleDatabase,
   type BetterAuthServer,
 } from "@clubedge/auth-better-auth";
+import { siteConfig } from "@/config/site";
+import { authEmailSender } from "@/server/auth-email";
 import { AppError } from "@clubedge/core";
 import { getBetterAuthEnv } from "@/env/auth";
 import { loginUrl } from "@/lib/login-url";
@@ -27,7 +29,12 @@ function getServer(): BetterAuthServer {
   if (server) return server;
   const env = getBetterAuthEnv();
   if (!env) throw new Error("Better Auth is not configured.");
-  server = createBetterAuthServer({ database: drizzleDatabase(getDb()), ...env });
+  server = createBetterAuthServer({
+    database: drizzleDatabase(getDb()),
+    ...env,
+    sendEmail: authEmailSender(),
+    appName: siteConfig.name,
+  });
   return server;
 }
 
