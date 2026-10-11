@@ -135,6 +135,31 @@ describe("clubedge.template.json modules", () => {
     },
   );
 
+  it("never removes a core script", () => {
+    // The CLI removes scripts that only left-out options set. When one option changes a core
+    // script (local infrastructure adds its database to dev), every option must set it.
+    const coreScripts = ["dev", "build", "start", "lint", "typecheck", "test", "db:migrate"];
+    for (const [id, module] of modules) {
+      const options = Object.entries<{ scripts?: Record<string, string> }>(module.options);
+      for (const script of coreScripts) {
+        if (!options.some(([, option]) => option.scripts?.[script])) continue;
+        for (const [optionId, option] of options) {
+          expect(option.scripts?.[script], `${id}=${optionId} must set ${script}`).toBeDefined();
+        }
+      }
+    }
+  });
+
+  it("matches the root scripts to each module's default option", () => {
+    const rootScripts = readJson("package.json").scripts;
+    for (const [id, module] of modules) {
+      const scripts = module.options[module.default].scripts ?? {};
+      for (const [name, command] of Object.entries(scripts)) {
+        expect(rootScripts[name], `${id}: ${name}`).toBe(command);
+      }
+    }
+  });
+
   it("keeps variants in variants/ directories with alias imports only", () => {
     // Variants are copied over the file they replace, so relative imports would break.
     const variants = options.flatMap(({ option }) => Object.values(option.replace ?? {}));

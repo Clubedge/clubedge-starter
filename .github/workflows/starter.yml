@@ -204,6 +204,8 @@ jobs:
         include:
           - { infra: docker, framework: next, modules: --auth better-auth }
           - { infra: docker, framework: tanstack-start, modules: --auth better-auth }
+          - { infra: local, framework: next, modules: --auth better-auth }
+          - { infra: local, framework: tanstack-start, modules: --auth better-auth }
           - { infra: supabase, framework: next, modules: --auth supabase --storage supabase }
           - {
               infra: supabase,
@@ -237,7 +239,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Start the local services
         working-directory: ${{ runner.temp }}/generated-app
-        run: pnpm infra:up
+        run: |
+          if [ "${{ matrix.infra }}" != local ]; then
+            pnpm infra:up
+            exit 0
+          fi
+          # The local database runs in the foreground, so keep it running for the next steps.
+          nohup pnpm infra:up > "$RUNNER_TEMP/local-db.log" 2>&1 &
+          timeout 180 bash -c 'until grep -q "Local database ready" "$RUNNER_TEMP/local-db.log"; do sleep 1; done'             || { cat "$RUNNER_TEMP/local-db.log"; exit 1; }
       - name: Use the local Supabase keys
         if: matrix.infra == 'supabase'
         working-directory: ${{ runner.temp }}/generated-app
@@ -255,6 +264,8 @@ jobs:
         run: |
           if [ "${{ matrix.infra }}" = supabase ]; then
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres" >> "$GITHUB_ENV"
+          elif [ "${{ matrix.infra }}" = local ]; then
+            echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres" >> "$GITHUB_ENV"
           else
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app" >> "$GITHUB_ENV"
           fi
@@ -268,7 +279,20 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e e2e/auth-flow.spec.ts
+      - name: Restart the local database and keep its data
+        if: matrix.infra == 'local'
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          set -euo pipefail
+          # Stop it the way Ctrl+C does, which closes PGlite cleanly.
+          fuser -k -INT 5433/tcp
+          timeout 30 bash -c 'while (echo > /dev/tcp/127.0.0.1/5433) 2>/dev/null; do sleep 1; done'
+          nohup pnpm infra:up > "$RUNNER_TEMP/local-db-restart.log" 2>&1 &
+          timeout 120 bash -c 'until grep -q "Local database ready" "$RUNNER_TEMP/local-db-restart.log"; do sleep 1; done'             || { cat "$RUNNER_TEMP/local-db-restart.log"; exit 1; }
+          # The user signed up by the browser test is still there.
+          test "$(psql "$DATABASE_URL" -tAc 'select count(*) from auth_user')" -ge 1
       - name: Stop the local services
         if: always()
         working-directory: ${{ runner.temp }}/generated-app
-        run: pnpm infra:down || true
+        run: |
+          if [ "${{ matrix.infra }}" = local ]; then fuser -k -INT 5433/tcp || true; else pnpm infra:down || true; fi

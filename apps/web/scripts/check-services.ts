@@ -8,6 +8,9 @@ import { createRedisCache } from "@clubedge/cache-redis";
 // clubedge:if storage=s3
 import { createS3Storage } from "@clubedge/storage-s3";
 // clubedge:end
+// clubedge:if storage=s3 && infra=local
+import { createFileSystemStorage } from "@clubedge/storage/file-system";
+// clubedge:end
 
 type Check = { name: string; skip?: string; run: () => Promise<string> };
 
@@ -56,6 +59,25 @@ async function main() {
         const read = await cache.get<typeof value>("check-services");
         if (read?.checkedAt !== value.checkedAt) throw new Error("read back a different value");
         return "wrote and read a cached value";
+      },
+    },
+    // clubedge:end
+    // clubedge:if storage=s3 && infra=local
+    {
+      name: "Local folder storage",
+      skip: env.STORAGE_DIRECTORY ? undefined : "STORAGE_DIRECTORY is not set",
+      async run() {
+        const storage = createFileSystemStorage({ directory: env.STORAGE_DIRECTORY! });
+        const key = `check-services/${Date.now()}.txt`;
+        await storage.upload({
+          key,
+          body: new TextEncoder().encode("ok"),
+          contentType: "text/plain",
+        });
+        const text = await new Response(await storage.download(key)).text();
+        await storage.delete(key);
+        if (text !== "ok") throw new Error(`read back "${text}"`);
+        return `wrote, read back, and deleted a file in ${env.STORAGE_DIRECTORY}`;
       },
     },
     // clubedge:end

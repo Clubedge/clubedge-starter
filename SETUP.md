@@ -119,6 +119,17 @@ pnpm check:services
 The database is on port 54322 and the API on port 54321, matching the example environment. Copy the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data.
 
 <!-- clubedge:end -->
+<!-- clubedge:if infra=local -->
+
+This project runs its development services without Docker or any other installation:
+
+- **PostgreSQL:** `pnpm dev` also starts [PGlite](https://pglite.dev), PostgreSQL compiled to WebAssembly, and serves it on `127.0.0.1:5433`. Each start applies the migrations. Data is kept in `.data/pglite`. `pnpm infra:up` runs the database on its own, for `pnpm check:services` or browser tests.
+- **Files:** while `STORAGE_DIRECTORY` is set, uploads are stored in that folder (`.data/storage`) instead of S3. Set the S3 variables and remove `STORAGE_DIRECTORY` to use object storage. <!-- clubedge:only storage=s3 -->
+- **Cache:** without `REDIS_URL`, the cache and rate limits use process memory. <!-- clubedge:only cache=redis -->
+
+PGlite runs a single database session, so connections take turns. That is plenty for development but not for production: deploy against a managed PostgreSQL by setting `DATABASE_URL`. Supabase Auth and Supabase Storage need a Supabase project, local or hosted. Better Auth works fully offline. `pnpm infra:reset` deletes everything in `.data/`.
+
+<!-- clubedge:end -->
 <!-- clubedge:if infra=none -->
 
 This project does not include local service definitions. Point `DATABASE_URL` and the provider variables at services you run yourself or at hosted ones, such as Supabase or Neon for PostgreSQL and Upstash for Redis, then run `pnpm check:services` to confirm the app can reach them.
