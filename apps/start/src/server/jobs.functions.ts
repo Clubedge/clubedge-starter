@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { sampleJob } from "@/jobs";
 import { getJobs, isWorkerEnabled } from "./jobs";
 import { sampleJobRequester } from "./jobs-forms";
+import { reportError } from "@clubedge/core";
 
 /** What the dashboard's jobs card shows; serializable, so it can cross to the browser. */
 export const getJobsStatus = createServerFn({ method: "GET" }).handler(async () => {
@@ -21,7 +22,7 @@ export const getJobsStatus = createServerFn({ method: "GET" }).handler(async () 
       })),
     };
   } catch (error) {
-    console.error("Background jobs: could not list recent jobs.", error);
+    reportError(error, { message: "Background jobs: could not list recent jobs." });
     return { worker, jobs: null };
   }
 });

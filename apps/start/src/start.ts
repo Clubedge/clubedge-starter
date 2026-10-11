@@ -1,4 +1,8 @@
 import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
+// clubedge:if observability!=none
+import { reportError, traced } from "@clubedge/core";
+import { requestAttributes } from "@clubedge/observability";
+// clubedge:end
 import { refreshAuthSession } from "@/server/auth";
 
 const securityHeaders: Record<string, string> = {
@@ -37,6 +41,41 @@ const responseHeaders = createMiddleware().server(async ({ next }) => {
   return { ...result, response };
 });
 
+// clubedge:if observability!=none
+// Traces each request, and reports errors that escape route handlers and server functions.
+const requestTracing = createMiddleware().server(async ({ next, request }) => {
+  const attributes = requestAttributes(request);
+  return traced(
+    `${request.method} ${attributes["url.path"]}`,
+    async () => {
+      try {
+        return await next();
+      } catch (error) {
+        reportError(error, { message: "Request failed", attributes });
+        throw error;
+      }
+    },
+    attributes,
+  );
+});
+
+const serverFunctionErrors = createMiddleware({ type: "function" }).server(async ({ next }) => {
+  try {
+    return await next();
+  } catch (error) {
+    reportError(error, { message: "Server function failed" });
+    throw error;
+  }
+});
+
+// clubedge:end
 export const startInstance = createStart(() => ({
-  requestMiddleware: [responseHeaders, csrfProtection, sessionRefresh],
+  requestMiddleware: [
+    // Outermost first.
+    requestTracing, // clubedge:only observability!=none
+    responseHeaders,
+    csrfProtection,
+    sessionRefresh,
+  ],
+  functionMiddleware: [serverFunctionErrors], // clubedge:only observability!=none
 }));

@@ -9,6 +9,7 @@ import {
 import { createDb } from "@clubedge/db";
 import { getBetterAuthEnv } from "@/env/auth";
 import { getServerEnv } from "@/env/server";
+import { reportError } from "@clubedge/core";
 
 // The proxy cannot import server-only modules, so it keeps its own Better Auth server.
 let server: BetterAuthServer | undefined;
@@ -36,7 +37,7 @@ export async function proxy(request: NextRequest) {
     await createBetterAuth({ server, cookies }).refreshSession();
   } catch (error) {
     // Pages still render; protected pages check the session again and redirect when needed.
-    console.error("Session refresh failed", error);
+    reportError(error, { message: "Session refresh failed" });
   }
   return response;
 }

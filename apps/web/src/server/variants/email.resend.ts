@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createConsoleEmail, type EmailProvider } from "@clubedge/email";
 import { createResendEmail } from "@clubedge/email-resend";
 import { optional, parseEnv } from "@/env/server";
+import { withSpans } from "@clubedge/core";
 
 export type { EmailMessage, EmailProvider } from "@clubedge/email";
 
@@ -34,6 +35,6 @@ function resolveProvider(): EmailProvider {
 }
 
 /** The configured email provider, resolved on first use so imports stay side-effect free. */
-export const email: EmailProvider = {
+export const email: EmailProvider = withSpans("email", {
   send: (message) => resolveProvider().send(message),
-};
+});

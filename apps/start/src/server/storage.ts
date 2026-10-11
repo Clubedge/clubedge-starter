@@ -6,6 +6,7 @@ import { createS3Storage } from "@clubedge/storage-s3";
 import { createFileSystemStorage } from "@clubedge/storage/file-system";
 // clubedge:end
 import { optional, parseEnv } from "@/env/server";
+import { withSpans } from "@clubedge/core";
 
 export type { SignedUrlOptions, StorageProvider, UploadInput } from "@clubedge/storage";
 
@@ -46,10 +47,10 @@ function resolveProvider(): StorageProvider {
 }
 
 /** The configured storage provider, resolved on first use so imports stay side-effect free. */
-export const storage: StorageProvider = {
+export const storage: StorageProvider = withSpans("storage", {
   upload: (input) => resolveProvider().upload(input),
   download: (key) => resolveProvider().download(key),
   delete: (key) => resolveProvider().delete(key),
   exists: (key) => resolveProvider().exists(key),
   getSignedUrl: (key, options) => resolveProvider().getSignedUrl(key, options),
-};
+});

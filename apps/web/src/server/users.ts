@@ -2,6 +2,7 @@ import "server-only";
 import type { AuthUser } from "@clubedge/auth";
 import { ensureUserId, upsertUserProfile } from "@clubedge/db";
 import { getDb } from "./db";
+import { reportError } from "@clubedge/core";
 
 /**
  * Keeps the app-owned users row in step with the identity provider. Failures are logged
@@ -12,7 +13,7 @@ export async function ensureUserProfile(user: AuthUser | null): Promise<void> {
   try {
     await upsertUserProfile(getDb(), { authUserId: user.id, email: user.email });
   } catch (error) {
-    console.error("Could not sync the user profile", error);
+    reportError(error, { message: "Could not sync the user profile" });
   }
 }
 

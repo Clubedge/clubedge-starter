@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { withSpans } from "@clubedge/core";
 import { createBilling, type Billing } from "@clubedge/payments";
 import { createStripePayments } from "@clubedge/payments-stripe";
 import { plans } from "@/config/plans";
@@ -47,14 +48,17 @@ export function getBilling(): Billing {
     throw new Error(
       "Payments are not configured: set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET.",
     );
-  billing = createBilling({
-    db: getDb(),
-    provider: createStripePayments({
-      secretKey: env.secretKey,
-      webhookSecret: env.webhookSecret,
-      prices: prices(),
-      apiBase: env.STRIPE_API_BASE,
+  billing = withSpans(
+    "payments",
+    createBilling({
+      db: getDb(),
+      provider: createStripePayments({
+        secretKey: env.secretKey,
+        webhookSecret: env.webhookSecret,
+        prices: prices(),
+        apiBase: env.STRIPE_API_BASE,
+      }),
     }),
-  });
+  );
   return billing;
 }

@@ -8,7 +8,7 @@ import {
 } from "@clubedge/auth-better-auth";
 import { siteConfig } from "@/config/site";
 import { authEmailSender } from "@/server/auth-email";
-import { AppError } from "@clubedge/core";
+import { AppError, reportError } from "@clubedge/core";
 import { getBetterAuthEnv } from "@/env/auth";
 import { requestCookieStore } from "@/server/cookies";
 import { getDb } from "@/server/db";
@@ -47,7 +47,7 @@ export async function refreshAuthSession(): Promise<void> {
     await getAuth().refreshSession();
   } catch (error) {
     // Pages still render; protected handlers re-check the user and reject when needed.
-    console.error("Session refresh failed", error);
+    reportError(error, { message: "Session refresh failed" });
   }
 }
 
