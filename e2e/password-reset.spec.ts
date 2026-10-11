@@ -19,6 +19,9 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
 
   await page.getByRole("link", { name: "Forgot password?" }).click();
   await expect(page).toHaveURL(/\/forgot-password$/);
+  // Let the page finish starting up first: a form posted while the router initializes can be
+  // cancelled by its first navigation.
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Send reset link" }).click();
   // Supabase sends its email during the request, and dev servers compile routes on first use.
@@ -27,6 +30,7 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
 
   await page.goto(await emailedLink(email, /reset/i));
   await expect(page).toHaveURL(/\/reset-password/);
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("New password").fill("second password 2");
   await page.getByRole("button", { name: "Update password" }).click();
   await expect(page).toHaveURL(/\/login\?notice=password-updated$/, { timeout: 20_000 });
