@@ -8,6 +8,12 @@ import { createRedisCache } from "@clubedge/cache-redis";
 // clubedge:if storage=s3
 import { createS3Storage } from "@clubedge/storage-s3";
 // clubedge:end
+// clubedge:if email=smtp
+import { createSmtpEmail } from "@clubedge/email-smtp";
+// clubedge:end
+// clubedge:if email=resend
+import { createResendEmail } from "@clubedge/email-resend";
+// clubedge:end
 // clubedge:if storage=s3 && infra=local
 import { createFileSystemStorage } from "@clubedge/storage/file-system";
 // clubedge:end
@@ -59,6 +65,38 @@ async function main() {
         const read = await cache.get<typeof value>("check-services");
         if (read?.checkedAt !== value.checkedAt) throw new Error("read back a different value");
         return "wrote and read a cached value";
+      },
+    },
+    // clubedge:end
+    // clubedge:if email=smtp
+    {
+      name: "Email (SMTP)",
+      skip: env.SMTP_URL ? undefined : "SMTP_URL is not set; development prints emails to the log",
+      async run() {
+        // Connects and authenticates without sending anything.
+        const email = createSmtpEmail({
+          url: env.SMTP_URL!,
+          from: env.EMAIL_FROM || "no-reply@example.com",
+        });
+        await email.verify();
+        return `connected to ${new URL(env.SMTP_URL!).host}`;
+      },
+    },
+    // clubedge:end
+    // clubedge:if email=resend
+    {
+      name: "Email (Resend)",
+      skip: env.RESEND_API_KEY
+        ? undefined
+        : "RESEND_API_KEY is not set; development prints emails to the log",
+      async run() {
+        // Checks the API key without sending anything.
+        const email = createResendEmail({
+          apiKey: env.RESEND_API_KEY!,
+          from: env.EMAIL_FROM || "no-reply@example.com",
+        });
+        await email.verify();
+        return "API key accepted";
       },
     },
     // clubedge:end

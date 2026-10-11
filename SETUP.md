@@ -43,6 +43,8 @@ The variables are:
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=tanstack-start && auth=supabase -->
 - `BETTER_AUTH_SECRET` (for sign-in): see [Better Auth](#better-auth). <!-- clubedge:only auth=better-auth -->
 - `REDIS_URL` (optional): see [Redis](#redis). <!-- clubedge:only cache=redis -->
+- `SMTP_URL` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=smtp -->
+- `RESEND_API_KEY` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=resend -->
 - `STORAGE_*` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=supabase -->
 
@@ -101,6 +103,7 @@ pnpm check:services
 - PostgreSQL 17 on port 5432, database `app`, user and password `postgres`. Data survives restarts in a Docker volume.
 - Redis on port 6379. <!-- clubedge:only cache=redis -->
 - S3-compatible storage (adobe/s3mock) on port 9090 with the bucket `app`. It accepts any credentials and is for development only. <!-- clubedge:only storage=s3 -->
+- Mailpit, which catches every email the app sends: SMTP on port 1025, and the inbox at http://localhost:8025. <!-- clubedge:only email=smtp -->
 
 `pnpm infra:down` stops the services, `pnpm infra:reset` also deletes their data, and `pnpm infra:logs` follows their logs. The file is for development; in production, point the same variables at managed services.
 
@@ -118,6 +121,8 @@ pnpm check:services
 
 The database is on port 54322 and the API on port 54321, matching the example environment. Copy the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data.
 
+The app's own email goes to the same inbox over SMTP, on port 54325. <!-- clubedge:only email=smtp -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if infra=local -->
 
@@ -126,6 +131,7 @@ This project runs its development services without Docker or any other installat
 - **PostgreSQL:** `pnpm dev` also starts [PGlite](https://pglite.dev), PostgreSQL compiled to WebAssembly, and serves it on `127.0.0.1:5433`. Each start applies the migrations. Data is kept in `.data/pglite`. `pnpm infra:up` runs the database on its own, for `pnpm check:services` or browser tests.
 - **Files:** while `STORAGE_DIRECTORY` is set, uploads are stored in that folder (`.data/storage`) instead of S3. Set the S3 variables and remove `STORAGE_DIRECTORY` to use object storage. <!-- clubedge:only storage=s3 -->
 - **Cache:** without `REDIS_URL`, the cache and rate limits use process memory. <!-- clubedge:only cache=redis -->
+- **Email:** without a provider configured, emails are printed to the `pnpm dev` output, links included. <!-- clubedge:only email!=none -->
 
 PGlite runs a single database session, so connections take turns. That is plenty for development but not for production: deploy against a managed PostgreSQL by setting `DATABASE_URL`. Supabase Auth and Supabase Storage need a Supabase project, local or hosted. Better Auth works fully offline. `pnpm infra:reset` deletes everything in `.data/`.
 
@@ -173,6 +179,28 @@ Without `REDIS_URL`, the rate limiter and cache use process memory. Memory limit
 ## Cache and rate limits
 
 The rate limiter and cache keep their state in process memory, which suits a single server instance. Limits and cached values are not shared between instances and reset on restart.
+
+<!-- clubedge:end -->
+<!-- clubedge:if email!=none -->
+
+## Email
+
+The app sends email through the `EmailProvider` in `apps/web/src/server/email.ts`. Server code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`.
+
+<!-- clubedge:end -->
+<!-- clubedge:if email=smtp -->
+
+Set `SMTP_URL` to any SMTP server, for example `smtps://user:password@smtp.example.com:465`, and `EMAIL_FROM` to the sender, as `Name <address>` or an address. Most email providers (Resend, Postmark, Amazon SES, SendGrid, Mailgun) offer an SMTP endpoint.
+
+<!-- clubedge:end -->
+<!-- clubedge:if email=resend -->
+
+Set `RESEND_API_KEY` to a [Resend](https://resend.com) API key and `EMAIL_FROM` to a sender on a domain you verified in Resend, as `Name <address>` or an address. A key limited to sending is enough.
+
+<!-- clubedge:end -->
+<!-- clubedge:if email!=none -->
+
+Without a provider configured, development prints each email to the server log, so you can open links from the terminal, and production refuses to send. `pnpm check:services` confirms that the provider accepts the settings without sending anything.
 
 <!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->

@@ -161,6 +161,35 @@
         }
       }
     },
+    "email": {
+      "name": "Email",
+      "default": "smtp",
+      "options": {
+        "smtp": {
+          "name": "SMTP (any provider, or a local inbox)",
+          "packages": {
+            "@clubedge/email": "packages/email",
+            "@clubedge/email-smtp": "packages/email-smtp"
+          },
+          "files": ["apps/start/src/server/email.ts", "apps/web/src/server/email.ts"]
+        },
+        "resend": {
+          "name": "Resend",
+          "packages": {
+            "@clubedge/email": "packages/email",
+            "@clubedge/email-resend": "packages/email-resend"
+          },
+          "files": ["apps/start/src/server/email.ts", "apps/web/src/server/email.ts"],
+          "replace": {
+            "apps/start/src/server/email.ts": "apps/start/src/server/variants/email.resend.ts",
+            "apps/web/src/server/email.ts": "apps/web/src/server/variants/email.resend.ts"
+          }
+        },
+        "none": {
+          "name": "None"
+        }
+      }
+    },
     "infra": {
       "name": "Local infrastructure",
       "default": "docker",
