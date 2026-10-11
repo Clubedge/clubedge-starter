@@ -6,7 +6,8 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
-    # Applies migrations before each deploy goes live (needs a paid instance type).
+    # Applies migrations before each deploy goes live. Pre-deploy commands need a paid instance
+    # type; on the free type, remove this line and migrate before deploying (see SETUP.md).
     preDeployCommand: node /app/migrate.mjs
     envVars:
       - key: DATABASE_URL

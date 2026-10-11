@@ -300,7 +300,7 @@ Set the other production variables listed below with `fly secrets set`. Each dep
 `render.yaml` is a [Render](https://render.com) Blueprint: in the dashboard, choose New, then Blueprint, and select this repository. Render asks for each variable marked `sync: false` and generates `BETTER_AUTH_SECRET`. <!-- clubedge:only auth=better-auth -->
 `render.yaml` is a [Render](https://render.com) Blueprint: in the dashboard, choose New, then Blueprint, and select this repository. Render asks for each variable marked `sync: false`. <!-- clubedge:only auth!=better-auth -->
 
-Render runs `node /app/migrate.mjs` as the pre-deploy command before each deploy goes live, which needs a paid instance type; on the free type, run the migrator from a Render shell instead. Health checks call `/api/health`.
+Render runs `node /app/migrate.mjs` as the pre-deploy command before each deploy goes live, and a failed migration stops the deploy. Pre-deploy commands need a paid instance type. On the free type, remove `preDeployCommand` from `render.yaml` and apply migrations yourself before deploying, from your machine or CI, with `DATABASE_URL` set to the production database: `pnpm db:migrate`, or the migrator in the image as shown above. Health checks call `/api/health`.
 
 <!-- clubedge:end -->
 
