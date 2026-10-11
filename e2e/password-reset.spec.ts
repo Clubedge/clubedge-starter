@@ -24,7 +24,10 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await expect(page).toHaveURL(/\/login\?notice=reset-sent$/);
   await expect(page.getByRole("status")).toContainText("we sent it a link");
 
-  await page.goto(await emailedLink(email, /reset/i));
+  const link = await emailedLink(email, /reset/i);
+  console.info(`Reset link: ${link}`);
+  await page.goto(link);
+  console.info(`Opened: ${page.url()}`);
   await expect(page).toHaveURL(/\/reset-password/);
   await page.getByLabel("New password").fill("second password 2");
   await page.getByRole("button", { name: "Update password" }).click();
@@ -35,6 +38,8 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toContainText("could not be verified");
 
+  // The failed attempt reloaded the login page, so fill in both fields again.
+  await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("second password 2");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
