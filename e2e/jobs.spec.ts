@@ -21,11 +21,13 @@ test("runs the sample job in the background worker", async ({ page }) => {
   await jobs.getByRole("button", { name: "Run a sample job" }).click();
   await expect(jobs.getByRole("list", { name: "Recent jobs" })).toBeVisible({ timeout: 20_000 });
 
-  // The page shows each job as it was when rendered: reload until the worker has finished it.
+  // The page shows each job as it was when rendered: load it again until the worker has finished
+  // the job. A fresh visit rather than reload(), which would resend the form and queue more jobs.
   await expect(async () => {
-    await page.reload();
+    await page.goto("/dashboard");
     await expect(jobs.getByRole("listitem").first()).toContainText("completed", {
       timeout: 1_000,
     });
   }).toPass({ timeout: 30_000 });
+  await expect(jobs.getByRole("listitem")).toHaveCount(1);
 });
