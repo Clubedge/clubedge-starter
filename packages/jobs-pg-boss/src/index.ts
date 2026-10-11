@@ -117,7 +117,12 @@ export function createPgBossJobs({
         }),
       );
     } catch (error) {
-      onError(error, { job: definition.name, attempt });
+      // A failing error reporter must not replace the job's own error.
+      try {
+        onError(error, { job: definition.name, attempt });
+      } catch (reportFailure) {
+        console.error("Background jobs: onError failed", reportFailure);
+      }
       throw error;
     }
   }

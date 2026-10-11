@@ -24,7 +24,10 @@ const consoleTelemetry: Telemetry = {
 
 // Kept on globalThis: Next.js loads instrumentation.ts and the app as separate module graphs,
 // and both must see the provider installed at startup.
-const holder = globalThis as typeof globalThis & { __clubedgeTelemetry?: Telemetry };
+const holder = globalThis as typeof globalThis & {
+  __clubedgeTelemetry?: Telemetry;
+  __clubedgeReported?: WeakSet<object>;
+};
 
 /** Installs a provider, or restores the console default with null. */
 export function setTelemetry(telemetry: Telemetry | null): void {
@@ -32,7 +35,8 @@ export function setTelemetry(telemetry: Telemetry | null): void {
 }
 
 // Errors already reported, so one caught by a route and again by a framework hook is sent once.
-const reported = new WeakSet<object>();
+// Shared through globalThis for the same reason as the provider.
+const reported = (holder.__clubedgeReported ??= new WeakSet<object>());
 
 /** Reports an error that was handled but should be seen. Never throws. */
 export function reportError(error: unknown, context?: ErrorContext): void {

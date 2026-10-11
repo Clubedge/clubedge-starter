@@ -45,13 +45,22 @@ export interface OtelObservabilityConfig {
   registerGlobally?: boolean;
 }
 
+/** A malformed percent-escape, such as a lone "%", keeps the raw value rather than failing startup. */
+function decodeHeaderValue(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 /** Parses OTEL_EXPORTER_OTLP_HEADERS: "key=value,key2=value2", values URL-encoded. */
 export function parseOtlpHeaders(value: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {};
   for (const pair of (value ?? "").split(",")) {
     const separator = pair.indexOf("=");
     if (separator <= 0) continue;
-    headers[pair.slice(0, separator).trim()] = decodeURIComponent(pair.slice(separator + 1).trim());
+    headers[pair.slice(0, separator).trim()] = decodeHeaderValue(pair.slice(separator + 1).trim());
   }
   return headers;
 }

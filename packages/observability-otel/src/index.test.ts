@@ -77,6 +77,7 @@ describe("parseOtlpHeaders", () => {
     });
     expect(parseOtlpHeaders(undefined)).toEqual({});
     expect(parseOtlpHeaders("=nokey,novalue")).toEqual({});
+    expect(parseOtlpHeaders("token=abc%")).toEqual({ token: "abc%" });
   });
 });
 

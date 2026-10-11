@@ -6,7 +6,11 @@ import { createPgBossJobs, fromPglite } from "./index";
 // pg-boss runs its real SQL against an in-process PostgreSQL, so no database server is needed.
 const queues: { stop(): Promise<void> }[] = [];
 
-function createQueue(jobs: JobDefinition[], worker = false, onError = vi.fn()) {
+function createQueue(
+  jobs: JobDefinition[],
+  worker = false,
+  onError: (error: unknown) => void = vi.fn(),
+) {
   const pglite = new PGlite();
   const queue = createPgBossJobs({
     db: fromPglite(pglite),
@@ -118,6 +122,29 @@ describe("createPgBossJobs", () => {
 
     expect(await queue.runDue()).toEqual({ completed: 0, failed: 1 });
     expect((await queue.recent(broken))[0]).toMatchObject({ state: "failed", attempts: 1 });
+  }, 30_000);
+
+  it("keeps the job's error when the error reporter throws", async () => {
+    const broken = defineJob({
+      name: "broken-reporter",
+      retryLimit: 0,
+      run: async () => {
+        throw new Error("job failed");
+      },
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const queue = createQueue([broken], false, () => {
+      throw new Error("reporter down");
+    });
+    await queue.enqueue(broken, {});
+
+    expect(await queue.runDue()).toEqual({ completed: 0, failed: 1 });
+    expect((await queue.recent(broken))[0]).toMatchObject({
+      state: "failed",
+      output: { message: "job failed" },
+    });
+    expect(log).toHaveBeenCalledWith("Background jobs: onError failed", expect.any(Error));
+    log.mockRestore();
   }, 30_000);
 
   it("refuses to start a worker in a queue created without one", async () => {
