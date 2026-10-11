@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@clubedge/ui/components/card";
 
-const timeFormat = new Intl.DateTimeFormat("en", { timeStyle: "medium" });
+const timeFormat = new Intl.DateTimeFormat("en", { timeStyle: "medium", timeZone: "UTC" });
 
 async function recentJobs(requestedBy: string): Promise<JobRecord[] | null> {
   try {
@@ -65,7 +65,7 @@ export async function JobsCard({ user }: { user: AuthUser | null }) {
                     <span>
                       {job.name}{" "}
                       <span className="text-muted-foreground">
-                        {timeFormat.format(job.createdAt)}
+                        {timeFormat.format(job.createdAt)} UTC
                       </span>
                     </span>
                     <Badge variant={job.state === "completed" ? "default" : "secondary"}>
