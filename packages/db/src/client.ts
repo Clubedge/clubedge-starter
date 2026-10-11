@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
@@ -20,3 +21,21 @@ export function createDb({ url, maxConnections = 1 }: DatabaseConfig) {
 }
 
 export type Database = ReturnType<typeof createDb>;
+
+/**
+ * Resolves true when the database answers a trivial query within `timeoutMs`, for readiness
+ * checks: a database that hangs counts as not ready rather than holding the request open.
+ */
+export async function isDatabaseReady(db: Database, timeoutMs = 2_000): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), timeoutMs);
+  });
+  try {
+    return await Promise.race([db.execute(sql`select 1`).then(() => true), timeout]);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}

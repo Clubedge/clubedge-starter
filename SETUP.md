@@ -56,7 +56,7 @@ Start the development server:
 pnpm dev
 ```
 
-The app is available at <http://localhost:3000> and the liveness endpoint at <http://localhost:3000/api/health>.
+The app is available at <http://localhost:3000>, the liveness endpoint at <http://localhost:3000/api/health>, and the readiness endpoint, which also checks the database, at <http://localhost:3000/api/ready>.
 
 <!-- clubedge:if auth=supabase -->
 
@@ -319,6 +319,17 @@ Vercel has no step that runs before a release, so the build command applies migr
 Netlify has no step that runs before a release, so the build command applies migrations (`pnpm db:migrate`) against the `DATABASE_URL` of the deploy context. Give deploy previews their own database, or remove the migration step from the build command and run migrations yourself. Serverless functions open a connection per instance: use your provider's pooled connection URL (for example Supabase's transaction pooler or Neon's pooled endpoint).
 
 <!-- clubedge:end -->
+
+`.github/workflows/deploy.yml` deploys on demand: in GitHub, open Actions, then Deploy, then Run workflow.
+
+- It builds the production image and publishes it to this repository's GitHub Container Registry as `ghcr.io/<owner>/<repository>`, tagged with the commit and `latest`, using the workflow's own token. Run the migrator from that image before rolling it out. <!-- clubedge:only deploy=docker -->
+- It needs the secret `FLY_API_TOKEN`, from `fly tokens create deploy`. <!-- clubedge:only deploy=fly -->
+- It needs the secret `RAILWAY_TOKEN`, a project token from the project's settings, and the variable `RAILWAY_SERVICE`, the service's name. <!-- clubedge:only deploy=railway -->
+- It needs the secret `RENDER_DEPLOY_HOOK_URL`, the deploy hook from the service's settings. <!-- clubedge:only deploy=render -->
+- It needs the secrets `VERCEL_TOKEN`, from your account settings, and `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, which `vercel link` writes to `.vercel/project.json`. <!-- clubedge:only deploy=vercel -->
+- It needs the secrets `NETLIFY_AUTH_TOKEN`, a personal access token, and `NETLIFY_SITE_ID`, from the site's settings. <!-- clubedge:only deploy=netlify -->
+
+`/api/health` answers as long as the app runs, so platforms use it to decide whether to restart the app. `/api/ready` also checks that the database answers, returning 200 or 503 without details: point load balancers and readiness probes at it, so traffic waits while the database is unreachable instead of the app restarting.
 
 Production needs these variables:
 
