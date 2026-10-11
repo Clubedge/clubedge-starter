@@ -12,8 +12,10 @@ const securityHeaders: Record<string, string> = {
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Rejects cross-site form posts and server function calls (Next.js does this for actions).
+// Webhooks are cross-site by design; their handlers verify the sender's signature instead.
 const csrfProtection = createCsrfMiddleware({
-  filter: ({ request }) => !safeMethods.has(request.method),
+  filter: ({ request }) =>
+    !safeMethods.has(request.method) && !new URL(request.url).pathname.startsWith("/api/webhooks/"),
 });
 
 // Refreshed cookies reach both later handlers in this request and the browser response.

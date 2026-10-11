@@ -71,6 +71,12 @@ importers:
       '@clubedge/email-smtp':
         specifier: workspace:*
         version: link:../../packages/email-smtp
+      '@clubedge/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@clubedge/payments-stripe':
+        specifier: workspace:*
+        version: link:../../packages/payments-stripe
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -165,6 +171,12 @@ importers:
       '@clubedge/email-smtp':
         specifier: workspace:*
         version: link:../../packages/email-smtp
+      '@clubedge/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@clubedge/payments-stripe':
+        specifier: workspace:*
+        version: link:../../packages/payments-stripe
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage

@@ -48,6 +48,9 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@clubedge/ui/comp
 import { siteConfig } from "@/config/site";
 import { getPageUser } from "@/server/auth";
 import { AccountButton } from "./_components/account-button";
+// clubedge:if payments!=none
+import { BillingCard } from "./_components/billing-card";
+// clubedge:end
 import { AppSidebar } from "./_components/app-sidebar";
 import { ThemeToggle } from "../theme-toggle";
 
@@ -239,6 +242,10 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
           </section>
+
+          {/* clubedge:if payments!=none */}
+          <BillingCard user={user} />
+          {/* clubedge:end */}
 
           <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" id="modules">
             <Card className="gap-0 py-0">

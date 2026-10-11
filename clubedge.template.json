@@ -217,7 +217,23 @@
           },
           "requires": {
             "auth": ["supabase", "better-auth"]
-          }
+          },
+          "files": [
+            "apps/start/src/components/billing",
+            "apps/start/src/config/plans.ts",
+            "apps/start/src/routes/api/webhooks",
+            "apps/start/src/routes/billing",
+            "apps/start/src/server/billing-forms.ts",
+            "apps/start/src/server/billing.functions.ts",
+            "apps/start/src/server/payments.ts",
+            "apps/web/src/app/api/webhooks",
+            "apps/web/src/app/dashboard/_components/billing-actions.ts",
+            "apps/web/src/app/dashboard/_components/billing-card.tsx",
+            "apps/web/src/config/plans.ts",
+            "apps/web/src/server/payments.ts",
+            "e2e/payments.spec.ts",
+            "e2e/stripe-fake.ts"
+          ]
         },
         "none": {
           "name": "None"

@@ -1,4 +1,4 @@
 export { createDb, isDatabaseReady, type Database, type DatabaseConfig } from "./client";
 export * as schema from "./schema";
 export * from "./schema";
-export { upsertUserProfile } from "./users";
+export { ensureUserId, upsertUserProfile } from "./users";
