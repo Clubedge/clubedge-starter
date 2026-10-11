@@ -100,8 +100,7 @@ jobs:
           echo "The container did not become healthy."
           exit 1
 
-  # Generates a project per deployment platform and checks its config: the platform's schema
-  # where one is published, otherwise the fields that matter. The image's migrator itself is
+  # Generates a project per deployment platform and checks the fields that matter in its config. The image's migrator itself is
   # exercised by the docker jobs.
   deploy-config:
     name: deploy-config (${{ matrix.deploy }})
@@ -143,8 +142,13 @@ jobs:
           PY
               ;;
             railway)
-              curl --fail --silent --show-error https://railway.com/railway.schema.json > "$RUNNER_TEMP/railway.schema.json"
-              npx --yes ajv-cli@5 validate --strict=false -s "$RUNNER_TEMP/railway.schema.json" -d railway.json
+              python3 - <<'PY'
+          import json
+          config = json.load(open("railway.json"))
+          assert config["build"] == {"builder": "DOCKERFILE", "dockerfilePath": "Dockerfile"}, config
+          assert config["deploy"]["preDeployCommand"] == ["node /app/migrate.mjs"], config
+          assert config["deploy"]["healthcheckPath"] == "/api/health", config
+          PY
               ;;
             render)
               python3 - <<'PY'
