@@ -122,6 +122,74 @@ describe("Better Auth adapter", () => {
   });
 });
 
+describe("Better Auth account settings", () => {
+  async function signedUp() {
+    const jar = cookieJar();
+    const auth = createBetterAuth({ server, cookies: jar.store });
+    await auth.signUp({ ...credentials, emailRedirectTo: "unused" });
+    return { jar, auth };
+  }
+
+  it("changes the password after checking the current one, and signs out other devices", async () => {
+    const { auth } = await signedUp();
+    const other = createBetterAuth({ server, cookies: cookieJar().store });
+    await other.signInWithPassword(credentials);
+    expect(await other.getUser()).not.toBeNull();
+
+    await expect(
+      auth.changePassword({
+        currentPassword: "not my password",
+        newPassword: "a brand new secret",
+      }),
+    ).resolves.toEqual({ ok: false, error: "invalid-password" });
+    await expect(
+      auth.changePassword({
+        currentPassword: credentials.password,
+        newPassword: "a brand new secret",
+      }),
+    ).resolves.toEqual({ ok: true, value: undefined });
+
+    // This device stays signed in; the other one is signed out.
+    expect(await auth.getUser()).toMatchObject({ email: credentials.email });
+    expect(await other.getUser()).toBeNull();
+    const fresh = createBetterAuth({ server, cookies: cookieJar().store });
+    expect((await fresh.signInWithPassword(credentials)).ok).toBe(false);
+    expect(
+      (await fresh.signInWithPassword({ ...credentials, password: "a brand new secret" })).ok,
+    ).toBe(true);
+  });
+
+  it("deletes the account only with the right password, and ends the session", async () => {
+    const { auth } = await signedUp();
+    expect(auth.canDeleteAccount).toBe(true);
+
+    await expect(auth.deleteAccount({ password: "not my password" })).resolves.toEqual({
+      ok: false,
+      error: "invalid-password",
+    });
+    expect(await auth.getUser()).not.toBeNull();
+
+    await expect(auth.deleteAccount({ password: credentials.password })).resolves.toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(await auth.getUser()).toBeNull();
+    const fresh = createBetterAuth({ server, cookies: cookieJar().store });
+    expect((await fresh.signInWithPassword(credentials)).ok).toBe(false);
+  });
+
+  it("refuses both without a session", async () => {
+    const auth = createBetterAuth({ server, cookies: cookieJar().store });
+    await expect(
+      auth.changePassword({ currentPassword: "a", newPassword: "b".repeat(8) }),
+    ).resolves.toEqual({ ok: false, error: "not-signed-in" });
+    await expect(auth.deleteAccount({ password: "a" })).resolves.toEqual({
+      ok: false,
+      error: "not-signed-in",
+    });
+  });
+});
+
 describe("Better Auth emails", () => {
   /** A server that keeps the emails it sends, and the first link in the latest one. */
   function serverWithEmail({ requireEmailVerification = false } = {}) {

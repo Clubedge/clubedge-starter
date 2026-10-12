@@ -30,25 +30,28 @@ export function AuthForm({ action, children }: { action: string; children: React
 export function PasswordField({
   isSignUp,
   label = "Password",
+  name = "password",
 }: {
   isSignUp: boolean;
   label?: string;
+  /** The field's name and id; settings forms have more than one password field. */
+  name?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const pending = useContext(PendingContext);
 
   return (
     <div className="grid gap-2">
-      <Label htmlFor="password">{label}</Label>
+      <Label htmlFor={name}>{label}</Label>
       <div className="relative">
         <Input
-          aria-describedby={isSignUp ? "password-hint" : undefined}
+          aria-describedby={isSignUp ? `${name}-hint` : undefined}
           autoComplete={isSignUp ? "new-password" : "current-password"}
           className="h-11 pr-11"
-          id="password"
+          id={name}
           maxLength={128}
           minLength={8}
-          name="password"
+          name={name}
           placeholder={isSignUp ? "Create a password" : "Enter your password"}
           // readOnly rather than disabled: disabled fields are left out of the submitted form.
           readOnly={pending}
@@ -70,7 +73,7 @@ export function PasswordField({
         </button>
       </div>
       {isSignUp && (
-        <p className="text-xs text-muted-foreground" id="password-hint">
+        <p className="text-xs text-muted-foreground" id={`${name}-hint`}>
           Use at least 8 characters.
         </p>
       )}
@@ -99,11 +102,24 @@ export function EmailField() {
   );
 }
 
-export function SubmitButton({ children, disabled }: { children: ReactNode; disabled?: boolean }) {
+export function SubmitButton({
+  children,
+  disabled,
+  variant,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  variant?: "default" | "destructive";
+}) {
   const pending = useContext(PendingContext);
 
   return (
-    <Button className="h-11 w-full justify-center" disabled={disabled || pending} type="submit">
+    <Button
+      className="h-11 w-full justify-center"
+      disabled={disabled || pending}
+      type="submit"
+      variant={variant}
+    >
       {pending ? (
         <Loader2 aria-hidden="true" className="animate-spin motion-reduce:animate-none" />
       ) : null}

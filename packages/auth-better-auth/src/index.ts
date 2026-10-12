@@ -106,6 +106,8 @@ export function createBetterAuthServer({
           },
         }
       : {}),
+    // Deleting an account needs the user's password (checked by deleteAccount below).
+    user: { deleteUser: { enabled: true } },
     advanced: { database: { generateId: "uuid" } },
     // The app rate-limits sign-in and sign-up itself, per client address.
     rateLimit: { enabled: false },
@@ -241,6 +243,40 @@ export function createBetterAuth({
         return ok(undefined);
       } catch (error) {
         if (isApiError(error)) return err("invalid-reset");
+        throw error;
+      }
+    },
+    async changePassword({ currentPassword, newPassword }) {
+      try {
+        const { headers } = await server.api.changePassword({
+          body: { currentPassword, newPassword, revokeOtherSessions: true },
+          headers: requestHeaders(cookies),
+          returnHeaders: true,
+        });
+        // Revoking the other sessions issues this one a new session cookie.
+        applyCookies(cookies, headers);
+        return ok(undefined);
+      } catch (error) {
+        if (isApiError(error) && apiErrorCode(error) === "INVALID_PASSWORD")
+          return err("invalid-password");
+        if (isApiError(error)) return err("not-signed-in");
+        throw error;
+      }
+    },
+    canDeleteAccount: true,
+    async deleteAccount({ password }) {
+      try {
+        const { headers } = await server.api.deleteUser({
+          body: { password },
+          headers: requestHeaders(cookies),
+          returnHeaders: true,
+        });
+        applyCookies(cookies, headers);
+        return ok(undefined);
+      } catch (error) {
+        if (isApiError(error) && apiErrorCode(error) === "INVALID_PASSWORD")
+          return err("invalid-password");
+        if (isApiError(error)) return err("not-signed-in");
         throw error;
       }
     },

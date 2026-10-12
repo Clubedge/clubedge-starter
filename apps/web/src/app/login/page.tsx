@@ -35,6 +35,7 @@ const errorMessages: Record<string, string> = {
 const notices: Record<string, string> = {
   "reset-sent": "If an account uses that email, we sent it a link to choose a new password.",
   "password-updated": "Password updated. Sign in with your new password.",
+  "account-deleted": "Your account was deleted.",
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {

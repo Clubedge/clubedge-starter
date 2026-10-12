@@ -1,5 +1,5 @@
 import { createServerClient, type CookieMethodsServer } from "@supabase/ssr";
-import type { User } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 import { err, ok } from "@clubedge/core";
 import type { AuthProvider, AuthUser, CookieStore } from "@clubedge/auth";
 
@@ -7,10 +7,16 @@ export interface SupabaseAuthConfig {
   url: string;
   publishableKey: string;
   cookies: CookieStore;
+  /** The project's secret key, server-side only; needed to delete accounts. */
+  secretKey?: string;
 }
 
 /** A request-scoped Supabase client. Storage adapters can reuse it for user-scoped access. */
-export function createSupabaseServerClient({ url, publishableKey, cookies }: SupabaseAuthConfig) {
+export function createSupabaseServerClient({
+  url,
+  publishableKey,
+  cookies,
+}: Pick<SupabaseAuthConfig, "url" | "publishableKey" | "cookies">) {
   return createServerClient(url, publishableKey, {
     cookies: {
       getAll: () => cookies.getAll(),
@@ -25,6 +31,14 @@ function toAuthUser(user: User): AuthUser {
 
 export function createSupabaseAuth(config: SupabaseAuthConfig): AuthProvider {
   const supabase = createSupabaseServerClient(config);
+
+  /** The signed-in user, once their password is confirmed by signing in with it again. */
+  async function confirmPassword(password: string) {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user?.email) return err("not-signed-in" as const);
+    const { error } = await supabase.auth.signInWithPassword({ email: data.user.email, password });
+    return error ? err("invalid-password" as const) : ok(data.user);
+  }
 
   return {
     // Supabase sends its own reset emails, configured in the Supabase project.
@@ -64,6 +78,28 @@ export function createSupabaseAuth(config: SupabaseAuthConfig): AuthProvider {
     async resetPassword({ password }) {
       const { error } = await supabase.auth.updateUser({ password });
       return error ? err("invalid-reset") : ok(undefined);
+    },
+    async changePassword({ currentPassword, newPassword }) {
+      const confirmed = await confirmPassword(currentPassword);
+      if (!confirmed.ok) return confirmed;
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      return ok(undefined);
+    },
+    canDeleteAccount: Boolean(config.secretKey),
+    async deleteAccount({ password }) {
+      if (!config.secretKey) return err("not-supported");
+      const confirmed = await confirmPassword(password);
+      if (!confirmed.ok) return confirmed;
+      // Deleting a user is an admin operation, so it needs the secret key's client.
+      const admin = createClient(config.url, config.secretKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { error } = await admin.auth.admin.deleteUser(confirmed.value.id);
+      if (error) throw error;
+      // The user no longer exists, so only this browser's session cookies need clearing.
+      await supabase.auth.signOut({ scope: "local" });
+      return ok(undefined);
     },
     async refreshSession() {
       // getUser() validates the JWT with Supabase and rotates the cookies when needed.

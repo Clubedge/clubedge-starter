@@ -7,11 +7,14 @@ import { optional, parseEnv } from "./server";
 const supabaseAuthSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: optional(z.url()),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: optional(z.string()),
+  // Server-side only; lets users delete their account from the settings page.
+  SUPABASE_SECRET_KEY: optional(z.string()),
 });
 
 export interface SupabaseAuthEnv {
   url: string;
   publishableKey: string;
+  secretKey?: string;
 }
 
 /** Supabase Auth settings, or null while they are not configured. */
@@ -19,7 +22,12 @@ export function getSupabaseAuthEnv(): SupabaseAuthEnv | null {
   const env = parseEnv(supabaseAuthSchema, "Supabase Auth");
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  return url && publishableKey ? { url, publishableKey } : null;
+  if (!url || !publishableKey) return null;
+  return {
+    url,
+    publishableKey,
+    ...(env.SUPABASE_SECRET_KEY ? { secretKey: env.SUPABASE_SECRET_KEY } : {}),
+  };
 }
 // clubedge:end
 
