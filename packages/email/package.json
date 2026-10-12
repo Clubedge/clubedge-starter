@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/email",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Email interface, console and in-memory providers, and message templates.",
   "private": true,
   "license": "Apache-2.0",
