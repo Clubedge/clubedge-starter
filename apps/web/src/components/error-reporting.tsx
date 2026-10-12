@@ -31,11 +31,12 @@ export function ErrorReporting() {
     }
     const onError = (event: ErrorEvent) => send("error", event.error ?? event.message);
     const onRejection = (event: PromiseRejectionEvent) => send("unhandledrejection", event.reason);
-    window.addEventListener("error", onError);
-    window.addEventListener("unhandledrejection", onRejection);
+    // Capture phase: runs before handlers that might stop the event, such as a dev overlay.
+    window.addEventListener("error", onError, true);
+    window.addEventListener("unhandledrejection", onRejection, true);
     return () => {
-      window.removeEventListener("error", onError);
-      window.removeEventListener("unhandledrejection", onRejection);
+      window.removeEventListener("error", onError, true);
+      window.removeEventListener("unhandledrejection", onRejection, true);
     };
   }, []);
   return null;

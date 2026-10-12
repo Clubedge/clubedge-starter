@@ -30,6 +30,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The dev server only serves its scripts to localhost by default; the browser tests and
+  // anyone opening http://127.0.0.1:3000 need them too, or pages never hydrate.
+  allowedDevOrigins: ["127.0.0.1"],
   output: "standalone",
   outputFileTracingRoot: workspaceRoot,
   transpilePackages: workspacePackages,
