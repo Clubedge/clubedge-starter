@@ -12,10 +12,7 @@ type AccountButtonProps = {
 export function AccountButton({ user, className }: AccountButtonProps) {
   if (!user) {
     return (
-      <Link
-        href="/login"
-        className={buttonVariants({ className: className, size: "sm", variant: "outline" })}
-      >
+      <Link href="/login" className={buttonVariants({ className, size: "sm", variant: "outline" })}>
         Sign in
       </Link>
     );
