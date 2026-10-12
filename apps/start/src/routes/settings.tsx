@@ -1,7 +1,7 @@
 import { ArrowLeft, CircleAlert, CircleCheck } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { Button } from "@clubedge/ui/components/button";
+import { buttonVariants } from "@clubedge/ui/components/button";
 import {
   Card,
   CardContent,
@@ -65,9 +65,12 @@ function SettingsPage() {
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-10">
       <div className="grid gap-2">
-        <Button className="w-fit" render={<Link to="/dashboard" />} size="sm" variant="ghost">
+        <Link
+          to="/dashboard"
+          className={buttonVariants({ className: "w-fit", size: "sm", variant: "ghost" })}
+        >
           <ArrowLeft aria-hidden="true" /> Dashboard
-        </Button>
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Signed in as {settings.email}.</p>
       </div>

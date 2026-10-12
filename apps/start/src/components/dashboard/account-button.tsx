@@ -20,9 +20,9 @@ export function AccountButton({ user, className }: AccountButtonProps) {
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <Button render={<Link to="/settings" />} size="sm" variant="ghost">
+      <Link to="/settings" className={buttonVariants({ size: "sm", variant: "ghost" })}>
         Settings
-      </Button>
+      </Link>
       <form action="/auth/sign-out" className="flex-1" method="post">
         <Button
           className="w-full"

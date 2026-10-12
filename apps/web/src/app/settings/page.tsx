@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { getDisplayName } from "@clubedge/db";
-import { Button } from "@clubedge/ui/components/button";
+import { buttonVariants } from "@clubedge/ui/components/button";
 import {
   Card,
   CardContent,
@@ -69,9 +69,12 @@ export default async function SettingsPage({
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-6 px-4 py-10">
       <div className="grid gap-2">
-        <Button className="w-fit" render={<Link href="/dashboard" />} size="sm" variant="ghost">
+        <Link
+          href="/dashboard"
+          className={buttonVariants({ className: "w-fit", size: "sm", variant: "ghost" })}
+        >
           <ArrowLeft aria-hidden="true" /> Dashboard
-        </Button>
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Signed in as {user.email}.</p>
       </div>
