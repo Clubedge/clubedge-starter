@@ -44,7 +44,9 @@ test("updates the profile, changes the password, and deletes the account", async
   await page.getByLabel("Current password", { exact: true }).fill("not my password");
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByRole("button", { name: "Change password" }).click();
-  await expect(page.getByRole("alert")).toContainText("That password is not correct.");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "That password is not correct.",
+  );
 
   await page.waitForLoadState("networkidle");
   await page.getByLabel("Current password", { exact: true }).fill(password);
@@ -71,5 +73,5 @@ test("updates the profile, changes the password, and deletes the account", async
   // The account is gone: its email and password no longer sign in.
   await signIn(page, email, newPassword);
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole("alert")).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
 });
