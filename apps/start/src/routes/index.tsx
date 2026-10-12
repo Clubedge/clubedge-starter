@@ -1,7 +1,7 @@
 import { ArrowRight, ArrowUpRight, Github, LayoutDashboard } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { Button } from "@clubedge/ui/components/button";
+import { buttonVariants } from "@clubedge/ui/components/button";
 import { ClubedgeMark } from "@/components/branding/clubedge-mark";
 import { CopyCommand } from "@/components/landing/copy-command";
 import { siteConfig } from "@/config/site";
@@ -94,27 +94,27 @@ function LandingPage() {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            <Button
+            <Link
+              to="/dashboard"
               aria-label="Go to dashboard"
-              className="sm:hidden"
-              render={<Link to="/dashboard" />}
-              size="icon"
-              variant="ghost"
+              className={buttonVariants({ className: "sm:hidden", size: "icon", variant: "ghost" })}
             >
               <LayoutDashboard aria-hidden="true" />
-            </Button>
-            <Button
-              className="hidden sm:inline-flex"
-              render={<Link to="/dashboard" />}
-              size="sm"
-              variant="ghost"
+            </Link>
+            <Link
+              to="/dashboard"
+              className={buttonVariants({
+                className: "hidden sm:inline-flex",
+                size: "sm",
+                variant: "ghost",
+              })}
             >
               Dashboard
-            </Button>
+            </Link>
             {/* clubedge:if auth!=none */}
-            <Button render={<Link to="/login" />} size="sm">
+            <Link to="/login" className={buttonVariants({ size: "sm" })}>
               Sign in
-            </Button>
+            </Link>
             {/* clubedge:end */}
           </div>
         </nav>
@@ -136,16 +136,17 @@ function LandingPage() {
             </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Button className="h-11 px-5" render={<Link to="/dashboard" />}>
+              <Link to="/dashboard" className={buttonVariants({ className: "h-11 px-5" })}>
                 Explore the dashboard <ArrowRight aria-hidden="true" />
-              </Button>
-              <Button
-                className="h-11 px-5"
-                render={<a href={SETUP_URL} rel="noreferrer" target="_blank" />}
-                variant="outline"
+              </Link>
+              <a
+                href={SETUP_URL}
+                rel="noreferrer"
+                target="_blank"
+                className={buttonVariants({ className: "h-11 px-5", variant: "outline" })}
               >
                 Read the setup guide <ArrowUpRight aria-hidden="true" />
-              </Button>
+              </a>
             </div>
           </div>
         </section>
@@ -196,12 +197,14 @@ function LandingPage() {
             ))}
           </ol>
           <div className="mt-8">
-            <Button
-              render={<a href={SETUP_URL} rel="noreferrer" target="_blank" />}
-              variant="outline"
+            <a
+              href={SETUP_URL}
+              rel="noreferrer"
+              target="_blank"
+              className={buttonVariants({ variant: "outline" })}
             >
               Read the full setup guide <ArrowUpRight aria-hidden="true" />
-            </Button>
+            </a>
           </div>
         </section>
       </main>

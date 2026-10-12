@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
 import type { AuthUser } from "@/server/auth";
-import { Button } from "@clubedge/ui/components/button";
+import { Button, buttonVariants } from "@clubedge/ui/components/button";
 
 type AccountButtonProps = {
   user: AuthUser | null;
@@ -12,9 +12,12 @@ type AccountButtonProps = {
 export function AccountButton({ user, className }: AccountButtonProps) {
   if (!user) {
     return (
-      <Button className={className} render={<Link href="/login" />} size="sm" variant="outline">
+      <Link
+        href="/login"
+        className={buttonVariants({ className: className, size: "sm", variant: "outline" })}
+      >
         Sign in
-      </Button>
+      </Link>
     );
   }
 
