@@ -5,6 +5,10 @@ import { e2eApp } from "./e2e/app";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // The dev server compiles each page, route, and its client scripts on first use, which on a
+  // cold CI runner can take longer than Playwright's defaults.
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:3000", trace: "on-first-retry" },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
