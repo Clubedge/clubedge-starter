@@ -38,7 +38,7 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("first password 1");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("alert")).toContainText("could not be verified");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("could not be verified");
 
   // The failed attempt reloaded the login page, so fill in both fields again.
   await page.getByLabel("Email").fill(email);

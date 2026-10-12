@@ -23,5 +23,5 @@ test("login keeps a same-origin destination and drops external ones", async ({ p
 
 test("login explains the rate limit error", async ({ page }) => {
   await page.goto("/login?error=rate-limited");
-  await expect(page.getByRole("alert")).toContainText("Too many attempts");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Too many attempts");
 });

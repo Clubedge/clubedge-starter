@@ -22,7 +22,9 @@ test("signs in only after the emailed confirmation link", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("alert")).toContainText("Confirm your email address first");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Confirm your email address first",
+  );
 
   await page.goto(await emailedLink(email, /confirm/i));
   await expect(page).toHaveURL(/\/dashboard$/);
