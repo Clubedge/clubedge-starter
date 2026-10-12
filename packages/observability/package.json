@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/observability",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Observability interface: error reports and spans for @clubedge/core's telemetry hooks, and an in-memory provider for tests.",
   "private": true,
   "license": "Apache-2.0",
