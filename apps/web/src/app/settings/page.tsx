@@ -109,7 +109,7 @@ export default async function SettingsPage({
         </CardContent>
       </Card>
 
-      <Card id="password">
+      <Card id="change-password">
         <CardHeader>
           <CardTitle>Password</CardTitle>
           <CardDescription>Confirm your current password to choose a new one.</CardDescription>
