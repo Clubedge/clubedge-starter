@@ -29,6 +29,9 @@ describe("parseClientErrorReport", () => {
     });
     expect(report?.message).toHaveLength(1_000);
     expect(report?.name).toBe("Error");
+    expect(parseClientErrorReport({ kind: "render", message: "m", path: "/" })?.kind).toBe(
+      "render",
+    );
     expect(parseClientErrorReport(null)).toBeNull();
     expect(parseClientErrorReport({ kind: "error", message: "", path: "/" })).toBeNull();
     expect(parseClientErrorReport({ kind: "other", message: "m", path: "/" })).toBeNull();

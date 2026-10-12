@@ -4,6 +4,7 @@ import { TooltipProvider } from "@clubedge/ui/components/tooltip";
 // clubedge:if observability!=none
 import { ErrorReporting } from "@/components/error-reporting";
 // clubedge:end
+import { RouteError } from "@/components/route-error";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { siteConfig } from "@/config/site";
 import appCss from "../styles.css?url";
@@ -35,6 +36,7 @@ export const Route = createRootRoute({
   }),
   shellComponent: RootDocument,
   component: RootComponent,
+  errorComponent: RouteError,
 });
 
 function RootComponent() {

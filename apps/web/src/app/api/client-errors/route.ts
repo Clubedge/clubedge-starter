@@ -1,4 +1,4 @@
-import { getClientIp, reportError } from "@clubedge/core";
+import { getClientIp, readTextBody, reportError } from "@clubedge/core";
 import { ClientError, parseClientErrorReport } from "@clubedge/observability";
 import { createRateLimiter } from "@/server/cache";
 import { browserErrorReporting } from "@/server/observability";
@@ -22,8 +22,8 @@ async function isRateLimited(request: Request) {
 /** Takes an error report from the browser and reports it like a server error. */
 async function receiveClientError(request: Request): Promise<Response> {
   if (await isRateLimited(request)) return new Response(null, { status: 429 });
-  const body = await request.text();
-  if (body.length > MAX_BODY) return new Response(null, { status: 413 });
+  const body = await readTextBody(request, MAX_BODY);
+  if (body === null) return new Response(null, { status: 413 });
   let report;
   try {
     report = parseClientErrorReport(JSON.parse(body));

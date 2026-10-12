@@ -1,11 +1,32 @@
 import { useEffect } from "react";
 
 const MAX_REPORTS = 10;
+let sent = 0;
+
+type Kind = "error" | "unhandledrejection" | "render";
 
 function describe(reason: unknown) {
   if (reason instanceof Error)
     return { name: reason.name, message: reason.message, stack: reason.stack };
   return { name: "Error", message: String(reason) };
+}
+
+function send(kind: Kind, reason: unknown) {
+  if (sent >= MAX_REPORTS) return;
+  sent++;
+  const body = JSON.stringify({ kind, ...describe(reason), path: window.location.pathname });
+  // keepalive lets the report finish even if the page is being closed.
+  fetch("/api/client-errors", {
+    method: "POST",
+    body,
+    headers: { "content-type": "application/json" },
+    keepalive: true,
+  }).catch(() => {});
+}
+
+/** Reports a render error that an error boundary caught, so it never reaches the window. */
+export function reportBrowserError(error: unknown) {
+  send("render", error);
 }
 
 /**
@@ -14,19 +35,6 @@ function describe(reason: unknown) {
  */
 export function ErrorReporting() {
   useEffect(() => {
-    let sent = 0;
-    function send(kind: "error" | "unhandledrejection", reason: unknown) {
-      if (sent >= MAX_REPORTS) return;
-      sent++;
-      const body = JSON.stringify({ kind, ...describe(reason), path: window.location.pathname });
-      // keepalive lets the report finish even if the page is being closed.
-      fetch("/api/client-errors", {
-        method: "POST",
-        body,
-        headers: { "content-type": "application/json" },
-        keepalive: true,
-      }).catch(() => {});
-    }
     const onError = (event: ErrorEvent) => send("error", event.error ?? event.message);
     const onRejection = (event: PromiseRejectionEvent) => send("unhandledrejection", event.reason);
     // Capture phase: runs before handlers that might stop the event, such as a dev overlay.

@@ -64,15 +64,20 @@ export function requestAttributes(request: {
   return { "http.request.method": request.method, "url.path": path.split("?")[0] };
 }
 
-/** What the browser sends about an uncaught error or unhandled rejection. */
+/**
+ * What the browser sends about an uncaught error, an unhandled rejection, or a render error that
+ * an error boundary caught.
+ */
 export interface ClientErrorReport {
-  kind: "error" | "unhandledrejection";
+  kind: "error" | "unhandledrejection" | "render";
   name: string;
   message: string;
   stack?: string;
   /** The page path, without its query string. */
   path: string;
 }
+
+const KINDS = ["error", "unhandledrejection", "render"] as const;
 
 const text = (value: unknown, limit: number) =>
   typeof value === "string" && value.trim() ? value.slice(0, limit) : undefined;
@@ -84,12 +89,7 @@ const text = (value: unknown, limit: number) =>
 export function parseClientErrorReport(body: unknown): ClientErrorReport | null {
   if (typeof body !== "object" || body === null) return null;
   const input = body as Record<string, unknown>;
-  const kind =
-    input.kind === "unhandledrejection"
-      ? "unhandledrejection"
-      : input.kind === "error"
-        ? "error"
-        : null;
+  const kind = KINDS.find((candidate) => candidate === input.kind) ?? null;
   const message = text(input.message, 1_000);
   const path = text(input.path, 300);
   if (!kind || !message || !path?.startsWith("/")) return null;

@@ -1,5 +1,6 @@
 export { AppError, errorResponse } from "./errors";
 export { getClientIp } from "./client-ip";
+export { readTextBody } from "./request-body";
 export { safeRedirectPath } from "./redirect";
 export { err, ok, type Result } from "./result";
 export {
