@@ -1,7 +1,11 @@
 import "server-only";
 import type { AuthEmailSender } from "@clubedge/auth-better-auth";
-// clubedge:if email!=none
+// clubedge:if email!=none && jobs=none
 import { email } from "@/server/email";
+// clubedge:end
+// clubedge:if email!=none && jobs!=none
+import { sendEmailJob } from "@/jobs";
+import { getJobs } from "@/server/jobs";
 // clubedge:end
 
 /**
@@ -11,8 +15,15 @@ import { email } from "@/server/email";
 export function authEmailSender(): AuthEmailSender | undefined {
   // A list, so the code reads the same with and without the email module's block.
   const senders: AuthEmailSender[] = [];
-  // clubedge:if email!=none
+  // clubedge:if email!=none && jobs=none
   senders.push((message) => email.send(message));
+  // clubedge:end
+  // clubedge:if email!=none && jobs!=none
+  // Queued as a background job: sign-up does not wait for the email provider, and a failed send
+  // is retried.
+  senders.push(async (message) => {
+    await getJobs().enqueue(sendEmailJob, message);
+  });
   // clubedge:end
   return senders[0];
 }
