@@ -438,6 +438,15 @@ export function DashboardShell({ areas, account, children }: DashboardShellProps
     [collapsed],
   );
 
+  // The drawer is for phones. If the window grows to the desktop layout while it is open, close it:
+  // its panel hides at md, but the Sheet's backdrop would otherwise stay over the page until a click.
+  useEffect(() => {
+    const desktop = matchMedia("(min-width: 48rem)");
+    const close = () => desktop.matches && setDrawerOpen(false);
+    desktop.addEventListener("change", close);
+    return () => desktop.removeEventListener("change", close);
+  }, []);
+
   // The account card, at the bottom of the sidebar and the drawer. Empty without auth.
   const footer = <div className="flex flex-col gap-2 p-3 empty:hidden">{account}</div>;
 
