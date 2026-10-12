@@ -1,19 +1,24 @@
 {
   "name": "@clubedge/observability-sentry",
   "version": "0.13.1",
-  "description": "Sentry provider for @clubedge/observability: server errors and traces sent to Sentry.",
+  "description": "Sentry provider for @clubedge/observability: server and browser errors, traces, and source map uploads.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./browser": "./src/browser.ts",
+    "./sourcemaps": "./src/sourcemaps.cjs",
+    "./vite": "./src/vite.mjs"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clubedge/observability": "workspace:*",
+    "@sentry/browser": "^11.6.0",
+    "@sentry/cli": "^3.8.0",
     "@sentry/node": "^11.6.0"
   },
   "devDependencies": {

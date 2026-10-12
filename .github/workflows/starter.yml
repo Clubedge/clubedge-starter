@@ -59,6 +59,22 @@ jobs:
           for path in / /login /dashboard /api/health; do
             curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:3000$path"
           done
+      # Failed browser tests: print each one's page snapshot here and keep traces and screenshots.
+      - name: Show why browser tests failed
+        if: failure()
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r file; do
+            echo "::group::$file"
+            cat "$file"
+            echo "::endgroup::"
+          done
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-tanstack-start
+          path: test-results
+          if-no-files-found: ignore
 
   tanstack-start-docker:
     runs-on: ubuntu-latest
@@ -320,6 +336,23 @@ jobs:
           done
           curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3100/api/health
           curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3100/
+      # Failed browser tests: print each one's page snapshot here and keep traces and screenshots.
+      - name: Show why browser tests failed
+        if: failure()
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r file; do
+            echo "::group::$file"
+            cat "$file"
+            echo "::endgroup::"
+          done
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-generated-project-${{ matrix.name }}
+          path: ${{ runner.temp }}/generated-app/test-results
+          if-no-files-found: ignore
 
   # Signs up, out, and back in through the real forms, with Better Auth on PostgreSQL.
   better-auth-flow:
@@ -369,6 +402,23 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e e2e/auth-flow.spec.ts
+      # Failed browser tests: print each one's page snapshot here and keep traces and screenshots.
+      - name: Show why browser tests failed
+        if: failure()
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r file; do
+            echo "::group::$file"
+            cat "$file"
+            echo "::endgroup::"
+          done
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-better-auth-flow-${{ matrix.framework }}
+          path: ${{ runner.temp }}/generated-app/test-results
+          if-no-files-found: ignore
 
   # Generates projects with local infrastructure, starts it, and proves the app uses it: service
   # round trips through `pnpm check:services` and a real sign-up, sign-out, and sign-in.
@@ -541,3 +591,20 @@ jobs:
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           if [ "${{ matrix.infra }}" = local ]; then fuser -k -INT 5433/tcp || true; else pnpm infra:down || true; fi
+      # Failed browser tests: print each one's page snapshot here and keep traces and screenshots.
+      - name: Show why browser tests failed
+        if: failure()
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          find test-results -name error-context.md 2>/dev/null | while read -r file; do
+            echo "::group::$file"
+            cat "$file"
+            echo "::endgroup::"
+          done
+      - name: Upload browser test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-local-infra-${{ matrix.infra }}-${{ matrix.framework }}
+          path: ${{ runner.temp }}/generated-app/test-results
+          if-no-files-found: ignore

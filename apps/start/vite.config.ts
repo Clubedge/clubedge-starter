@@ -1,8 +1,11 @@
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
+// clubedge:if observability=sentry
+import { sentrySourceMaps } from "@clubedge/observability-sentry/vite";
+// clubedge:end
 import { nitro } from "nitro/vite";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 
 export default defineConfig(({ mode }) => {
   // Server code reads process.env. Load .env, .env.local and friends from this directory so
@@ -11,7 +14,7 @@ export default defineConfig(({ mode }) => {
     process.env[key] ??= value;
   }
 
-  return {
+  const config: UserConfig = {
     // Listen on every interface like `next dev`, so http://127.0.0.1:3000 (used by the
     // browser tests) works where localhost resolves to IPv6 only.
     server: { port: 3000, host: true },
@@ -25,4 +28,9 @@ export default defineConfig(({ mode }) => {
     // Nitro runs the plugins in src/nitro/plugins once when the server starts.
     plugins: [tailwindcss(), tanstackStart(), nitro({ serverDir: "./src/nitro" }), viteReact()],
   };
+  // clubedge:if observability=sentry
+  // With SENTRY_AUTH_TOKEN, the client build's source maps are uploaded to Sentry, then deleted.
+  config.plugins = [...(config.plugins ?? []), sentrySourceMaps()];
+  // clubedge:end
+  return config;
 });

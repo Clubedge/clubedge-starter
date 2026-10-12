@@ -19,7 +19,7 @@ import {
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { Badge } from "@clubedge/ui/components/badge";
-import { Button } from "@clubedge/ui/components/button";
+import { buttonVariants } from "@clubedge/ui/components/button";
 import {
   Card,
   CardContent,
@@ -157,14 +157,15 @@ function DashboardPage() {
                 Starter ready
               </Badge>
               <ThemeToggle />
-              <Button
+              <a
+                href={siteConfig.links.repository}
+                target="_blank"
+                rel="noreferrer"
                 aria-label="Open GitHub repository"
-                render={<a href={siteConfig.links.repository} target="_blank" rel="noreferrer" />}
-                size="icon"
-                variant="ghost"
+                className={buttonVariants({ size: "icon", variant: "ghost" })}
               >
                 <Github aria-hidden="true" />
-              </Button>
+              </a>
               <AccountButton user={user} />
             </div>
           </div>
@@ -188,11 +189,14 @@ function DashboardPage() {
                 top of a consistent, replaceable foundation.
               </p>
             </div>
-            <Button
-              render={<a href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />}
+            <a
+              href={siteConfig.links.setupGuide}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants()}
             >
               Read setup guide <ArrowRight aria-hidden="true" />
-            </Button>
+            </a>
           </section>
 
           <section
@@ -338,13 +342,14 @@ function DashboardPage() {
               <Separator />
               <CardContent className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
                 <p className="text-xs text-muted-foreground">Need help connecting a provider?</p>
-                <Button
-                  render={<a href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />}
-                  size="sm"
-                  variant="ghost"
+                <a
+                  href={siteConfig.links.setupGuide}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonVariants({ size: "sm", variant: "ghost" })}
                 >
                   Setup docs <ArrowUpRight aria-hidden="true" />
-                </Button>
+                </a>
               </CardContent>
             </Card>
           </section>
@@ -363,13 +368,14 @@ function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <Button
-                render={<a href={siteConfig.links.setupGuide} target="_blank" rel="noreferrer" />}
-                size="sm"
-                variant="outline"
+              <a
+                href={siteConfig.links.setupGuide}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonVariants({ size: "sm", variant: "outline" })}
               >
                 Get started <ArrowRight aria-hidden="true" />
-              </Button>
+              </a>
             </CardContent>
           </Card>
 

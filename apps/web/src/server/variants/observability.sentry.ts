@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { reportError, setTelemetry } from "@clubedge/core";
-import type { ObservabilityProvider } from "@clubedge/observability";
+import type { BrowserErrorReporting, ObservabilityProvider } from "@clubedge/observability";
 import { createSentryObservability } from "@clubedge/observability-sentry";
 import { optional, parseEnv } from "@/env/server";
 
@@ -47,4 +47,20 @@ export function startObservability(): ObservabilityProvider | null {
   if (provider) setTelemetry(provider);
   globalForObservability.clubedgeObservability = provider;
   return provider;
+}
+
+/** With a DSN, the browser reports its errors to Sentry directly; the DSN is public by design. */
+export function browserErrorReporting(): BrowserErrorReporting {
+  try {
+    const env = parseEnv(observabilityEnvSchema, "Observability");
+    if (!env.SENTRY_DSN) return { provider: "none" };
+    return {
+      provider: "sentry",
+      dsn: env.SENTRY_DSN,
+      environment: env.SENTRY_ENVIRONMENT || process.env.NODE_ENV,
+      ...(env.SENTRY_RELEASE ? { release: env.SENTRY_RELEASE } : {}),
+    };
+  } catch {
+    return { provider: "none" };
+  }
 }

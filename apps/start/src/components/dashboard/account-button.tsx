@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import type { AuthUser } from "@/server/auth";
-import { Button } from "@clubedge/ui/components/button";
+import { Button, buttonVariants } from "@clubedge/ui/components/button";
 
 type AccountButtonProps = {
   user: AuthUser | null;
@@ -11,9 +11,9 @@ type AccountButtonProps = {
 export function AccountButton({ user, className }: AccountButtonProps) {
   if (!user) {
     return (
-      <Button className={className} render={<Link to="/login" />} size="sm" variant="outline">
+      <Link to="/login" className={buttonVariants({ className, size: "sm", variant: "outline" })}>
         Sign in
-      </Button>
+      </Link>
     );
   }
 

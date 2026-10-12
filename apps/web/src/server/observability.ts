@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { reportError, setTelemetry } from "@clubedge/core";
-import type { ObservabilityProvider } from "@clubedge/observability";
+import type { BrowserErrorReporting, ObservabilityProvider } from "@clubedge/observability";
 import { createOtelObservability, parseOtlpHeaders } from "@clubedge/observability-otel";
 import { siteConfig } from "@/config/site";
 import { optional, parseEnv } from "@/env/server";
@@ -41,4 +41,9 @@ export function startObservability(): ObservabilityProvider | null {
   if (provider) setTelemetry(provider);
   globalForObservability.clubedgeObservability = provider;
   return provider;
+}
+
+/** Browser errors go to /api/client-errors, which reports them like server errors. */
+export function browserErrorReporting(): BrowserErrorReporting {
+  return { provider: "endpoint" };
 }
