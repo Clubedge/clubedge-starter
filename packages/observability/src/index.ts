@@ -63,3 +63,59 @@ export function requestAttributes(request: {
   const path = request.path ?? (request.url ? new URL(request.url, "http://local").pathname : "");
   return { "http.request.method": request.method, "url.path": path.split("?")[0] };
 }
+
+/** What the browser sends about an uncaught error or unhandled rejection. */
+export interface ClientErrorReport {
+  kind: "error" | "unhandledrejection";
+  name: string;
+  message: string;
+  stack?: string;
+  /** The page path, without its query string. */
+  path: string;
+}
+
+const text = (value: unknown, limit: number) =>
+  typeof value === "string" && value.trim() ? value.slice(0, limit) : undefined;
+
+/**
+ * Reads a report sent by the browser, keeping only the expected fields within size limits and
+ * dropping query strings, which can carry tokens. Returns null for anything else.
+ */
+export function parseClientErrorReport(body: unknown): ClientErrorReport | null {
+  if (typeof body !== "object" || body === null) return null;
+  const input = body as Record<string, unknown>;
+  const kind =
+    input.kind === "unhandledrejection"
+      ? "unhandledrejection"
+      : input.kind === "error"
+        ? "error"
+        : null;
+  const message = text(input.message, 1_000);
+  const path = text(input.path, 300);
+  if (!kind || !message || !path?.startsWith("/")) return null;
+  return {
+    kind,
+    name: text(input.name, 100) ?? "Error",
+    message,
+    ...(text(input.stack, 8_000) ? { stack: text(input.stack, 8_000) } : {}),
+    path: path.split(/[?#]/)[0]!,
+  };
+}
+
+/** An error that happened in the browser, as a server-side Error for reporting. */
+export class ClientError extends Error {
+  override name = "ClientError";
+  constructor(report: ClientErrorReport) {
+    super(`${report.name}: ${report.message}`);
+    this.stack = report.stack ? `${report.name}: ${report.message}\n${report.stack}` : this.message;
+  }
+}
+
+/**
+ * How the browser reports its errors, served at runtime by /api/client-errors so builds never
+ * bake in settings: posted back to the server ("endpoint"), sent to Sentry, or not at all.
+ */
+export type BrowserErrorReporting =
+  | { provider: "endpoint" }
+  | { provider: "sentry"; dsn: string; environment?: string; release?: string }
+  | { provider: "none" };

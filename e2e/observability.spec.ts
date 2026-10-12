@@ -26,3 +26,25 @@ test("sends request traces to the observability provider", async ({ page, reques
     await fake.stop();
   }
 });
+
+test("reports uncaught browser errors to the observability provider", async ({ page }) => {
+  const fake = await startTelemetryFake();
+  try {
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    // An error nothing catches, as a bug in a click handler or effect would raise.
+    await page.evaluate(() => {
+      setTimeout(() => {
+        throw new Error("E2E browser error");
+      }, 0);
+    });
+    await expect
+      .poll(() => fake.errors.some((message) => message.includes("E2E browser error")), {
+        timeout: 45_000,
+        intervals: [2_000],
+      })
+      .toBe(true);
+  } finally {
+    await fake.stop();
+  }
+});

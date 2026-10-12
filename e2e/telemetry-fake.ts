@@ -65,6 +65,13 @@ export async function startTelemetryFake(port = 4319): Promise<TelemetryFake> {
   }
 
   const server = createServer((request, response) => {
+    // Sentry's browser SDK posts here from the app's origin.
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Allow-Headers", "*");
+    if (request.method === "OPTIONS") {
+      response.writeHead(204).end();
+      return;
+    }
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {

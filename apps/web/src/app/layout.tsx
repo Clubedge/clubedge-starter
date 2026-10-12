@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "@clubedge/ui/globals.css";
 import { TooltipProvider } from "@clubedge/ui/components/tooltip";
+// clubedge:if observability!=none
+import { ErrorReporting } from "@/components/error-reporting";
+// clubedge:end
 import { siteConfig } from "@/config/site";
 import { ThemeProvider } from "./theme-provider";
 
@@ -30,6 +33,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
+        {/* clubedge:if observability!=none */}
+        <ErrorReporting />
+        {/* clubedge:end */}
       </body>
     </html>
   );

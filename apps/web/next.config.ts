@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 import { readFileSync } from "node:fs";
+// clubedge:if observability=sentry
+import { join } from "node:path";
+// clubedge:end
 import { fileURLToPath } from "node:url";
+// clubedge:if observability=sentry
+import {
+  shouldUploadSourceMaps,
+  uploadSourceMaps,
+} from "@clubedge/observability-sentry/sourcemaps";
+// clubedge:end
 
 const workspaceRoot = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -27,6 +36,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // clubedge:if observability=sentry
+  // With SENTRY_AUTH_TOKEN, the build makes browser source maps, uploads them to Sentry, and
+  // deletes them before they are copied anywhere, so they are never served.
+  productionBrowserSourceMaps: shouldUploadSourceMaps(),
+  compiler: {
+    runAfterProductionCompile: async ({ distDir }) => {
+      await uploadSourceMaps(join(distDir, "static"));
+    },
+  },
+  // clubedge:end
 };
 
 export default nextConfig;

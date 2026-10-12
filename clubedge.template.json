@@ -285,9 +285,13 @@
             "@clubedge/observability-otel": "packages/observability-otel"
           },
           "files": [
+            "apps/start/src/components/error-reporting.tsx",
             "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/routes/api/client-errors.ts",
             "apps/start/src/server/observability.test.ts",
             "apps/start/src/server/observability.ts",
+            "apps/web/src/app/api/client-errors",
+            "apps/web/src/components/error-reporting.tsx",
             "apps/web/src/instrumentation.ts",
             "apps/web/src/server/observability.ts",
             "e2e/observability.spec.ts",
@@ -301,16 +305,22 @@
             "@clubedge/observability-sentry": "packages/observability-sentry"
           },
           "files": [
+            "apps/start/src/components/error-reporting.tsx",
             "apps/start/src/nitro/plugins/observability.ts",
+            "apps/start/src/routes/api/client-errors.ts",
             "apps/start/src/server/observability.test.ts",
             "apps/start/src/server/observability.ts",
+            "apps/web/src/app/api/client-errors",
+            "apps/web/src/components/error-reporting.tsx",
             "apps/web/src/instrumentation.ts",
             "apps/web/src/server/observability.ts",
             "e2e/observability.spec.ts",
             "e2e/telemetry-fake.ts"
           ],
           "replace": {
+            "apps/start/src/components/error-reporting.tsx": "apps/start/src/components/variants/error-reporting.sentry.tsx",
             "apps/start/src/server/observability.ts": "apps/start/src/server/variants/observability.sentry.ts",
+            "apps/web/src/components/error-reporting.tsx": "apps/web/src/components/variants/error-reporting.sentry.tsx",
             "apps/web/src/server/observability.ts": "apps/web/src/server/variants/observability.sentry.ts"
           }
         },
@@ -405,13 +415,17 @@
     "apps/start/scripts/check-services.ts",
     "apps/start/src/env/auth.ts",
     "apps/start/src/jobs/index.ts",
+    "apps/start/src/routes/__root.tsx",
     "apps/start/src/routes/dashboard.tsx",
     "apps/start/src/routes/index.tsx",
     "apps/start/src/server/auth-email.ts",
     "apps/start/src/server/storage.ts",
     "apps/start/src/start.ts",
+    "apps/start/vite.config.ts",
+    "apps/web/next.config.ts",
     "apps/web/scripts/check-services.ts",
     "apps/web/src/app/dashboard/page.tsx",
+    "apps/web/src/app/layout.tsx",
     "apps/web/src/app/page.tsx",
     "apps/web/src/env/auth.ts",
     "apps/web/src/instrumentation.ts",
