@@ -276,13 +276,18 @@ Local services:
 - `pnpm infra:up`: run only the local database, for example for `pnpm check:services` or browser tests. <!-- clubedge:only infra=local -->
 - `pnpm infra:reset`: delete the local database and files in `.data/` (stop `pnpm dev` first). <!-- clubedge:only infra=local -->
 
+Check the project:
+
+- `pnpm clubedge status`: the project's Starter release, modules, and Git state, whether a newer Starter release exists, and the command to run next.
+- `pnpm clubedge doctor`: check Node.js, pnpm, the dependencies, the lockfile, and `apps/web/.env.local` against the example, then run `pnpm check:services`. It changes nothing and exits with an error when a check fails.
+
 Change the project later:
 
-- `pnpm clubedge add <module> <option>`: add a module or switch its option, for example `pnpm clubedge add auth better-auth` or `pnpm clubedge add infra local`. Run `pnpm clubedge add` without arguments to choose from a list.
-- `pnpm clubedge remove <module>`: remove a module, for example `pnpm clubedge remove storage`.
-- `pnpm clubedge upgrade`: move the project to the newest Starter release.
+- `pnpm clubedge add <module> <option>`: add a module or switch its option, for example `pnpm clubedge add auth better-auth` or `pnpm clubedge add infra local`. Name several to change them together, as in `pnpm clubedge add email resend payments stripe`. Run `pnpm clubedge add` without arguments to choose from a list.
+- `pnpm clubedge remove <module>`: remove one or more modules, for example `pnpm clubedge remove storage`.
+- `pnpm clubedge upgrade`: move the project to the newest Starter release. It first lists the releases in between.
 
-These commands merge the change into your code instead of overwriting it: files you never touched are updated, your edits are kept, and lines you both changed get conflict markers. Commit first, because they need a clean Git tree so that `git diff` shows the result. Add `--dry-run` to preview a change.
+These commands merge the change into your code instead of overwriting it: files you never touched are updated, your edits are kept, and lines you both changed get conflict markers, listed per file afterward. Commit first, because they need a clean Git tree so that `git diff` shows the result. Add `--dry-run` to preview a change.
 
 ## Documentation
 

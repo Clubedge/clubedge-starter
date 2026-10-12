@@ -445,6 +445,8 @@ Production needs these variables:
 
 ## Checks
 
+`pnpm clubedge doctor` checks that the project can run: Node.js and pnpm versions, installed dependencies, the lockfile, and `apps/web/.env.local` against the example, followed by `pnpm check:services`. Start there when something does not work.
+
 Run the checks relevant to your change before opening a pull request:
 
 ```sh
