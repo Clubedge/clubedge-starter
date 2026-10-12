@@ -12,11 +12,14 @@ export function PasswordField({
   isSignUp,
   label = "Password",
   name = "password",
+  minLength = 8,
 }: {
   isSignUp: boolean;
   label?: string;
   /** The field's name and id; settings forms have more than one password field. */
   name?: string;
+  /** 1 for fields that confirm an existing password, which may predate the current rules. */
+  minLength?: number;
 }) {
   const [visible, setVisible] = useState(false);
   const { pending } = useFormStatus();
@@ -32,7 +35,7 @@ export function PasswordField({
           disabled={pending}
           id={name}
           maxLength={128}
-          minLength={8}
+          minLength={minLength}
           name={name}
           placeholder={isSignUp ? "Create a password" : "Enter your password"}
           required

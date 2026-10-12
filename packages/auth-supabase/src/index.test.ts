@@ -196,6 +196,7 @@ describe("createSupabaseAuth", () => {
       error: null,
     });
     supabaseAuth.updateUser.mockResolvedValueOnce({ error: null });
+    supabaseAuth.signOut.mockResolvedValueOnce({ error: null });
     await expect(
       auth.changePassword({ currentPassword: "right", newPassword: "new secret 123" }),
     ).resolves.toEqual({
@@ -207,6 +208,7 @@ describe("createSupabaseAuth", () => {
       password: "right",
     });
     expect(supabaseAuth.updateUser).toHaveBeenCalledWith({ password: "new secret 123" });
+    expect(supabaseAuth.signOut).toHaveBeenCalledWith({ scope: "others" });
   });
 
   it("deletes accounts only with the secret key and the right password", async () => {
@@ -224,12 +226,29 @@ describe("createSupabaseAuth", () => {
       data: { user: supabaseUser },
       error: null,
     });
+    // When removing the app's data fails, the user is kept.
+    await expect(
+      auth.deleteAccount({
+        password: "right",
+        beforeDelete: () => Promise.reject(new Error("database down")),
+      }),
+    ).rejects.toThrow("database down");
+    expect(adminDeleteUser).not.toHaveBeenCalled();
+
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: supabaseUser },
+      error: null,
+    });
     adminDeleteUser.mockResolvedValueOnce({ error: null });
     supabaseAuth.signOut.mockResolvedValueOnce({ error: null });
-    await expect(auth.deleteAccount({ password: "right" })).resolves.toEqual({
+    const beforeDelete = vi.fn(async () => {
+      expect(adminDeleteUser).not.toHaveBeenCalled();
+    });
+    await expect(auth.deleteAccount({ password: "right", beforeDelete })).resolves.toEqual({
       ok: true,
       value: undefined,
     });
+    expect(beforeDelete).toHaveBeenCalledOnce();
     expect(adminDeleteUser).toHaveBeenCalledWith("user-1");
     expect(supabaseAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });

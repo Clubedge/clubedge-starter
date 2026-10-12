@@ -9,7 +9,7 @@ import { getAuth, getCurrentUser } from "@/server/auth";
 import { createRateLimiter } from "@/server/cache";
 import { getDb } from "@/server/db";
 // clubedge:if payments!=none
-import { getBilling, isEntitled, isPaymentsConfigured } from "@/server/payments";
+import { findSubscription, isEntitled } from "@/server/payments";
 // clubedge:end
 import { getUserProfileId } from "@/server/users";
 
@@ -25,13 +25,15 @@ async function signedInUser() {
   return { ...user, email: user.email };
 }
 
-async function isRateLimited(userId: string) {
+/** Why a password check cannot run now, or null when it can. */
+async function passwordCheckBlocked(userId: string) {
   try {
-    return !(await settingsRateLimiter.limit(`settings:${userId}`)).success;
+    const { success } = await settingsRateLimiter.limit(`settings:${userId}`);
+    return success ? null : "rate-limited";
   } catch (error) {
-    // Fail open: an unavailable limiter backend should not lock users out of their settings.
+    // Fail closed: without a working limit, password guesses would be unlimited.
     reportError(error, { message: "Rate limiter unavailable" });
-    return false;
+    return "unavailable";
   }
 }
 
@@ -52,7 +54,8 @@ const passwordSchema = z.object({
 
 export async function changePassword(formData: FormData) {
   const user = await signedInUser();
-  if (await isRateLimited(user.id)) redirect(settingsUrl({ error: "rate-limited" }));
+  const blocked = await passwordCheckBlocked(user.id);
+  if (blocked) redirect(settingsUrl({ error: blocked }));
   const parsed = passwordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     newPassword: formData.get("newPassword"),
@@ -69,18 +72,24 @@ const deleteSchema = z.object({ password: z.string().min(1).max(128) });
 
 export async function deleteAccount(formData: FormData) {
   const user = await signedInUser();
-  if (await isRateLimited(user.id)) redirect(settingsUrl({ error: "rate-limited" }));
+  const blocked = await passwordCheckBlocked(user.id);
+  if (blocked) redirect(settingsUrl({ error: blocked }));
   const parsed = deleteSchema.safeParse({ password: formData.get("password") });
   if (!parsed.success) redirect(settingsUrl({ error: "invalid-input" }));
 
   // clubedge:if payments!=none
   // A deleted account cannot manage its billing, so an active subscription is cancelled first.
-  if (isPaymentsConfigured()) {
-    const subscription = await getBilling().subscriptionFor(await getUserProfileId(user));
-    if (isEntitled(subscription)) redirect(settingsUrl({ error: "active-subscription" }));
-  }
+  // The subscription is read from the database, so this holds even without the Stripe keys.
+  const subscription = await findSubscription(getDb(), await getUserProfileId(user));
+  if (isEntitled(subscription)) redirect(settingsUrl({ error: "active-subscription" }));
   // clubedge:end
-  const result = await (await getAuth()).deleteAccount(parsed.data);
+  const result = await (
+    await getAuth()
+  ).deleteAccount({
+    ...parsed.data,
+    // Runs once the password is confirmed: if the profile cannot be removed, nothing is deleted.
+    beforeDelete: () => deleteUserProfile(getDb(), user.id),
+  });
   if (!result.ok && result.error === "not-signed-in") redirect(loginUrl({ next: "/settings" }));
   if (!result.ok) {
     redirect(
@@ -88,12 +97,6 @@ export async function deleteAccount(formData: FormData) {
         error: result.error === "not-supported" ? "delete-unavailable" : result.error,
       }),
     );
-  }
-  try {
-    // The account is gone either way; a profile left behind is reported, not shown to the user.
-    await deleteUserProfile(getDb(), user.id);
-  } catch (error) {
-    reportError(error, { message: "Could not delete the user profile" });
   }
   redirect(loginUrl({ notice: "account-deleted" }));
 }

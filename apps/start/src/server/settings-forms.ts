@@ -7,7 +7,7 @@ import { getAuth, getCurrentUser, isAuthConfigured } from "./auth";
 import { createRateLimiter } from "./cache";
 import { getDb } from "./db";
 // clubedge:if payments!=none
-import { getBilling, isEntitled, isPaymentsConfigured } from "./payments";
+import { findSubscription, isEntitled } from "./payments";
 // clubedge:end
 import { getUserProfileId } from "./users";
 
@@ -31,13 +31,15 @@ async function signedInUser() {
   return user?.email ? { ...user, email: user.email } : null;
 }
 
-async function isRateLimited(userId: string) {
+/** Why a password check cannot run now, or null when it can. */
+async function passwordCheckBlocked(userId: string) {
   try {
-    return !(await settingsRateLimiter.limit(`settings:${userId}`)).success;
+    const { success } = await settingsRateLimiter.limit(`settings:${userId}`);
+    return success ? null : "rate-limited";
   } catch (error) {
-    // Fail open: an unavailable limiter backend should not lock users out of their settings.
+    // Fail closed: without a working limit, password guesses would be unlimited.
     reportError(error, { message: "Rate limiter unavailable" });
-    return false;
+    return "unavailable";
   }
 }
 
@@ -61,7 +63,8 @@ const passwordSchema = z.object({
 export async function handleChangePassword(request: Request): Promise<Response> {
   const user = await signedInUser();
   if (!user) return toLogin();
-  if (await isRateLimited(user.id)) return toSettings({ error: "rate-limited" });
+  const blocked = await passwordCheckBlocked(user.id);
+  if (blocked) return toSettings({ error: blocked });
   const formData = await request.formData();
   const parsed = passwordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
@@ -80,30 +83,28 @@ const deleteSchema = z.object({ password: z.string().min(1).max(128) });
 export async function handleDeleteAccount(request: Request): Promise<Response> {
   const user = await signedInUser();
   if (!user) return toLogin();
-  if (await isRateLimited(user.id)) return toSettings({ error: "rate-limited" });
+  const blocked = await passwordCheckBlocked(user.id);
+  if (blocked) return toSettings({ error: blocked });
   const formData = await request.formData();
   const parsed = deleteSchema.safeParse({ password: formData.get("password") });
   if (!parsed.success) return toSettings({ error: "invalid-input" });
 
   // clubedge:if payments!=none
   // A deleted account cannot manage its billing, so an active subscription is cancelled first.
-  if (isPaymentsConfigured()) {
-    const subscription = await getBilling().subscriptionFor(await getUserProfileId(user));
-    if (isEntitled(subscription)) return toSettings({ error: "active-subscription" });
-  }
+  // The subscription is read from the database, so this holds even without the Stripe keys.
+  const subscription = await findSubscription(getDb(), await getUserProfileId(user));
+  if (isEntitled(subscription)) return toSettings({ error: "active-subscription" });
   // clubedge:end
-  const result = await getAuth().deleteAccount(parsed.data);
+  const result = await getAuth().deleteAccount({
+    ...parsed.data,
+    // Runs once the password is confirmed: if the profile cannot be removed, nothing is deleted.
+    beforeDelete: () => deleteUserProfile(getDb(), user.id),
+  });
   if (!result.ok && result.error === "not-signed-in") return toLogin();
   if (!result.ok) {
     return toSettings({
       error: result.error === "not-supported" ? "delete-unavailable" : result.error,
     });
-  }
-  try {
-    // The account is gone either way; a profile left behind is reported, not shown to the user.
-    await deleteUserProfile(getDb(), user.id);
-  } catch (error) {
-    reportError(error, { message: "Could not delete the user profile" });
   }
   return seeOther(loginUrl({ notice: "account-deleted" }));
 }

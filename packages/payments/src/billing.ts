@@ -17,20 +17,25 @@ export function isEntitled(subscription: Pick<Subscription, "status"> | null): b
 }
 
 /**
+ * The user's most recently updated subscription with any provider, or null. Reads only the
+ * database, so it works even while the payment provider is not configured.
+ */
+export async function findSubscription(db: Database, userId: string): Promise<Subscription | null> {
+  const [row] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(desc(subscriptions.updatedAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
  * Billing for one provider: checkout and portal sessions, the current subscription, and webhook
  * handling. Provider-neutral: it only uses PaymentProvider and the subscription tables.
  */
 export function createBilling({ db, provider }: { db: Database; provider: PaymentProvider }) {
-  /** The user's most recently updated subscription with any provider, or null. */
-  async function subscriptionFor(userId: string): Promise<Subscription | null> {
-    const [row] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
-      .orderBy(desc(subscriptions.updatedAt))
-      .limit(1);
-    return row ?? null;
-  }
+  const subscriptionFor = (userId: string) => findSubscription(db, userId);
 
   /** The provider customer id from the user's earlier subscriptions with this provider. */
   async function customerIdFor(userId: string): Promise<string | undefined> {

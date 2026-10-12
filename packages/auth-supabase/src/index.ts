@@ -84,13 +84,17 @@ export function createSupabaseAuth(config: SupabaseAuthConfig): AuthProvider {
       if (!confirmed.ok) return confirmed;
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+      // Sessions on other devices end; this one stays signed in.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
+      if (signOutError) throw signOutError;
       return ok(undefined);
     },
     canDeleteAccount: Boolean(config.secretKey),
-    async deleteAccount({ password }) {
+    async deleteAccount({ password, beforeDelete }) {
       if (!config.secretKey) return err("not-supported");
       const confirmed = await confirmPassword(password);
       if (!confirmed.ok) return confirmed;
+      await beforeDelete?.();
       // Deleting a user is an admin operation, so it needs the secret key's client.
       const admin = createClient(config.url, config.secretKey, {
         auth: { persistSession: false, autoRefreshToken: false },

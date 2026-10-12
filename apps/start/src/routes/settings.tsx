@@ -24,6 +24,10 @@ const results: Record<string, { tone: "info" | "error"; text: string }> = {
     text: "Check the form: names have up to 80 characters, and passwords at least 8.",
   },
   "rate-limited": { tone: "error", text: "Too many attempts. Wait a minute and try again." },
+  unavailable: {
+    tone: "error",
+    text: "Password checks are unavailable right now. Try again in a few minutes.",
+  },
   "active-subscription": {
     tone: "error",
     text: "Cancel your subscription with Manage billing on the dashboard before deleting your account.",
@@ -115,7 +119,12 @@ function SettingsPage() {
         </CardHeader>
         <CardContent>
           <AuthForm action="/auth/change-password">
-            <PasswordField isSignUp={false} label="Current password" name="currentPassword" />
+            <PasswordField
+              isSignUp={false}
+              label="Current password"
+              name="currentPassword"
+              minLength={1}
+            />
             <PasswordField isSignUp label="New password" name="newPassword" />
             <SubmitButton>Change password</SubmitButton>
           </AuthForm>
@@ -132,7 +141,7 @@ function SettingsPage() {
         <CardContent>
           {settings.canDeleteAccount ? (
             <AuthForm action="/auth/delete-account">
-              <PasswordField isSignUp={false} label="Password" name="password" />
+              <PasswordField isSignUp={false} label="Password" name="password" minLength={1} />
               <SubmitButton variant="destructive">Delete my account</SubmitButton>
             </AuthForm>
           ) : (

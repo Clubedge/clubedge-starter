@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CookieStore, CookieToSet } from "@clubedge/auth";
 import {
   createBetterAuth,
@@ -122,7 +122,8 @@ describe("Better Auth adapter", () => {
   });
 });
 
-describe("Better Auth account settings", () => {
+// Each test signs up, signs in and hashes passwords several times, which is slow under load.
+describe("Better Auth account settings", { timeout: 30_000 }, () => {
   async function signedUp() {
     const jar = cookieJar();
     const auth = createBetterAuth({ server, cookies: jar.store });
@@ -163,16 +164,26 @@ describe("Better Auth account settings", () => {
     const { auth } = await signedUp();
     expect(auth.canDeleteAccount).toBe(true);
 
-    await expect(auth.deleteAccount({ password: "not my password" })).resolves.toEqual({
-      ok: false,
-      error: "invalid-password",
-    });
+    const beforeDelete = vi.fn(async () => {});
+    await expect(
+      auth.deleteAccount({ password: "not my password", beforeDelete }),
+    ).resolves.toEqual({ ok: false, error: "invalid-password" });
+    expect(beforeDelete).not.toHaveBeenCalled();
     expect(await auth.getUser()).not.toBeNull();
 
-    await expect(auth.deleteAccount({ password: credentials.password })).resolves.toEqual({
-      ok: true,
-      value: undefined,
-    });
+    // When removing the app's data fails, the user is kept.
+    await expect(
+      auth.deleteAccount({
+        password: credentials.password,
+        beforeDelete: () => Promise.reject(new Error("database down")),
+      }),
+    ).rejects.toThrow("database down");
+    expect(await auth.getUser()).not.toBeNull();
+
+    await expect(
+      auth.deleteAccount({ password: credentials.password, beforeDelete }),
+    ).resolves.toEqual({ ok: true, value: undefined });
+    expect(beforeDelete).toHaveBeenCalledOnce();
     expect(await auth.getUser()).toBeNull();
     const fresh = createBetterAuth({ server, cookies: cookieJar().store });
     expect((await fresh.signInWithPassword(credentials)).ok).toBe(false);

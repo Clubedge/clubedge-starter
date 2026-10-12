@@ -264,8 +264,10 @@ export function createBetterAuth({
       }
     },
     canDeleteAccount: true,
-    async deleteAccount({ password }) {
+    async deleteAccount({ password, beforeDelete }) {
       try {
+        await server.api.verifyPassword({ body: { password }, headers: requestHeaders(cookies) });
+        await beforeDelete?.();
         const { headers } = await server.api.deleteUser({
           body: { password },
           headers: requestHeaders(cookies),
