@@ -29,9 +29,9 @@ test("updates the profile, changes the password, and deletes the account", async
   await expect(page).toHaveURL(/\/dashboard$/);
   await page.waitForLoadState("networkidle");
 
-  // The dashboard header links to the settings page. The sidebar has a copy too, under the
-  // Next.js dev tools button in development, so the test uses the header's.
-  await page.getByRole("main").first().getByRole("link", { name: "Settings" }).click();
+  // The account card in the sidebar footer links to the settings page. Its buttons sit on the
+  // card's right, clear of the Next.js dev tools button in the bottom-left corner.
+  await page.getByRole("complementary").getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.waitForLoadState("networkidle");
 
