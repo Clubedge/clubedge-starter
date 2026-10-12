@@ -9,13 +9,22 @@ export default defineConfig({
   // cold CI runner can take longer than Playwright's defaults.
   timeout: 90_000,
   expect: { timeout: 15_000 },
-  reporter: "list",
-  use: { baseURL: "http://127.0.0.1:3000", trace: "on-first-retry" },
+  // In CI, the github reporter also annotates each failure at its line in the test.
+  reporter: process.env.CI ? [["list"], ["github"]] : "list",
+  use: {
+    baseURL: "http://127.0.0.1:3000",
+    // Kept for failed tests: CI prints their page snapshot and uploads these as an artifact.
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: `pnpm --filter ${e2eApp.packageName} dev`,
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
+    // The dev server's own output, so server errors appear next to the failing test.
+    stdout: "pipe",
+    stderr: "pipe",
     env: {
       // A placeholder unless set, so pages render without a database.
       DATABASE_URL:
