@@ -96,6 +96,8 @@ Better Auth sends its emails through the [email module](#email): <!-- clubedge:o
 - **Password reset:** "Forgot password?" on the login page emails a link to `/reset-password`, valid for one hour and usable once. <!-- clubedge:only email!=none -->
 - **Email verification:** every new account gets a confirmation link. Sign-up signs the user in right away unless `BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true`, which refuses sign-in until the link is opened. <!-- clubedge:only email!=none -->
 
+These emails are sent by the `send-email` [background job](#background-jobs), so sign-up never waits for the email provider, and a failed send is retried with backoff. <!-- clubedge:only email!=none && jobs!=none -->
+
 <!-- clubedge:end -->
 
 ## Local services
@@ -260,7 +262,8 @@ export const welcomeEmail = defineJob<{ userId: string }>({
 });
 ```
 
-Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own.
+Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. To send any email in the background, enqueue `sendEmailJob` from `@/jobs` with the message, as the auth emails do. A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own. <!-- clubedge:only email!=none -->
+Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own. <!-- clubedge:only email=none -->
 
 Where no server keeps running, as on Vercel and Netlify, there is no worker: `JOBS_WORKER` defaults to `off` there, and you can set it yourself anywhere. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` every minute or so with the header `Authorization: Bearer <CRON_SECRET>`, from Vercel Cron, a Netlify scheduled function, or any scheduler. Each call runs the jobs that are due. Scheduled jobs need a worker.
 
