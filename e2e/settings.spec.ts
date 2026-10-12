@@ -30,7 +30,8 @@ test("updates the profile, changes the password, and deletes the account", async
   await page.waitForLoadState("networkidle");
 
   // The dashboard links to the settings page.
-  await page.getByRole("link", { name: "Settings" }).first().click();
+  // The sidebar has a copy too, hidden at narrow widths.
+  await page.getByRole("link", { name: "Settings" }).filter({ visible: true }).first().click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.waitForLoadState("networkidle");
 
