@@ -8,18 +8,13 @@ import { reportBrowserError } from "@/components/error-reporting";
 // clubedge:end
 
 /** Shown in place of a page that failed to render. */
-export function RouteError({
-  // clubedge:if observability!=none
-  error,
-  // clubedge:end
-  reset,
-}: ErrorComponentProps) {
+export function RouteError(props: ErrorComponentProps) {
   const router = useRouter();
   // clubedge:if observability!=none
   // Error boundaries stop render errors before they reach the window, so report them here.
   useEffect(() => {
-    reportBrowserError(error);
-  }, [error]);
+    reportBrowserError(props.error);
+  }, [props.error]);
   // clubedge:end
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background px-4 text-center">
@@ -29,7 +24,7 @@ export function RouteError({
       </p>
       <Button
         onClick={() => {
-          reset();
+          props.reset();
           void router.invalidate();
         }}
       >
