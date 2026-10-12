@@ -1,2 +1,55 @@
 @import "@clubedge/ui/globals.css";
 @source "./";
+
+/*
+ * The dashboard uses the docs' palette: Fumadocs' neutral colors, with the Clubedge blue as primary.
+ * The theme in @clubedge/ui maps colors with `@theme inline`, so overriding its variables here
+ * recolors every component inside the dashboard. The rest of the app keeps the theme as is.
+ * apps/web/src/app/dashboard/_components/dashboard-palette.css holds the same rules; keep them in sync.
+ */
+[data-dashboard] {
+  --background: hsl(0 0% 96%);
+  --foreground: hsl(0 0% 3.9%);
+  --card: hsl(0 0% 94.7%);
+  --card-foreground: hsl(0 0% 3.9%);
+  --popover: hsl(0 0% 98%);
+  --popover-foreground: hsl(0 0% 15.1%);
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: hsl(0 0% 93.1%);
+  --secondary-foreground: hsl(0 0% 9%);
+  --muted: hsl(0 0% 96.1%);
+  --muted-foreground: hsl(0 0% 45.1%);
+  --accent: hsl(0 0% 82% / 0.5);
+  --accent-foreground: hsl(0 0% 9%);
+  --border: hsl(0 0% 80% / 0.5);
+  --input: hsl(0 0% 80% / 0.5);
+  --ring: hsl(0 0% 63.9%);
+}
+
+.dark [data-dashboard] {
+  --background: #151515;
+  --foreground: hsl(0 0% 92%);
+  --card: hsl(0 0% 9.8%);
+  --card-foreground: hsl(0 0% 98%);
+  --popover: hsl(0 0% 11.6%);
+  --popover-foreground: hsl(0 0% 86.9%);
+  --primary: #60a5fa;
+  --primary-foreground: #0b0b0e;
+  --secondary: hsl(0 0% 12.9%);
+  --secondary-foreground: hsl(0 0% 92%);
+  --muted: hsl(0 0% 12.9%);
+  --muted-foreground: hsl(0 0% 70% / 0.8);
+  --accent: hsl(0 0% 40.9% / 0.3);
+  --accent-foreground: hsl(0 0% 90%);
+  --border: hsl(0 0% 40% / 0.2);
+  --input: hsl(0 0% 40% / 0.2);
+  --ring: hsl(0 0% 54.9%);
+}
+
+/* The docs' sidebar is a touch lighter in dark mode. */
+.dark [data-dashboard-sidebar] {
+  --muted: hsl(0 0% 16%);
+  --secondary: hsl(0 0% 18%);
+  --muted-foreground: hsl(0 0% 72%);
+}
