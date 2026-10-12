@@ -4,7 +4,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { users, type Database } from "@clubedge/db";
-import { createBilling, isEntitled, NoBillingAccountError } from "./billing";
+import { createBilling, findSubscription, isEntitled, NoBillingAccountError } from "./billing";
 import { subscriptions } from "./schema";
 import type { PaymentEvent, PaymentProvider, SubscriptionSnapshot } from "./types";
 
@@ -90,6 +90,7 @@ describe("createBilling", () => {
       cancelAtPeriodEnd: true,
     });
     expect(await db.select().from(subscriptions)).toHaveLength(1);
+    expect(await findSubscription(db, userId)).toMatchObject({ status: "past_due" });
   });
 
   it("ignores events it does not need, and subscriptions it cannot attach to a user", async () => {

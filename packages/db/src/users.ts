@@ -33,3 +33,30 @@ export async function ensureUserId(
     .limit(1);
   return row?.id ?? upsertUserProfile(db, profile);
 }
+
+/** The display name the user chose, or null. */
+export async function getDisplayName(db: Database, userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ displayName: users.displayName })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row?.displayName ?? null;
+}
+
+/** Sets or clears (with null) the display name. */
+export async function setDisplayName(
+  db: Database,
+  userId: string,
+  displayName: string | null,
+): Promise<void> {
+  await db.update(users).set({ displayName, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+/**
+ * Deletes the app-owned profile of an identity-provider user. Tables that reference users, such
+ * as subscriptions, delete their rows with it.
+ */
+export async function deleteUserProfile(db: Database, authUserId: string): Promise<void> {
+  await db.delete(users).where(eq(users.authUserId, authUserId));
+}

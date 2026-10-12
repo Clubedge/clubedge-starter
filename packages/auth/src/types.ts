@@ -71,6 +71,25 @@ export interface AuthProvider {
     password: string;
     token?: string;
   }): Promise<Result<void, "invalid-reset">>;
+  /**
+   * Changes the signed-in user's password after checking the current one, and signs out its
+   * other sessions.
+   */
+  changePassword(input: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<Result<void, "invalid-password" | "not-signed-in">>;
+  /** Whether deleteAccount works here; Supabase needs its secret key for it. */
+  readonly canDeleteAccount: boolean;
+  /**
+   * Deletes the signed-in user after checking the password, and ends the session. beforeDelete
+   * runs once the password is confirmed and before the user is deleted, to remove the app's own
+   * data for them; if it throws, the user is kept and the error is rethrown.
+   */
+  deleteAccount(input: {
+    password: string;
+    beforeDelete?: () => Promise<void>;
+  }): Promise<Result<void, "invalid-password" | "not-signed-in" | "not-supported">>;
   /** Validates the session and writes refreshed cookies; call it from request middleware. */
   refreshSession(): Promise<void>;
   signOut(): Promise<void>;

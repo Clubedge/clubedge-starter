@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CookieStore, CookieToSet } from "@clubedge/auth";
 import {
   createBetterAuth,
@@ -118,6 +118,85 @@ describe("Better Auth adapter", () => {
     expect(await auth.exchangeCodeForSession("anything")).toEqual({
       ok: false,
       error: "invalid-code",
+    });
+  });
+});
+
+// Each test signs up, signs in and hashes passwords several times, which is slow under load.
+describe("Better Auth account settings", { timeout: 30_000 }, () => {
+  async function signedUp() {
+    const jar = cookieJar();
+    const auth = createBetterAuth({ server, cookies: jar.store });
+    await auth.signUp({ ...credentials, emailRedirectTo: "unused" });
+    return { jar, auth };
+  }
+
+  it("changes the password after checking the current one, and signs out other devices", async () => {
+    const { auth } = await signedUp();
+    const other = createBetterAuth({ server, cookies: cookieJar().store });
+    await other.signInWithPassword(credentials);
+    expect(await other.getUser()).not.toBeNull();
+
+    await expect(
+      auth.changePassword({
+        currentPassword: "not my password",
+        newPassword: "a brand new secret",
+      }),
+    ).resolves.toEqual({ ok: false, error: "invalid-password" });
+    await expect(
+      auth.changePassword({
+        currentPassword: credentials.password,
+        newPassword: "a brand new secret",
+      }),
+    ).resolves.toEqual({ ok: true, value: undefined });
+
+    // This device stays signed in; the other one is signed out.
+    expect(await auth.getUser()).toMatchObject({ email: credentials.email });
+    expect(await other.getUser()).toBeNull();
+    const fresh = createBetterAuth({ server, cookies: cookieJar().store });
+    expect((await fresh.signInWithPassword(credentials)).ok).toBe(false);
+    expect(
+      (await fresh.signInWithPassword({ ...credentials, password: "a brand new secret" })).ok,
+    ).toBe(true);
+  });
+
+  it("deletes the account only with the right password, and ends the session", async () => {
+    const { auth } = await signedUp();
+    expect(auth.canDeleteAccount).toBe(true);
+
+    const beforeDelete = vi.fn(async () => {});
+    await expect(
+      auth.deleteAccount({ password: "not my password", beforeDelete }),
+    ).resolves.toEqual({ ok: false, error: "invalid-password" });
+    expect(beforeDelete).not.toHaveBeenCalled();
+    expect(await auth.getUser()).not.toBeNull();
+
+    // When removing the app's data fails, the user is kept.
+    await expect(
+      auth.deleteAccount({
+        password: credentials.password,
+        beforeDelete: () => Promise.reject(new Error("database down")),
+      }),
+    ).rejects.toThrow("database down");
+    expect(await auth.getUser()).not.toBeNull();
+
+    await expect(
+      auth.deleteAccount({ password: credentials.password, beforeDelete }),
+    ).resolves.toEqual({ ok: true, value: undefined });
+    expect(beforeDelete).toHaveBeenCalledOnce();
+    expect(await auth.getUser()).toBeNull();
+    const fresh = createBetterAuth({ server, cookies: cookieJar().store });
+    expect((await fresh.signInWithPassword(credentials)).ok).toBe(false);
+  });
+
+  it("refuses both without a session", async () => {
+    const auth = createBetterAuth({ server, cookies: cookieJar().store });
+    await expect(
+      auth.changePassword({ currentPassword: "a", newPassword: "b".repeat(8) }),
+    ).resolves.toEqual({ ok: false, error: "not-signed-in" });
+    await expect(auth.deleteAccount({ password: "a" })).resolves.toEqual({
+      ok: false,
+      error: "not-signed-in",
     });
   });
 });

@@ -515,6 +515,8 @@ jobs:
             echo "SUPABASE_PUBLISHABLE_KEY=$key"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$key"
+            # Lets the settings page delete accounts.
+            echo "SUPABASE_SECRET_KEY=${SECRET_KEY:-${SERVICE_ROLE_KEY:-}}"
           } >> "$GITHUB_ENV"
       - name: Point at the local database
         run: |
@@ -537,7 +539,7 @@ jobs:
           E2E_DATABASE: "1"
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts
+          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts e2e/settings.spec.ts
       - name: Run a background job in the dev server's worker
         working-directory: ${{ runner.temp }}/generated-app
         env:

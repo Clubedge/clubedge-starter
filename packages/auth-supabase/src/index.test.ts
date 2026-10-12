@@ -21,16 +21,26 @@ vi.mock("@supabase/ssr", () => ({
   ),
 }));
 
+const adminDeleteUser = vi.fn();
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({ auth: { admin: { deleteUser: adminDeleteUser } } })),
+}));
+
 const { createSupabaseAuth } = await import("./index");
 
 const supabaseUser = { id: "user-1", email: "ada@example.com" };
 
-function setup() {
+function setup(secretKey?: string) {
   const cookies: CookieStore = {
     getAll: vi.fn(() => [{ name: "sb", value: "token" }]),
     setAll: vi.fn(),
   };
-  const auth = createSupabaseAuth({ url: "https://x.supabase.co", publishableKey: "pk", cookies });
+  const auth = createSupabaseAuth({
+    url: "https://x.supabase.co",
+    publishableKey: "pk",
+    cookies,
+    ...(secretKey ? { secretKey } : {}),
+  });
   return { auth, cookies };
 }
 
@@ -167,5 +177,79 @@ describe("createSupabaseAuth", () => {
       ok: false,
       error: "invalid-reset",
     });
+  });
+
+  it("changes the password only after the current one signs in", async () => {
+    const { auth } = setup();
+    supabaseAuth.getUser.mockResolvedValue({ data: { user: supabaseUser }, error: null });
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({ data: {}, error: new Error("bad") });
+    await expect(
+      auth.changePassword({ currentPassword: "wrong", newPassword: "new secret 123" }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "invalid-password",
+    });
+    expect(supabaseAuth.updateUser).not.toHaveBeenCalled();
+
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: supabaseUser },
+      error: null,
+    });
+    supabaseAuth.updateUser.mockResolvedValueOnce({ error: null });
+    supabaseAuth.signOut.mockResolvedValueOnce({ error: null });
+    await expect(
+      auth.changePassword({ currentPassword: "right", newPassword: "new secret 123" }),
+    ).resolves.toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(supabaseAuth.signInWithPassword).toHaveBeenLastCalledWith({
+      email: "ada@example.com",
+      password: "right",
+    });
+    expect(supabaseAuth.updateUser).toHaveBeenCalledWith({ password: "new secret 123" });
+    expect(supabaseAuth.signOut).toHaveBeenCalledWith({ scope: "others" });
+  });
+
+  it("deletes accounts only with the secret key and the right password", async () => {
+    const withoutKey = setup().auth;
+    expect(withoutKey.canDeleteAccount).toBe(false);
+    await expect(withoutKey.deleteAccount({ password: "right" })).resolves.toEqual({
+      ok: false,
+      error: "not-supported",
+    });
+
+    const { auth } = setup("sb_secret_x");
+    expect(auth.canDeleteAccount).toBe(true);
+    supabaseAuth.getUser.mockResolvedValue({ data: { user: supabaseUser }, error: null });
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: supabaseUser },
+      error: null,
+    });
+    // When removing the app's data fails, the user is kept.
+    await expect(
+      auth.deleteAccount({
+        password: "right",
+        beforeDelete: () => Promise.reject(new Error("database down")),
+      }),
+    ).rejects.toThrow("database down");
+    expect(adminDeleteUser).not.toHaveBeenCalled();
+
+    supabaseAuth.signInWithPassword.mockResolvedValueOnce({
+      data: { user: supabaseUser },
+      error: null,
+    });
+    adminDeleteUser.mockResolvedValueOnce({ error: null });
+    supabaseAuth.signOut.mockResolvedValueOnce({ error: null });
+    const beforeDelete = vi.fn(async () => {
+      expect(adminDeleteUser).not.toHaveBeenCalled();
+    });
+    await expect(auth.deleteAccount({ password: "right", beforeDelete })).resolves.toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(beforeDelete).toHaveBeenCalledOnce();
+    expect(adminDeleteUser).toHaveBeenCalledWith("user-1");
+    expect(supabaseAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });

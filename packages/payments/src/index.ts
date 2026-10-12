@@ -1,5 +1,6 @@
 export {
   createBilling,
+  findSubscription,
   isEntitled,
   NoBillingAccountError,
   type Billing,

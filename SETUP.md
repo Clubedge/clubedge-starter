@@ -66,7 +66,8 @@ The app is available at <http://localhost:3000>, the liveness endpoint at <http:
 
 ## Supabase Auth
 
-Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase; never use a service role key.
+Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server, so never give it a `NEXT_PUBLIC_` prefix. <!-- clubedge:only framework=next -->
+Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server. <!-- clubedge:only framework=tanstack-start -->
 
 In Supabase Auth URL configuration, add this redirect URL for local email confirmation and password reset links:
 
@@ -440,6 +441,7 @@ Production needs these variables:
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=next && auth=supabase -->
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=tanstack-start && auth=supabase -->
 - `BETTER_AUTH_SECRET`, at least 32 random characters, different from development. <!-- clubedge:only auth=better-auth -->
+- `SUPABASE_SECRET_KEY`, if users should be able to delete their account. <!-- clubedge:only auth=supabase -->
 - `SMTP_URL` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=resend -->
 - `STRIPE_SECRET_KEY` (live mode), `STRIPE_WEBHOOK_SECRET` from the production webhook endpoint, and `STRIPE_PRICE_<PLAN>` for each plan. <!-- clubedge:only payments=stripe -->

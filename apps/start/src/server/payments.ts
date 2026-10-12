@@ -7,7 +7,12 @@ import { plans } from "@/config/plans";
 import { optional, parseEnv } from "@/env/server";
 import { getDb } from "@/server/db";
 
-export { isEntitled, NoBillingAccountError, WebhookVerificationError } from "@clubedge/payments";
+export {
+  findSubscription,
+  isEntitled,
+  NoBillingAccountError,
+  WebhookVerificationError,
+} from "@clubedge/payments";
 
 // Stripe behind the provider-neutral PaymentProvider; the rest of the app only uses Billing.
 const paymentsEnvSchema = z.object({
