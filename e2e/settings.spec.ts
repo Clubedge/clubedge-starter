@@ -7,6 +7,9 @@ test.skip(
   "needs a configured auth provider and database",
 );
 
+// Several pages and form posts, each compiled by the dev server on first use.
+test.describe.configure({ timeout: 90_000 });
+
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(email);
