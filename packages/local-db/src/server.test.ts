@@ -8,11 +8,12 @@ describe("serveLocalPostgres", () => {
   let server: LocalPostgresServer;
   let url: string;
 
+  // Starting PGlite takes seconds on a busy CI runner.
   beforeAll(async () => {
     db = await PGlite.create();
     server = await serveLocalPostgres(db, { port: 0 });
     url = `postgresql://postgres:postgres@127.0.0.1:${server.port}/postgres`;
-  });
+  }, 30_000);
 
   afterAll(async () => {
     await server.close();
@@ -115,5 +116,5 @@ describe("LocalPostgresServer.close", () => {
       await client.end({ timeout: 0 });
       await db.close();
     }
-  });
+  }, 30_000);
 });
