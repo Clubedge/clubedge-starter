@@ -12,26 +12,26 @@ jobs:
   # Builds the production image and publishes it to this repository's GitHub Container Registry
   # as ghcr.io/<owner>/<repository>, tagged with the commit and latest. No secret is needed.
   image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=sha
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           push: true
@@ -40,9 +40,9 @@ jobs:
   # clubedge:end
   # clubedge:if deploy=fly
   fly:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@master
       # Builds on Fly's builders and runs the release command (migrations) before switching.
       - run: flyctl deploy --remote-only
@@ -51,9 +51,9 @@ jobs:
   # clubedge:end
   # clubedge:if deploy=railway
   railway:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Uploads this checkout; Railway builds the image and runs the pre-deploy migrations.
       - run: npx --yes @railway/cli@4 up --ci --service "$RAILWAY_SERVICE"
         env:
@@ -62,7 +62,7 @@ jobs:
   # clubedge:end
   # clubedge:if deploy=render
   render:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # The service's deploy hook starts a deploy of its branch, with its pre-deploy migrations.
       - run: curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
@@ -71,15 +71,15 @@ jobs:
   # clubedge:end
   # clubedge:if deploy=vercel
   vercel:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -91,14 +91,14 @@ jobs:
   # clubedge:end
   # clubedge:if deploy=netlify
   netlify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm

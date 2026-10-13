@@ -21,9 +21,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -32,13 +32,13 @@ jobs:
       - run: pnpm test
 
   tanstack-start:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       E2E_APP: start
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -70,14 +70,14 @@ jobs:
           done
       - name: Upload browser test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-tanstack-start
           path: test-results
           if-no-files-found: ignore
 
   tanstack-start-docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17
@@ -90,7 +90,7 @@ jobs:
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the production image
         run: >-
           docker build --tag app:ci --file apps/start/Dockerfile
@@ -121,7 +121,7 @@ jobs:
   # image's migrator itself is exercised by the docker jobs.
   deploy-config:
     name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -138,9 +138,9 @@ jobs:
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Build create-clubedge-app
@@ -240,7 +240,7 @@ jobs:
 
   # Generates projects from this checkout with create-clubedge-app and runs their full pipeline.
   generated-project:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -282,9 +282,9 @@ jobs:
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -348,7 +348,7 @@ jobs:
           done
       - name: Upload browser test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-generated-project-${{ matrix.name }}
           path: ${{ runner.temp }}/generated-app/test-results
@@ -356,7 +356,7 @@ jobs:
 
   # Signs up, out, and back in through the real forms, with Better Auth on PostgreSQL.
   better-auth-flow:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -375,9 +375,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
       E2E_AUTH_FLOW: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -414,7 +414,7 @@ jobs:
           done
       - name: Upload browser test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-better-auth-flow-${{ matrix.framework }}
           path: ${{ runner.temp }}/generated-app/test-results
@@ -424,7 +424,7 @@ jobs:
   # round trips through `pnpm check:services` and a real sign-up, sign-out, and sign-in.
   local-infra:
     name: local-infra (${{ matrix.infra }}, ${{ matrix.framework }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -473,9 +473,9 @@ jobs:
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
       E2E_AUTH_FLOW: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -605,7 +605,7 @@ jobs:
           done
       - name: Upload browser test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-local-infra-${{ matrix.infra }}-${{ matrix.framework }}
           path: ${{ runner.temp }}/generated-app/test-results
