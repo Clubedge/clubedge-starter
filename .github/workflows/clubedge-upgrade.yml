@@ -1,0 +1,134 @@
+name: Starter upgrade
+
+# Checks every Monday for a newer Clubedge Starter release. When there is one, it runs
+# `pnpm clubedge upgrade` and opens a pull request with the release notes and anything left for
+# you to resolve, so your CI tests the upgrade before you merge it. Run it by hand from the
+# Actions tab, or delete this file to turn it off.
+#
+# It needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
+# requests", or a CLUBEDGE_UPGRADE_TOKEN secret (a fine-grained token with contents and pull
+# requests write), which also lets the pull request start your CI by itself.
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: clubedge-upgrade
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    # The Starter's own repository is the template every project comes from, not a project.
+    if: github.repository != 'Clubedge/clubedge-starter'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Upgrade to the newest Starter release
+        id: upgrade
+        shell: bash
+        run: |
+          before=$(node -p "require('./package.json').clubedge?.starterRef ?? ''")
+          if [ -z "$before" ]; then
+            echo "package.json records no Starter release: this project was not created by create-clubedge-app."
+            exit 1
+          fi
+          # The newest CLI upgrades to the Starter release it is pinned to.
+          pnpm dlx @clubedge/create-clubedge-app@latest upgrade --no-install 2>&1 | tee "$RUNNER_TEMP/upgrade.log"
+          after=$(node -p "require('./package.json').clubedge.starterRef")
+          if [ "$after" = "$before" ] && [ -z "$(git status --porcelain)" ]; then
+            echo "Already on the newest Starter release, $before."
+            exit 0
+          fi
+          branch="clubedge/upgrade-$after"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "$branch already exists: its pull request is open, or was closed on purpose."
+            exit 0
+          fi
+          # The lockfile follows the upgraded package.json files; a conflict there can stop it.
+          install="updated"
+          pnpm install --no-frozen-lockfile >"$RUNNER_TEMP/install.log" 2>&1 || install="failed"
+          {
+            echo "before=$before"
+            echo "after=$after"
+            echo "branch=$branch"
+            echo "install=$install"
+            if [ -d .clubedge/incoming ]; then echo "incoming=true"; fi
+          } >>"$GITHUB_OUTPUT"
+      - name: Keep the Starter's versions of conflicted files
+        if: steps.upgrade.outputs.incoming == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: starter-versions
+          path: .clubedge/incoming/
+          include-hidden-files: true
+      - name: Open the pull request
+        if: steps.upgrade.outputs.branch != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.CLUBEDGE_UPGRADE_TOKEN || github.token }}
+          OWN_TOKEN: ${{ secrets.CLUBEDGE_UPGRADE_TOKEN != '' }}
+          BEFORE: ${{ steps.upgrade.outputs.before }}
+          AFTER: ${{ steps.upgrade.outputs.after }}
+          BRANCH: ${{ steps.upgrade.outputs.branch }}
+          INSTALL: ${{ steps.upgrade.outputs.install }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$BRANCH"
+          git add --all
+          git commit --quiet --message "chore: upgrade to Clubedge Starter $AFTER"
+          git push --quiet --set-upstream origin "$BRANCH"
+
+          repository=$(node -p "require('./package.json').clubedge.starterRepository ?? 'Clubedge/clubedge-starter'")
+          conflicts=$(git grep -l '^<<<<<<< yours' -- . || true)
+          {
+            echo "Upgrades this project from Clubedge Starter \`$BEFORE\` to [\`$AFTER\`](https://github.com/$repository/releases/tag/$AFTER), with \`pnpm clubedge upgrade\`. Your own edits are merged in; files you never changed take the new version."
+            echo
+            if [ -n "$conflicts" ]; then
+              echo "### Conflicts to resolve"
+              echo
+              echo "These files have lines both you and the Starter changed, marked \`<<<<<<< yours\` ... \`>>>>>>> clubedge\`. Keep your lines, the Starter's, or a mix, then delete the markers:"
+              echo
+              printf -- '- `%s`\n' $conflicts
+              echo
+              echo "The Starter's whole new version of each is in the **starter-versions** artifact of [the run]($RUN_URL), to compare with yours."
+              echo
+            fi
+            if [ "$INSTALL" = "failed" ]; then
+              echo "### pnpm install"
+              echo
+              echo "\`pnpm install\` did not complete on the upgraded project, usually because of a conflict in a \`package.json\`. Resolve it, then run \`pnpm install\` and commit \`pnpm-lock.yaml\`."
+              echo
+            fi
+            echo "### Before merging"
+            echo
+            echo "- Read the [release notes](https://github.com/$repository/releases/tag/$AFTER) for anything to do by hand."
+            echo "- Run \`pnpm db:migrate\` for new migrations, and your tests."
+            echo
+            echo "<details><summary>Upgrade output</summary>"
+            echo
+            echo '```'
+            tail -n 80 "$RUNNER_TEMP/upgrade.log"
+            echo '```'
+            echo
+            echo "</details>"
+            echo
+            echo "Opened by the Starter upgrade workflow (\`.github/workflows/clubedge-upgrade.yml\`)."
+          } >"$RUNNER_TEMP/body.md"
+          gh pr create --base "${{ github.event.repository.default_branch }}" --head "$BRANCH" \
+            --title "chore: upgrade to Clubedge Starter $AFTER" --body-file "$RUNNER_TEMP/body.md"
+          # Pull requests opened with the default token start no workflows: start CI on the branch.
+          if [ "$OWN_TOKEN" != "true" ] && [ -f .github/workflows/ci.yml ]; then
+            gh workflow run ci.yml --ref "$BRANCH" || echo "Start CI on $BRANCH by hand."
+          fi
