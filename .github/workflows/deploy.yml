@@ -54,8 +54,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      # Uploads this checkout; Railway builds the image and runs the pre-deploy migrations.
-      - run: npx --yes @railway/cli@4 up --ci --service "$RAILWAY_SERVICE"
+      # Uploads this checkout; Railway builds the image and runs the pre-deploy migrations set by
+      # .railway/railway.ts (applied with `pnpm clubedge deploy` or `railway config apply`).
+      - run: npx --yes @railway/cli@5 up --ci --service "$RAILWAY_SERVICE"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
