@@ -16,12 +16,12 @@ ARG APP_PACKAGE
 COPY . .
 RUN pnpm dlx turbo@^2.5.0 prune ${APP_PACKAGE} --docker
 
-FROM base AS deps
+# Install in the stage that builds: copying node_modules from a separate install stage (many
+# small files) took minutes on some builders, and timed out a Railway build. The manifests come
+# first, so the install layer is still cached until a dependency changes.
+FROM base AS builder
 COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
-
-FROM base AS builder
-COPY --from=deps /app/ .
 COPY --from=pruner /app/out/full/ .
 COPY tsconfig.base.json ./
 RUN pnpm build
