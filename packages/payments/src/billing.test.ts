@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { fileURLToPath } from "node:url";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { users, type Database } from "@clubedge/db";
 import { createBilling, findSubscription, isEntitled, NoBillingAccountError } from "./billing";
 import { subscriptions } from "./schema";
@@ -10,7 +10,7 @@ import type { PaymentEvent, PaymentProvider, SubscriptionSnapshot } from "./type
 
 const folder = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-/** A fresh PostgreSQL (PGlite) with the app's and the payment migrations applied. */
+/** A PostgreSQL (PGlite) with the app's and the payment migrations applied. */
 async function database() {
   const client = await PGlite.create();
   const db = drizzle({ client });
@@ -20,7 +20,19 @@ async function database() {
     migrationsTable: "__drizzle_migrations_payments",
   });
   // The query builder is the same as the postgres.js driver's that the app uses.
-  return db as unknown as Database;
+  return { client, db: db as unknown as Database };
+}
+
+/** Empties the app's tables; the migration records live in the drizzle schema and stay. */
+async function emptyTables(client: PGlite) {
+  const { rows } = await client.query<{ name: string }>(
+    "select tablename as name from pg_tables where schemaname = 'public'",
+  );
+  if (rows.length) {
+    await client.exec(
+      `truncate ${rows.map(({ name }) => `"${name}"`).join(", ")} restart identity cascade`,
+    );
+  }
 }
 
 /** A provider whose next webhook event the test chooses. */
@@ -53,11 +65,22 @@ const snapshot = (
 const request = { body: "{}", headers: new Headers() };
 
 describe("createBilling", () => {
+  let client: PGlite;
   let db: Database;
   let userId: string;
 
+  // One database for the file: starting PGlite and migrating takes seconds on a busy CI runner,
+  // so each test starts from empty tables instead of a new database.
+  beforeAll(async () => {
+    ({ client, db } = await database());
+  }, 60_000);
+
+  afterAll(async () => {
+    await client.close();
+  });
+
   beforeEach(async () => {
-    db = await database();
+    await emptyTables(client);
     const [user] = await db
       .insert(users)
       .values({ email: "ada@example.com" })
