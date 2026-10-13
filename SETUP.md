@@ -390,7 +390,9 @@ Set the other production variables listed below with `fly secrets set`. Each dep
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=railway -->
 
-`railway.json` deploys the production image to [Railway](https://railway.com): create a project from this repository, add the production variables listed below to the service, and deploy. Railway runs `node /app/migrate.mjs` as the pre-deploy command, so a failed migration stops the release, and checks `/api/health` before switching traffic.
+`.railway/railway.ts` is the service's configuration on [Railway](https://railway.com), as code: Railway builds the root `Dockerfile`, runs `node /app/migrate.mjs` before each release, so a failed migration stops it, and checks `/api/health` before switching traffic.
+
+The quickest first deploy is `pnpm clubedge deploy`: it creates the project, Postgres, the service, its domain and variables, applies `.railway/railway.ts`, and deploys. To deploy another way, add Railway's TypeScript SDK with `pnpm add -D -w railway`, run `railway config apply` once (Railway CLI 5.42.1 or newer), and add the production variables listed below to the service. The file names the service after the package; if yours has another name, change it there.
 
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=render -->

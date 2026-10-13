@@ -157,12 +157,12 @@ jobs:
         working-directory: ${{ runner.temp }}/app
         run: |
           set -euo pipefail
-          configs="fly.toml railway.json render.yaml apps/web/vercel.json apps/web/netlify.toml"
+          configs="fly.toml .railway/railway.ts render.yaml apps/web/vercel.json apps/web/netlify.toml"
           ! grep -n "clubedge:" $configs 2>/dev/null
           # Only the selected platform's file is present.
           for config in $configs; do
             case "$config" in
-              *fly.toml) want=fly ;; *railway.json) want=railway ;; *render.yaml) want=render ;;
+              *fly.toml) want=fly ;; *railway.ts) want=railway ;; *render.yaml) want=render ;;
               *vercel.json) want=vercel ;; *netlify.toml) want=netlify ;;
             esac
             if [ "$want" = "${{ matrix.deploy }}" ]; then test -f "$config"; else test ! -e "$config"; fi
@@ -177,13 +177,13 @@ jobs:
           PY
               ;;
             railway)
-              python3 - <<'PY'
-          import json
-          config = json.load(open("railway.json"))
-          assert config["build"] == {"builder": "DOCKERFILE", "dockerfilePath": "Dockerfile"}, config
-          assert config["deploy"]["preDeployCommand"] == ["node /app/migrate.mjs"], config
-          assert config["deploy"]["healthcheckPath"] == "/api/health", config
-          PY
+              # Railway's configuration as code, which replaced railway.json; Railway builds the root Dockerfile.
+              test ! -e railway.json
+              test -f Dockerfile
+              grep -q 'from "railway/iac"' .railway/railway.ts
+              grep -q 'preDeploy: "node /app/migrate.mjs"' .railway/railway.ts
+              grep -q 'healthcheck: "/api/health"' .railway/railway.ts
+              grep -q 'healthcheckTimeout: 60' .railway/railway.ts
               ;;
             render)
               python3 - <<'PY'

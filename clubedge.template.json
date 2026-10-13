@@ -397,7 +397,7 @@
         },
         "railway": {
           "name": "Railway",
-          "files": ["railway.json"]
+          "files": [".railway/railway.ts"]
         },
         "render": {
           "name": "Render",
