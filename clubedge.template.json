@@ -453,6 +453,7 @@
     "supabase/config.toml"
   ],
   "exclude": [
+    ".github/assets",
     ".github/dependabot.yml",
     ".github/workflows/starter.yml",
     "ROADMAP.md",
