@@ -202,17 +202,23 @@ jobs:
           config = json.load(open("apps/web/vercel.json"))
           expected = "nextjs" if os.environ["FRAMEWORK"] == "next" else None
           assert config["framework"] == expected, config
-          assert config["buildCommand"].startswith("pnpm --dir ../.. db:migrate && "), config
+          assert config["buildCommand"].startswith("pnpm run check:env && pnpm --dir ../.. db:migrate && "), config
           PY
               ;;
             netlify)
               python3 - <<'PY'
           import tomllib
           build = tomllib.load(open("apps/web/netlify.toml", "rb"))["build"]
-          assert "db:migrate" in build["command"] and build["publish"], build
+          assert build["command"].startswith("pnpm run check:env && pnpm --dir ../.. db:migrate && "), build
+          assert build["publish"], build
           PY
               ;;
           esac
+          # check:env keeps only the selected modules' requirements (this job uses Better Auth).
+          ! grep -n "clubedge:" apps/web/src/env/production.ts
+          grep -q '"check:env"' apps/web/package.json
+          grep -q 'BETTER_AUTH_SECRET' apps/web/src/env/production.ts
+          ! grep -q 'SUPABASE' apps/web/src/env/production.ts
       - name: Lint the deploy workflow
         working-directory: ${{ runner.temp }}/app
         run: |
