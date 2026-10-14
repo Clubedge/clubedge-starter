@@ -451,6 +451,7 @@
     "supabase/config.toml"
   ],
   "exclude": [
+    ".github/dependabot.yml",
     ".github/workflows/starter.yml",
     "ROADMAP.md",
     "clubedge.template.json",
