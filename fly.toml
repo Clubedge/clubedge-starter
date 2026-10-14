@@ -2,6 +2,10 @@
 # and adds its name and region here; set secrets with `fly secrets set`, then run `fly deploy`.
 [build]
   dockerfile = "Dockerfile"
+  # Next.js compiles NEXT_PUBLIC_APP_URL into the build (sign-in links, Stripe return URLs), so a
+  # Next.js app sets it here rather than as a secret:
+  # [build.args]
+  #   NEXT_PUBLIC_APP_URL = "https://<app>.fly.dev"
 
 # Runs in a temporary machine with the new image before it replaces the running one.
 [deploy]

@@ -72,7 +72,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Build the production image
-        run: docker build --tag app:ci .
+        # A public URL of its own, to check that it reaches the build.
+        run: docker build --build-arg NEXT_PUBLIC_APP_URL=https://app.ci.invalid --tag app:ci .
+      # clubedge:if framework=next
+      - name: Check that the public URL is compiled into the build
+        # Next.js inlines NEXT_PUBLIC_* at build time, server code included; without the build
+        # argument, sign-in links and Stripe return URLs would point at localhost.
+        run: docker run --rm --entrypoint sh app:ci -c 'grep -rlq "https://app.ci.invalid" /app/apps/web/.next/server'
+      # clubedge:end
       - name: Run the image's migrations twice; the second run changes nothing
         run: |
           set -euo pipefail

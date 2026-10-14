@@ -438,7 +438,7 @@ Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER
 Production needs these variables:
 
 - `DATABASE_URL`, pointing at a managed PostgreSQL database.
-- `NEXT_PUBLIC_APP_URL`, the deployed origin. <!-- clubedge:only framework=next -->
+- `NEXT_PUBLIC_APP_URL`, the deployed origin. Next.js compiles it into the build, server code included (sign-in links, Stripe return URLs), so it must be set when the image is built: Railway and Render pass the service's variable to the Docker build; on Fly.io set it under `[build.args]` in `fly.toml`; with the Docker workflow, set the repository variable `NEXT_PUBLIC_APP_URL`. <!-- clubedge:only framework=next -->
 - `APP_URL`, the deployed origin. <!-- clubedge:only framework=tanstack-start -->
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=next && auth=supabase -->
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=tanstack-start && auth=supabase -->
