@@ -38,6 +38,20 @@ describe("production env check", () => {
     expect(checkProductionEnv(env).local).toEqual(["DATABASE_URL"]);
   });
 
+  it("rejects a URL that isn't absolute", () => {
+    const env = { ...complete(), APP_URL: "my-app.vercel.app" };
+    expect(checkProductionEnv(env).invalid).toEqual(["APP_URL is not an absolute URL"]);
+  });
+
+  const hasEmail = requiredVariables({}).some(({ key }) => key === "EMAIL_FROM");
+  it.runIf(hasEmail)("rejects the example.com sender from .env.example", () => {
+    const env = { ...complete(), EMAIL_FROM: "App <no-reply@example.com>" };
+    expect(checkProductionEnv(env).invalid).toEqual([
+      "EMAIL_FROM still uses example.com: set a sender on a domain you verified",
+    ]);
+    expect(checkProductionEnv({ ...env, EMAIL_FROM: "App <hi@my-app.com>" }).invalid).toEqual([]);
+  });
+
   it("tells local URLs from hosted ones", () => {
     expect(isLocalUrl("http://localhost:3000")).toBe(true);
     expect(isLocalUrl("redis://127.0.0.1:6379")).toBe(true);
