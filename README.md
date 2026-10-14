@@ -1,6 +1,8 @@
 <!-- clubedge:if starter-repository -->
 <div align="center">
 
+<img src=".github/assets/cover.png" alt="Terminal running pnpm dlx @clubedge/create-clubedge-app my-app and printing the CLUBEDGE STARTER banner" width="100%">
+
 # Clubedge Starter
 
 **A production-ready full-stack TypeScript starter that ships only the modules you choose.**
