@@ -37,6 +37,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Compiled into the Next.js build: set the repository variable to your public URL.
+          build-args: NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
   # clubedge:end
   # clubedge:if deploy=fly
   fly:
