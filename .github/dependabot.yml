@@ -1,0 +1,30 @@
+# Dependency updates for the Starter itself. Generated projects get them through Starter releases
+# and their weekly upgrade pull requests, so this file is not part of a generated project.
+version: 2
+updates:
+  - package-ecosystem: npm
+    # The workspace: the root and every app and package, one pnpm lockfile.
+    directories: ["/", "/apps/*", "/packages/*"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    # Minor and patch updates as one weekly pull request; majors one by one.
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
