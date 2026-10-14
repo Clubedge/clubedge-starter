@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "node scripts/start-standalone.mjs",
     "typecheck": "tsc --noEmit",
-    "check:services": "tsx scripts/check-services.ts"
+    "check:services": "tsx scripts/check-services.ts",
+    "check:env": "tsx scripts/check-env.ts"
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",

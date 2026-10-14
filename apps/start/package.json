@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "node --env-file-if-exists=.env.local .output/server/index.mjs",
     "typecheck": "tsr generate && tsc --noEmit",
-    "check:services": "tsx scripts/check-services.ts"
+    "check:services": "tsx scripts/check-services.ts",
+    "check:env": "tsx scripts/check-env.ts"
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",

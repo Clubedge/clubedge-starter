@@ -408,6 +408,8 @@ Render runs `node /app/migrate.mjs` as the pre-deploy command before each deploy
 `apps/web/vercel.json` deploys the app to [Vercel](https://vercel.com). Import the repository, set the project's Root Directory to `apps/web`, add the production variables listed below, and deploy. Vercel installs the whole pnpm workspace and builds the app. <!-- clubedge:only framework=next -->
 `apps/web/vercel.json` deploys the app to [Vercel](https://vercel.com). Import the repository, set the project's Root Directory to `apps/web`, add the production variables listed below, and deploy. The build detects Vercel and writes Vercel's Build Output, with server routes as functions. <!-- clubedge:only framework=tanstack-start -->
 
+Vercel only runs the app: the database, Redis, file storage, and email come from your providers (for example Supabase, Upstash, and Cloudflare R2). The build command starts with `pnpm check:env`, which stops the build when a variable the project's modules need is unset, or points at `localhost`, and lists each one. Set them for every environment you deploy (Production and Preview); `SKIP_ENV_CHECK=1` builds anyway.
+
 Vercel has no step that runs before a release, so the build command applies migrations (`pnpm db:migrate`) against the `DATABASE_URL` of the deployment's environment. Give Preview deployments their own database, or remove the migration step from `buildCommand` and run migrations yourself. Serverless functions open a connection per instance: use your provider's pooled connection URL (for example Supabase's transaction pooler or Neon's pooled endpoint).
 
 Vercel runs no worker for [background jobs](#background-jobs). Set `CRON_SECRET` and add `"crons": [{ "path": "/api/jobs/run", "schedule": "* * * * *" }]` to `vercel.json`; Vercel Cron sends the secret itself. Cron jobs more frequent than daily need a paid Vercel plan; otherwise call the endpoint from another scheduler. <!-- clubedge:only jobs=pg-boss -->
@@ -417,6 +419,8 @@ Vercel runs no worker for [background jobs](#background-jobs). Set `CRON_SECRET`
 
 `apps/web/netlify.toml` deploys the app to [Netlify](https://www.netlify.com). Import the repository, set the site's Base directory to `apps/web`, add the production variables listed below, and deploy. Netlify installs its Next.js runtime automatically. <!-- clubedge:only framework=next -->
 `apps/web/netlify.toml` deploys the app to [Netlify](https://www.netlify.com). Import the repository, set the site's Base directory to `apps/web`, add the production variables listed below, and deploy. The build detects Netlify and writes its functions and static assets. <!-- clubedge:only framework=tanstack-start -->
+
+Netlify only runs the app: the database, Redis, file storage, and email come from your providers (for example Supabase, Upstash, and Cloudflare R2). The build command starts with `pnpm check:env`, which stops the build when a variable the project's modules need is unset, or points at `localhost`, and lists each one. Set them for every deploy context you build (production and deploy previews); `SKIP_ENV_CHECK=1` builds anyway.
 
 Netlify has no step that runs before a release, so the build command applies migrations (`pnpm db:migrate`) against the `DATABASE_URL` of the deploy context. Give deploy previews their own database, or remove the migration step from the build command and run migrations yourself. Serverless functions open a connection per instance: use your provider's pooled connection URL (for example Supabase's transaction pooler or Neon's pooled endpoint).
 

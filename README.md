@@ -76,8 +76,8 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `.railway/railway.ts`: migrations run before each release, and `pnpm clubedge deploy` sets up the project. <!-- clubedge:only deploy=railway -->
 - Deployment to Render with a `render.yaml` Blueprint: migrations run before each deploy. <!-- clubedge:only deploy=render -->
-- Deployment to Vercel with `apps/web/vercel.json`: migrations run during the build. <!-- clubedge:only deploy=vercel -->
-- Deployment to Netlify with `apps/web/netlify.toml`: migrations run during the build. <!-- clubedge:only deploy=netlify -->
+- Deployment to Vercel with `apps/web/vercel.json`: the build stops when a production variable is missing, then runs migrations. <!-- clubedge:only deploy=vercel -->
+- Deployment to Netlify with `apps/web/netlify.toml`: the build stops when a production variable is missing, then runs migrations. <!-- clubedge:only deploy=netlify -->
 
 **Quality**
 
@@ -270,6 +270,7 @@ Playwright's first run may require installing Chromium with `pnpm exec playwrigh
 Local services:
 
 - `pnpm check:services`: check every configured service with a real round trip.
+- `pnpm check:env`: check that the environment has every production variable the project's modules need. Vercel and Netlify builds run it first. <!-- clubedge:only deploy=vercel|netlify -->
 - `pnpm infra:up` and `pnpm infra:down`: start and stop the local services from `docker-compose.dev.yml`. <!-- clubedge:only infra=docker -->
 - `pnpm infra:reset`: stop them and delete their data. `pnpm infra:logs` follows their logs. <!-- clubedge:only infra=docker -->
 - `pnpm infra:up` and `pnpm infra:down`: start and stop the local Supabase stack. <!-- clubedge:only infra=supabase -->

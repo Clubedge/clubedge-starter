@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "pnpm --dir ../.. db:migrate && pnpm run build"
+  "buildCommand": "pnpm run check:env && pnpm --dir ../.. db:migrate && pnpm run build"
 }
