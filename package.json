@@ -29,6 +29,7 @@
     "docker:build": "docker build -t clubedge-starter .",
     "docker:start": "docker run --rm -p 3000:3000 --env-file apps/web/.env.local clubedge-starter",
     "check:services": "pnpm --filter @clubedge/web check:services",
+    "check:env": "pnpm --filter @clubedge/web check:env",
     "clubedge": "pnpm dlx @clubedge/create-clubedge-app@latest",
     "infra:up": "docker compose -f docker-compose.dev.yml up -d --wait",
     "infra:down": "docker compose -f docker-compose.dev.yml down",

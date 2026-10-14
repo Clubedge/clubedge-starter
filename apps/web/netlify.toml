@@ -1,6 +1,7 @@
 # Netlify (https://docs.netlify.com/configure-builds/file-based-configuration/). Set the site's
 # base directory to apps/web; Netlify installs its Next.js runtime automatically.
 [build]
-  # Migrations run during the build, against the DATABASE_URL set for the deploy context.
-  command = "pnpm --dir ../.. db:migrate && pnpm run build"
+  # check:env stops the build when a variable the project needs is unset; then migrations run,
+  # against the DATABASE_URL set for the deploy context.
+  command = "pnpm run check:env && pnpm --dir ../.. db:migrate && pnpm run build"
   publish = ".next"
