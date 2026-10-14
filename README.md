@@ -1,7 +1,7 @@
 <!-- clubedge:if starter-repository -->
 <div align="center">
 
-<img src=".github/assets/cover.png" alt="Clubedge Starter" width="100%">
+<img src=".github/assets/cover.png" alt="Terminal running pnpm dlx @clubedge/create-clubedge-app my-app and printing the CLUBEDGE STARTER banner" width="100%">
 
 # Clubedge Starter
 
