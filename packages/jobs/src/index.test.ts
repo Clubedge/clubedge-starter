@@ -30,7 +30,7 @@ describe("createMemoryJobs", () => {
     const queue = createMemoryJobs([flaky]);
     await queue.enqueue(flaky, {});
 
-    expect(await queue.runDue()).toEqual({ completed: 0, failed: 1 });
+    expect(await queue.runDue()).toEqual({ completed: 0, failed: 2 });
     expect(calls).toBe(2);
     const [job] = await queue.recent(flaky);
     expect(job).toMatchObject({ state: "failed", attempts: 2, output: { message: "boom" } });

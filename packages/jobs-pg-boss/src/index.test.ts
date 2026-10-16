@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineJob, type JobDefinition } from "@clubedge/jobs";
+import { describeJobQueue } from "@clubedge/jobs/conformance";
 import { createPgBossJobs, fromPglite } from "./index";
 
 // pg-boss runs its real SQL against an in-process PostgreSQL, so no database server is needed.
@@ -152,3 +153,15 @@ describe("createPgBossJobs", () => {
     await expect(queue.startWorker()).rejects.toThrow("worker: true");
   });
 });
+
+// The behaviour every provider shares, against pg-boss's real SQL on PGlite.
+describeJobQueue("pg-boss", (jobs, { worker }) =>
+  createPgBossJobs({
+    db: fromPglite(new PGlite()),
+    backend: "pglite",
+    jobs,
+    worker,
+    pollingIntervalSeconds: 0.5,
+    onError: () => {},
+  }),
+);

@@ -1,6 +1,8 @@
 import { PgBoss, type Db, type Job, type JobWithMetadata } from "pg-boss";
 import {
   JOB_DEFAULTS,
+  errorOutput,
+  runAttempt,
   type JobDefinition,
   type JobQueue,
   type JobRecord,
@@ -39,14 +41,6 @@ const STATES: Record<JobWithMetadata["state"], JobState> = {
   cancelled: "cancelled",
   failed: "failed",
 };
-
-/** pg-boss stores outputs as JSON objects. */
-const toOutput = (value: unknown): object | null =>
-  value === undefined || value === null ? null : typeof value === "object" ? value : { value };
-
-const errorOutput = (error: unknown) => ({
-  message: error instanceof Error ? error.message : String(error),
-});
 
 /** Jobs stored in PostgreSQL through pg-boss, behind JobQueue. */
 export function createPgBossJobs({
@@ -106,16 +100,9 @@ export function createPgBossJobs({
   }
 
   async function execute(definition: JobDefinition, job: Job<object>) {
-    const timeout = (definition.timeoutSeconds ?? JOB_DEFAULTS.timeoutSeconds) * 1000;
     const attempt = job.retryCount + 1;
     try {
-      return toOutput(
-        await definition.run(job.data, {
-          id: job.id,
-          attempt,
-          signal: job.signal ?? AbortSignal.timeout(timeout),
-        }),
-      );
+      return await runAttempt(definition, job.data, { id: job.id, attempt, signal: job.signal });
     } catch (error) {
       // A failing error reporter must not replace the job's own error.
       try {
