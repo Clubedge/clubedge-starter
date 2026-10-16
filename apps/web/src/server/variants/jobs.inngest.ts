@@ -60,8 +60,30 @@ export function getJobs(): JobQueue {
   return globalForJobs.clubedgeJobs;
 }
 
-/** Inngest runs the jobs, so there is no worker to start. */
-export function startJobsWorker() {}
+/**
+ * Inngest runs the jobs, so there is no worker to start. In development, once this server
+ * answers, it asks the Dev Server to sync its jobs (a PUT to its own /api/inngest), so jobs run
+ * whichever of pnpm dev and pnpm jobs:dev started first.
+ */
+export function startJobsWorker() {
+  if (getServerEnv().NODE_ENV === "production" || devServer(jobsEnv().INNGEST_DEV) === false)
+    return;
+  const endpoint = new URL(
+    "/api/inngest",
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ).toString();
+  let tries = 0;
+  const sync = () =>
+    fetch(endpoint, { method: "PUT", signal: AbortSignal.timeout(10_000) })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      })
+      .catch(() => {
+        // The server may not listen yet, or the Dev Server may not run: try for about a minute.
+        if (++tries < 30) setTimeout(sync, 2_000).unref();
+      });
+  setTimeout(sync, 2_000).unref();
+}
 
 export async function stopJobsWorker() {
   await globalForJobs.clubedgeJobs?.stop();
