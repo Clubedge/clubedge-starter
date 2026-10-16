@@ -158,6 +158,15 @@ export function createFirebaseAuth(config: FirebaseAuthConfig): AuthProvider {
     }
   }
 
+  /**
+   * Ends every session of the user. Revocation is recorded to the second, and a session that
+   * started in the same second would survive it, so it waits for the next second first.
+   */
+  async function revokeSessions(uid: string) {
+    await new Promise((resolve) => setTimeout(resolve, 1_050 - (Date.now() % 1_000)));
+    await admin.revokeRefreshTokens(uid);
+  }
+
   /** Sends an email without making the request wait for the email provider, or fail with it. */
   function send(email: Parameters<AuthEmailSender>[0]) {
     void sendEmail?.(email).catch((error: unknown) =>
@@ -248,7 +257,7 @@ export function createFirebaseAuth(config: FirebaseAuthConfig): AuthProvider {
         });
         // Other sessions end with the old password.
         const user = await admin.getUserByEmail(email).catch(() => null);
-        if (user) await admin.revokeRefreshTokens(user.uid);
+        if (user) await revokeSessions(user.uid);
         return ok(undefined);
       } catch (error) {
         if (error instanceof IdentityError) return err("invalid-reset");
@@ -269,7 +278,7 @@ export function createFirebaseAuth(config: FirebaseAuthConfig): AuthProvider {
       }
       await rest("accounts:update", { idToken, password: newPassword, returnSecureToken: true });
       // Ends every session, then signs this browser in again after the revocation's second.
-      await admin.revokeRefreshTokens(current.uid);
+      await revokeSessions(current.uid);
       await new Promise((resolve) => setTimeout(resolve, 1_100));
       await startSession((await signIn(current.email, newPassword)).idToken);
       return ok(undefined);
