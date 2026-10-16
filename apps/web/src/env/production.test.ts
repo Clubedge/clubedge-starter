@@ -55,6 +55,14 @@ describe("production env check", () => {
     ).toEqual(["DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"]);
   });
 
+  const hasInngest = requiredVariables({}).some(({ key }) => key === "INNGEST_SIGNING_KEY");
+  it.runIf(hasInngest)("refuses Inngest's Dev Server in production", () => {
+    expect(checkProductionEnv({ ...complete(), INNGEST_DEV: "1" }).invalid).toEqual([
+      "INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it",
+    ]);
+    expect(checkProductionEnv({ ...complete(), INNGEST_DEV: "0" }).invalid).toEqual([]);
+  });
+
   it("rejects a URL that isn't absolute", () => {
     const env = { ...complete(), NEXT_PUBLIC_APP_URL: "my-app.vercel.app" };
     expect(checkProductionEnv(env).invalid).toEqual(["NEXT_PUBLIC_APP_URL is not an absolute URL"]);

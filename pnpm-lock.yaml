@@ -74,6 +74,12 @@ importers:
       '@clubedge/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@clubedge/jobs-bullmq':
+        specifier: workspace:*
+        version: link:../../packages/jobs-bullmq
+      '@clubedge/jobs-inngest':
+        specifier: workspace:*
+        version: link:../../packages/jobs-inngest
       '@clubedge/jobs-pg-boss':
         specifier: workspace:*
         version: link:../../packages/jobs-pg-boss
@@ -189,6 +195,12 @@ importers:
       '@clubedge/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@clubedge/jobs-bullmq':
+        specifier: workspace:*
+        version: link:../../packages/jobs-bullmq
+      '@clubedge/jobs-inngest':
+        specifier: workspace:*
+        version: link:../../packages/jobs-inngest
       '@clubedge/jobs-pg-boss':
         specifier: workspace:*
         version: link:../../packages/jobs-pg-boss

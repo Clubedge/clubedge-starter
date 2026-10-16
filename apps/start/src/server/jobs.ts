@@ -28,6 +28,14 @@ export function isWorkerEnabled(): boolean {
   return !process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME;
 }
 
+/**
+ * How this server's jobs run, for the dashboard: in its own worker, when a scheduler calls
+ * /api/jobs/run, or by a jobs service that calls the app.
+ */
+export function jobsRunner(): "worker" | "scheduler" | "service" {
+  return isWorkerEnabled() ? "worker" : "scheduler";
+}
+
 export function getCronSecret(): string | null {
   return jobsEnv().CRON_SECRET || null;
 }

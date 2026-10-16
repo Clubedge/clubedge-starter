@@ -68,6 +68,8 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - Fixed-window rate limiter and cache in process memory, suited to a single server instance. <!-- clubedge:only cache=memory -->
 - Subscriptions with Stripe Checkout and the customer portal, kept in sync by verified webhooks, behind a provider-neutral payments interface. <!-- clubedge:only payments=stripe -->
 - Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss -->
+- Background jobs with retries and schedules, stored in Redis by BullMQ and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=bullmq -->
+- Background jobs with retries and schedules, run by Inngest, which calls the app for each one, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=inngest -->
 - Server error reporting and request tracing with OpenTelemetry, to any OTLP collector, behind a provider-neutral observability interface. <!-- clubedge:only observability=otel -->
 - Server error reporting and request tracing with Sentry, behind a provider-neutral observability interface. <!-- clubedge:only observability=sentry -->
 
@@ -100,7 +102,7 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 | Cache         | `redis`, `memory`                                         | `redis`    |
 | Email         | `smtp`, `resend`, `none`                                  | `smtp`     |
 | Payments      | `stripe`, `none`                                          | `none`     |
-| Jobs          | `pg-boss`, `none`                                         | `none`     |
+| Jobs          | `pg-boss`, `bullmq`, `inngest`, `none`                    | `none`     |
 | Observability | `otel`, `sentry`, `none`                                  | `none`     |
 | Local infra   | `docker`, `supabase`, `local` (no Docker), `neon`, `none` | `docker`   |
 | Deploy        | `docker`, `fly`, `railway`, `render`, `vercel`, `netlify` | `docker`   |
@@ -240,6 +242,14 @@ flowchart TB
   App -->|jobs interface, worker in the server| Jobs[pg-boss]
   Jobs -->|jobs table| DB
   %% clubedge:end
+  %% clubedge:if jobs=bullmq
+  App -->|jobs interface, worker in the server| Jobs[BullMQ]
+  Jobs -->|queues| Redis
+  %% clubedge:end
+  %% clubedge:if jobs=inngest
+  App -->|jobs interface, an event per job| Jobs[Inngest]
+  Jobs -->|calls /api/inngest to run each job| App
+  %% clubedge:end
   %% clubedge:if observability=otel
   App -->|traces and errors| Otel[OTLP collector]
   %% clubedge:end
@@ -348,8 +358,10 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/email-resend/`: Resend email provider <!-- clubedge:only email=resend -->
 - `packages/payments/`: `PaymentProvider` interface, billing logic, and the subscription tables <!-- clubedge:only payments!=none -->
 - `packages/payments-stripe/`: Stripe payment provider <!-- clubedge:only payments=stripe -->
-- `packages/jobs/`: `JobQueue` interface, job definitions, and an in-memory queue for tests <!-- clubedge:only jobs!=none -->
+- `packages/jobs/`: `JobQueue` interface, job definitions, an in-memory queue for tests, and the conformance suite every provider passes <!-- clubedge:only jobs!=none -->
 - `packages/jobs-pg-boss/`: pg-boss job queue <!-- clubedge:only jobs=pg-boss -->
+- `packages/jobs-bullmq/`: BullMQ job queue in Redis <!-- clubedge:only jobs=bullmq -->
+- `packages/jobs-inngest/`: Inngest jobs, and the handler for `/api/inngest` <!-- clubedge:only jobs=inngest -->
 - `packages/observability/`: `ObservabilityProvider` interface and an in-memory provider for tests <!-- clubedge:only observability!=none -->
 - `packages/observability-otel/`: OpenTelemetry provider (OTLP/HTTP traces and error logs) <!-- clubedge:only observability=otel -->
 - `packages/observability-sentry/`: Sentry provider <!-- clubedge:only observability=sentry -->
