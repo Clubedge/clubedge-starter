@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/cache-redis",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "description": "Redis rate limiter and cache for @clubedge/cache.",
   "private": true,
   "license": "Apache-2.0",
