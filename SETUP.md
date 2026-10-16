@@ -458,6 +458,22 @@ Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER
 - It needs the secrets `VERCEL_TOKEN`, from your account settings, and `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, which `vercel link` writes to `.vercel/project.json`. <!-- clubedge:only deploy=vercel -->
 - It needs the secrets `NETLIFY_AUTH_TOKEN`, a personal access token, and `NETLIFY_SITE_ID`, from the site's settings. <!-- clubedge:only deploy=netlify -->
 
+<!-- clubedge:if infra=neon -->
+
+### Preview environments
+
+`.github/workflows/preview.yml` gives each pull request its own database: a [Neon branch](https://neon.com/docs/introduction/branching) named `preview/pr-<number>`, a copy of the production branch made in seconds that shares its storage until it changes. It applies the pull request's migrations to the branch, comments the schema diff on the pull request, deploys a preview against it, and deletes the branch when the pull request closes. Pull requests from forks get no preview, since GitHub gives them no secrets.
+
+It runs once the repository has, in Settings, then Secrets and variables, then Actions:
+
+- the secret `NEON_API_KEY`, from the Neon console's account or organization settings, and the variable `NEON_PROJECT_ID`, from the project's settings. A free database the CLI created must be claimed first.
+- the secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`, as for the deploy workflow. The preview is a Vercel preview deployment with the project's Preview variables, except `DATABASE_URL` and `DATABASE_URL_DIRECT`, which point at the branch. <!-- clubedge:only deploy=vercel -->
+- the secret `RAILWAY_API_TOKEN`, an account or workspace token (a project token can't create environments), and the variables `RAILWAY_PROJECT_ID` and `RAILWAY_SERVICE`. Each pull request gets a Railway environment, `pr-<number>`, copied from production with its own domain and the branch as its database; it is deleted with the branch. <!-- clubedge:only deploy=railway -->
+
+From your machine, `pnpm clubedge deploy --preview` does the same for the current Git branch. <!-- clubedge:only deploy=vercel|railway -->
+
+<!-- clubedge:end -->
+
 `/api/health` answers as long as the app runs, so platforms use it to decide whether to restart the app. `/api/ready` also checks that the database answers, returning 200 or 503 without details: point load balancers and readiness probes at it, so traffic waits while the database is unreachable instead of the app restarting.
 
 Production needs these variables:

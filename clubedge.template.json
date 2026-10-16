@@ -378,6 +378,7 @@
         },
         "neon": {
           "name": "Neon (hosted PostgreSQL, nothing to install)",
+          "files": [".github/workflows/preview.yml"],
           "scripts": {
             "dev": "turbo run dev --filter=@clubedge/web"
           }
@@ -424,6 +425,7 @@
     ".env.example",
     ".github/workflows/ci.yml",
     ".github/workflows/deploy.yml",
+    ".github/workflows/preview.yml",
     "AGENTS.md",
     "README.md",
     "SETUP.md",
