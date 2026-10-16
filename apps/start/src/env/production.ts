@@ -23,6 +23,12 @@ export function requiredVariables(env: Env): Requirement[] {
     // clubedge:if auth=better-auth
     { key: "BETTER_AUTH_SECRET", use: "Better Auth sessions" },
     // clubedge:end
+    // clubedge:if auth=firebase
+    { key: "FIREBASE_PROJECT_ID", use: "Firebase Authentication" },
+    { key: "FIREBASE_API_KEY", use: "Firebase Authentication" },
+    { key: "FIREBASE_CLIENT_EMAIL", use: "Firebase Authentication (the service account)" },
+    { key: "FIREBASE_PRIVATE_KEY", use: "Firebase Authentication (the service account)" },
+    // clubedge:end
     // clubedge:if cache=redis
     { key: "REDIS_URL", use: "the cache and rate limits", url: true },
     // clubedge:end
@@ -103,6 +109,14 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
   if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {
     invalid.push("INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it");
+  }
+  // clubedge:end
+  // clubedge:if auth=firebase
+  // The emulator only runs on a developer's machine.
+  if (env.FIREBASE_AUTH_EMULATOR_HOST?.trim()) {
+    invalid.push(
+      "FIREBASE_AUTH_EMULATOR_HOST is set: production uses your Firebase project, so remove it",
+    );
   }
   // clubedge:end
   // clubedge:if auth=better-auth

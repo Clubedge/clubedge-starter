@@ -450,6 +450,13 @@ jobs:
               modules: --auth better-auth --payments stripe --jobs pg-boss --observability sentry,
               mail-api: "http://127.0.0.1:8025",
             }
+          # Firebase Authentication through its Auth Emulator; its emails go to Mailpit.
+          - {
+              infra: docker,
+              framework: next,
+              modules: --auth firebase --jobs pg-boss,
+              mail-api: "http://127.0.0.1:8025",
+            }
           # The other jobs providers: BullMQ on the Docker Redis, and Inngest through its Dev Server.
           - {
               infra: docker,
@@ -537,6 +544,14 @@ jobs:
           # The local database runs in the foreground, so keep it running for the next steps.
           nohup pnpm infra:up > "$RUNNER_TEMP/local-db.log" 2>&1 &
           timeout 180 bash -c 'until grep -q "Local database ready" "$RUNNER_TEMP/local-db.log"; do sleep 1; done'             || { cat "$RUNNER_TEMP/local-db.log"; exit 1; }
+      - name: Start the Firebase Auth Emulator
+        if: contains(matrix.modules, '--auth firebase')
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          timeout 240 bash -c 'until curl --silent --output /dev/null http://127.0.0.1:9099/; do sleep 2; done' \
+            || { cat "$RUNNER_TEMP/firebase.log"; exit 1; }
       - name: Use the local Supabase keys
         if: matrix.infra == 'supabase'
         working-directory: ${{ runner.temp }}/generated-app
@@ -654,7 +669,7 @@ jobs:
           SENTRY_TRACES_SAMPLE_RATE: "1"
         run: pnpm test:e2e e2e/observability.spec.ts
       - name: Sign in only after confirming the email address
-        if: matrix.infra == 'docker'
+        if: matrix.infra == 'docker' && contains(matrix.modules, '--auth better-auth')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}

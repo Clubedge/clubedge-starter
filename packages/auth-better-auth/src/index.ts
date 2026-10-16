@@ -1,17 +1,25 @@
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { parseSetCookieHeader, splitSetCookieHeader, toCookieOptions } from "better-auth/cookies";
-import type { AuthProvider, AuthUser, CookieStore, CookieToSet } from "@clubedge/auth";
+import {
+  passwordResetEmail,
+  verificationEmail,
+  type AuthEmailSender,
+  type AuthProvider,
+  type AuthUser,
+  type CookieStore,
+  type CookieToSet,
+} from "@clubedge/auth";
 import { err, ok, reportError } from "@clubedge/core";
-import { passwordResetEmail, verificationEmail, type AuthEmailSender } from "./emails";
 import { betterAuthTables } from "./schema";
 
+// The email types and templates live in @clubedge/auth; re-exported for existing imports.
 export {
   passwordResetEmail,
   verificationEmail,
   type AuthEmail,
   type AuthEmailSender,
-} from "./emails";
+} from "@clubedge/auth";
 export { betterAuthTables } from "./schema";
 
 type DatabaseAdapter = Parameters<typeof betterAuth>[0]["database"];
