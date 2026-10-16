@@ -592,6 +592,13 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm check:services
+      # The AuthProvider conformance suite against the real local Supabase Auth and its inbox.
+      - name: Run the auth conformance suite against Supabase
+        if: matrix.infra == 'supabase'
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          SUPABASE_INBOX_URL: ${{ matrix.mail-api }}
+        run: pnpm exec vitest run packages/auth-supabase
       # Inngest runs the jobs, auth emails included, by calling the app: its Dev Server must run
       # next to the app's dev server, which Playwright starts on port 3000.
       - name: Start the Inngest Dev Server

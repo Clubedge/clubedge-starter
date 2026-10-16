@@ -29,6 +29,10 @@ additional_redirect_urls = ["http://localhost:3000/auth/callback**", "http://127
 # Sign-up signs the user in directly during local development.
 enable_confirmations = false
 
+# The local stack's default allows only a few emails an hour; tests and development send more.
+[auth.rate_limit]
+email_sent = 100
+
 # clubedge:if storage=supabase
 [storage.buckets.app]
 public = false
