@@ -618,6 +618,23 @@ jobs:
       - name: Show the Inngest Dev Server's log
         if: failure() && contains(matrix.modules, '--jobs inngest')
         run: tail -n 100 "$RUNNER_TEMP/inngest.log" || true
+      # Starts the app again and syncs it by hand, printing each answer, to show why Inngest found
+      # no functions.
+      - name: Show how the app syncs with Inngest
+        if: failure() && contains(matrix.modules, '--jobs inngest')
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          APP_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+        run: |
+          nohup pnpm dev > "$RUNNER_TEMP/app.log" 2>&1 &
+          for _ in $(seq 90); do curl --silent --fail --output /dev/null http://127.0.0.1:3000/api/health && break; sleep 2; done
+          echo "::group::GET /api/inngest"; curl --silent --show-error --include http://127.0.0.1:3000/api/inngest | head -c 3000; echo; echo "::endgroup::"
+          echo "::group::PUT /api/inngest"; curl --silent --show-error --include --request PUT http://127.0.0.1:3000/api/inngest | head -c 3000; echo; echo "::endgroup::"
+          sleep 10
+          echo "::group::GET localhost:3000 (as the Dev Server resolves it)"; curl --silent --show-error --include http://localhost:3000/api/inngest | head -c 600; echo; echo "::endgroup::"
+          echo "::group::Dev Server log"; tail -n 40 "$RUNNER_TEMP/inngest.log"; echo "::endgroup::"
+          echo "::group::App log"; tail -n 80 "$RUNNER_TEMP/app.log"; echo "::endgroup::"
       # Request traces to e2e/telemetry-fake.ts, a stand-in for an OpenTelemetry collector and for
       # Sentry; each project reads only its own provider's variables.
       - name: Send request traces to the observability provider
