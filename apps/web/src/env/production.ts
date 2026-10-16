@@ -88,7 +88,9 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   const direct = env.DATABASE_URL_DIRECT?.trim();
   if (direct) {
     if (urlHost(direct) === null) invalid.push("DATABASE_URL_DIRECT is not an absolute URL");
-    else if (isLocalUrl(direct)) local.push("DATABASE_URL_DIRECT");
+    else if (!/^postgres(ql)?:\/\//i.test(direct)) {
+      invalid.push("DATABASE_URL_DIRECT is not a postgresql:// URL");
+    } else if (isLocalUrl(direct)) local.push("DATABASE_URL_DIRECT");
     else if (isNeonPooledUrl(direct)) {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }

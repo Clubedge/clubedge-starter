@@ -10,8 +10,9 @@ permissions:
   contents: read
   pull-requests: write
 concurrency:
-  # A new push replaces the preview being made; closing waits for it, then cleans up.
-  group: preview-${{ github.event.number }}-${{ github.event.action == 'closed' && 'close' || 'open' }}
+  # One group per pull request: a new push replaces the preview being made, and closing waits for
+  # it, so cleanup never runs before a preview that would recreate the branch.
+  group: preview-${{ github.event.number }}
   cancel-in-progress: ${{ github.event.action != 'closed' }}
 env:
   NEON_BRANCH: preview/pr-${{ github.event.number }}

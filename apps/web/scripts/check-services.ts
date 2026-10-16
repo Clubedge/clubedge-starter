@@ -2,6 +2,7 @@
 // It reads the app's .env.local like the app does, so it confirms the app's own settings.
 import { existsSync } from "node:fs";
 import { createDb } from "@clubedge/db";
+import { isNeonPooledUrl } from "@clubedge/db/urls";
 // clubedge:if cache=redis
 import { createRedisCache } from "@clubedge/cache-redis";
 // clubedge:end
@@ -59,14 +60,17 @@ async function main() {
     },
     {
       name: "PostgreSQL, direct",
-      skip: env.DATABASE_URL_DIRECT
+      skip: env.DATABASE_URL_DIRECT?.trim()
         ? undefined
         : "DATABASE_URL_DIRECT is not set; migrations use DATABASE_URL",
       async run() {
-        const db = createDb({ url: env.DATABASE_URL_DIRECT! });
+        const url = env.DATABASE_URL_DIRECT!.trim();
+        if (isNeonPooledUrl(url))
+          throw new Error("it points at Neon's pooler: use the host without -pooler");
+        const db = createDb({ url });
         try {
           const [row] = await db.$client`select current_database() as name`;
-          return `connected to database "${row?.name}" without a pooler`;
+          return `connected to database "${row?.name}" through DATABASE_URL_DIRECT`;
         } finally {
           await db.$client.end();
         }

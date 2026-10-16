@@ -47,6 +47,9 @@ describe("production env check", () => {
       invalid: [],
     });
     expect(direct("postgresql://u:p@localhost:5432/app").local).toEqual(["DATABASE_URL_DIRECT"]);
+    expect(direct("https://db.example.com/app").invalid).toEqual([
+      "DATABASE_URL_DIRECT is not a postgresql:// URL",
+    ]);
     expect(
       direct("postgresql://u:p@ep-x-1-pooler.eu-central-1.aws.neon.tech/neondb").invalid,
     ).toEqual(["DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"]);

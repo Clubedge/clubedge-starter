@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { JobQueue } from "@clubedge/jobs";
+import { directDatabaseUrl } from "@clubedge/db/urls";
 import { createPgBossJobs } from "@clubedge/jobs-pg-boss";
 import { jobs } from "@/jobs";
 import { getServerEnv, optional, parseEnv } from "@/env/server";
@@ -41,7 +42,7 @@ export function getJobs(): JobQueue {
   globalForJobs.clubedgeJobs = createPgBossJobs({
     // A worker holds its connections for the life of the process, so it takes the direct URL
     // when there is one; processes that only enqueue stay on the pooled DATABASE_URL.
-    connectionString: worker ? env.DATABASE_URL_DIRECT || env.DATABASE_URL : env.DATABASE_URL,
+    connectionString: worker ? (directDatabaseUrl(env) ?? env.DATABASE_URL) : env.DATABASE_URL,
     jobs,
     worker,
     maxConnections: env.NODE_ENV === "production" ? 4 : 2,
