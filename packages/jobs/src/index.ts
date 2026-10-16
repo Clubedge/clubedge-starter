@@ -73,6 +73,11 @@ export interface JobQueue {
   /** A job's most recent runs, newest first, optionally only those whose data contains `data`. */
   recent(job: JobDefinition, filter?: { data?: object; limit?: number }): Promise<JobRecord[]>;
   stop(): Promise<void>;
+  /**
+   * For providers that run jobs by calling the app (Inngest): answers their requests, at the
+   * app's /api/inngest. Queues that run jobs themselves have none.
+   */
+  handler?(request: Request): Promise<Response>;
 }
 
 export const JOB_DEFAULTS = { retryLimit: 2, retryDelaySeconds: 10, timeoutSeconds: 300 };

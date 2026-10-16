@@ -1,0 +1,22 @@
+{
+  "name": "@clubedge/jobs-inngest",
+  "version": "0.19.1",
+  "description": "Inngest provider for @clubedge/jobs: jobs run by Inngest, which calls the app for each one.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/jobs": "workspace:*",
+    "inngest": "^4.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

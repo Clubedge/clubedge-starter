@@ -1,0 +1,23 @@
+{
+  "name": "@clubedge/jobs-bullmq",
+  "version": "0.19.1",
+  "description": "BullMQ provider for @clubedge/jobs: a job queue stored in Redis.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/jobs": "workspace:*",
+    "bullmq": "^6.3.15",
+    "ioredis": "^5.8.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
