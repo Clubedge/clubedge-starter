@@ -1,8 +1,8 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { createDb } from "@clubedge/db";
-import { requireDatabaseUrl } from "@clubedge/db/load-env";
+import { requireDirectDatabaseUrl } from "@clubedge/db/load-env";
 
-const db = createDb({ url: requireDatabaseUrl("run Better Auth migrations") });
+const db = createDb({ url: requireDirectDatabaseUrl("run Better Auth migrations") });
 try {
   await migrate(db, {
     migrationsFolder: "./drizzle",

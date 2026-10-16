@@ -462,6 +462,20 @@ jobs:
               modules: --auth better-auth --jobs pg-boss --observability otel,
               mail-api: "",
             }
+          # A real hosted database: an unclaimed Neon database, which needs no account or secret
+          # and expires by itself after 72 hours.
+          - {
+              infra: neon,
+              framework: next,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
+          - {
+              infra: neon,
+              framework: tanstack-start,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
           - {
               infra: supabase,
               framework: next,
@@ -501,6 +515,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Start the local services
         working-directory: ${{ runner.temp }}/generated-app
+        if: matrix.infra != 'neon'
         run: |
           if [ "${{ matrix.infra }}" != local ]; then
             pnpm infra:up
@@ -524,9 +539,35 @@ jobs:
             # Lets the settings page delete accounts.
             echo "SUPABASE_SECRET_KEY=${SECRET_KEY:-${SERVICE_ROLE_KEY:-}}"
           } >> "$GITHUB_ENV"
-      - name: Point at the local database
+      - name: Point at the database
+        working-directory: ${{ runner.temp }}/generated-app
         run: |
-          if [ "${{ matrix.infra }}" = supabase ]; then
+          if [ "${{ matrix.infra }}" = neon ]; then
+            set -euo pipefail
+            # The database create-clubedge-app wrote into the env file, or else (a CLI without Neon
+            # support) one created here through Neon's API for unclaimed databases.
+            url=$(sed -n 's/^DATABASE_URL=\(postgres[^ ]*\).*/\1/p' apps/web/.env.local | head -n 1)
+            if [ -z "$url" ]; then
+              api=https://claimable.neon.tech/v1
+              identity=$(curl --fail --silent --show-error --request POST "$api/agent/identity" \
+                --header 'content-type: application/json' \
+                --data '{"type":"anonymous","capabilities":["postgres"],"source":"clubedge-starter-ci"}')
+              project=$(jq -r .project.id <<< "$identity")
+              token=$(curl --fail --silent --show-error --request POST "$api/oauth2/token" \
+                --data-urlencode grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+                --data-urlencode "assertion=$(jq -r .identity_assertion <<< "$identity")" \
+                --data-urlencode resource=https://claimable.neon.tech/ | jq -r .access_token)
+              url=$(curl --fail --silent --show-error "$api/projects/$project/credentials" \
+                --header "authorization: Bearer $token" | jq -r .database_url)
+            fi
+            # The direct URL is the pooled one without -pooler in the host.
+            direct=$(sed -E 's/(@[^.@/]+)-pooler\./\1./' <<< "$url")
+            echo "::add-mask::$url"
+            echo "::add-mask::$direct"
+            case "$url" in *-pooler.*) ;; *) echo "Expected a pooled Neon URL"; exit 1 ;; esac
+            echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
+            echo "DATABASE_URL_DIRECT=$direct" >> "$GITHUB_ENV"
+          elif [ "${{ matrix.infra }}" = supabase ]; then
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres" >> "$GITHUB_ENV"
           elif [ "${{ matrix.infra }}" = local ]; then
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres" >> "$GITHUB_ENV"

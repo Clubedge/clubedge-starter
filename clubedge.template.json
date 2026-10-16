@@ -376,6 +376,12 @@
             "infra:reset": "node -e \"require('node:fs').rmSync('.data', { recursive: true, force: true })\""
           }
         },
+        "neon": {
+          "name": "Neon (hosted PostgreSQL, nothing to install)",
+          "scripts": {
+            "dev": "turbo run dev --filter=@clubedge/web"
+          }
+        },
         "none": {
           "name": "None (bring your own services)",
           "scripts": {

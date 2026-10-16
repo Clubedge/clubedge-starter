@@ -37,10 +37,13 @@ const globalForJobs = globalThis as typeof globalThis & { clubedgeJobs?: JobQueu
 export function getJobs(): JobQueue {
   if (globalForJobs.clubedgeJobs) return globalForJobs.clubedgeJobs;
   const env = getServerEnv();
+  const worker = isWorkerEnabled();
   globalForJobs.clubedgeJobs = createPgBossJobs({
-    connectionString: env.DATABASE_URL,
+    // A worker holds its connections for the life of the process, so it takes the direct URL
+    // when there is one; processes that only enqueue stay on the pooled DATABASE_URL.
+    connectionString: worker ? env.DATABASE_URL_DIRECT || env.DATABASE_URL : env.DATABASE_URL,
     jobs,
-    worker: isWorkerEnabled(),
+    worker,
     maxConnections: env.NODE_ENV === "production" ? 4 : 2,
     onError: (error, context) =>
       reportError(error, {

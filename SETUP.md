@@ -37,6 +37,7 @@ The example file leaves provider URLs and keys blank so the app can build and st
 The variables are:
 
 - `DATABASE_URL` (required): PostgreSQL connection URL, such as a Supabase transaction pooler URL.
+- `DATABASE_URL_DIRECT` (optional): the same database without a pooler, for migrations and the jobs worker. See [Pooled and direct connections](#pooled-and-direct-connections). <!-- clubedge:only infra=none|neon -->
 - `NEXT_PUBLIC_APP_URL` (recommended): the app's origin, defaulting to `http://localhost:3000`. <!-- clubedge:only framework=next -->
 - `APP_URL` (recommended): the app's origin, defaulting to `http://localhost:3000`. <!-- clubedge:only framework=tanstack-start -->
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=next && auth=supabase -->
@@ -149,6 +150,18 @@ This project runs its development services without Docker or any other installat
 PGlite runs a single database session, so connections take turns. That is plenty for development but not for production: deploy against a managed PostgreSQL by setting `DATABASE_URL`. Supabase Auth and Supabase Storage need a Supabase project, local or hosted. Better Auth works fully offline. `pnpm infra:reset` deletes everything in `.data/`.
 
 <!-- clubedge:end -->
+<!-- clubedge:if infra=neon -->
+
+This project's database is hosted on [Neon](https://neon.com), so there is nothing to install or start:
+
+- **PostgreSQL:** create-clubedge-app created a free, unclaimed Neon database and wrote `DATABASE_URL` (pooled) and `DATABASE_URL_DIRECT` into `apps/web/.env.local`. It expires 72 hours after creation and holds up to 100 MB until it is claimed. `pnpm clubedge neon` shows how long it has left.
+- **Keep it:** `pnpm clubedge neon claim` opens Neon's claim page; sign in (free) and the database moves to your account with its data. Claiming resets the password, so copy the new connection strings from the Neon console into `apps/web/.env.local` afterwards: the pooled one into `DATABASE_URL`, the direct one into `DATABASE_URL_DIRECT`.
+- **Start over:** `pnpm clubedge neon create` creates a new database and replaces the two URLs, for example after one expired.
+- **Your own project:** paste the connection strings from any Neon project instead; nothing else changes.
+- **Cache:** without `REDIS_URL`, the cache and rate limits use process memory. <!-- clubedge:only cache=redis -->
+- **Email:** without a provider configured, emails are printed to the `pnpm dev` output, links included. <!-- clubedge:only email!=none -->
+
+<!-- clubedge:end -->
 <!-- clubedge:if infra=none -->
 
 This project does not include local service definitions. Point `DATABASE_URL` and the provider variables at services you run yourself or at hosted ones, such as Supabase or Neon for PostgreSQL and Upstash for Redis, then run `pnpm check:services` to confirm the app can reach them.
@@ -169,6 +182,14 @@ pnpm db:migrate
 
 `db:generate` creates migration files from `packages/db/src/schema` into `packages/db/drizzle`; review and commit those files. Better Auth's tables have their own schema and migrations in `packages/auth-better-auth`, applied by the same commands. <!-- clubedge:only auth=better-auth -->
 `db:generate` creates migration files from `packages/db/src/schema` into `packages/db/drizzle`; review and commit those files. <!-- clubedge:only auth!=better-auth -->
+
+<!-- clubedge:if infra=none|neon -->
+
+### Pooled and direct connections
+
+Hosted PostgreSQL usually offers two URLs. The pooled one (Neon's host ending in `-pooler`, Supabase's port 6543) runs each transaction on any free server connection, which suits the app's many short requests. Migrations and the background jobs worker need a whole session to themselves, which a transaction pooler can't give. Set `DATABASE_URL_DIRECT` to the direct URL, and `pnpm db:migrate`, Drizzle Kit, the production migrator, and the jobs worker use it; everything else stays on `DATABASE_URL`. Without it, they all use `DATABASE_URL`. `pnpm check:env` refuses a `DATABASE_URL_DIRECT` that points at Neon's pooler.
+
+<!-- clubedge:end -->
 
 `db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate. The database commands run in `packages/db` and read `DATABASE_URL` from `apps/web/.env.local`, so the project keeps one environment file. The Postgres.js client is configured with `prepare: false` for compatibility with Supabase transaction pooling.
 

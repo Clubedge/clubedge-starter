@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import { resolve } from "node:path";
+import { directDatabaseUrl } from "../src/urls";
 
 // Database commands run from packages/db and share the app's environment file, so a project
 // has one place for secrets. Variables already set in the shell take precedence.
@@ -11,4 +12,12 @@ export function requireDatabaseUrl(purpose: string): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error(`DATABASE_URL is required to ${purpose}.`);
   return url;
+}
+
+/**
+ * DATABASE_URL_DIRECT when it is set, else DATABASE_URL: migrations and Drizzle Kit need a whole
+ * session, which a transaction pooler (Neon's -pooler host, Supabase's port 6543) doesn't give.
+ */
+export function requireDirectDatabaseUrl(purpose: string): string {
+  return directDatabaseUrl(process.env) ?? requireDatabaseUrl(purpose);
 }

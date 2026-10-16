@@ -20,6 +20,8 @@ const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  // Optional: the database's direct (unpooled) URL, for migrations and the jobs worker.
+  DATABASE_URL_DIRECT: optional(z.string()),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;

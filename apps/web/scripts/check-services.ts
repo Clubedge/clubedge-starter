@@ -57,6 +57,21 @@ async function main() {
         }
       },
     },
+    {
+      name: "PostgreSQL, direct",
+      skip: env.DATABASE_URL_DIRECT
+        ? undefined
+        : "DATABASE_URL_DIRECT is not set; migrations use DATABASE_URL",
+      async run() {
+        const db = createDb({ url: env.DATABASE_URL_DIRECT! });
+        try {
+          const [row] = await db.$client`select current_database() as name`;
+          return `connected to database "${row?.name}" without a pooler`;
+        } finally {
+          await db.$client.end();
+        }
+      },
+    },
     // clubedge:if cache=redis
     {
       name: "Redis",
