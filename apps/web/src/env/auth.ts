@@ -95,3 +95,33 @@ export function getFirebaseAuthEnv(): FirebaseAuthEnv | null {
   };
 }
 // clubedge:end
+
+// clubedge:if auth=appwrite
+const appwriteAuthSchema = z.object({
+  // The API endpoint, such as https://cloud.appwrite.io/v1 or your server's /v1.
+  APPWRITE_ENDPOINT: optional(z.url()),
+  APPWRITE_PROJECT_ID: optional(z.string()),
+  // An API key with the sessions.write and users.write scopes (Overview, Integrations, API keys).
+  APPWRITE_API_KEY: optional(z.string()),
+  NEXT_PUBLIC_APP_URL: optional(z.url()),
+});
+
+export interface AppwriteAuthEnv {
+  endpoint: string;
+  projectId: string;
+  apiKey: string;
+  baseUrl: string;
+}
+
+/** Appwrite settings, or null until the endpoint, project, and API key are set. */
+export function getAppwriteAuthEnv(): AppwriteAuthEnv | null {
+  const env = parseEnv(appwriteAuthSchema, "Appwrite");
+  if (!env.APPWRITE_ENDPOINT || !env.APPWRITE_PROJECT_ID || !env.APPWRITE_API_KEY) return null;
+  return {
+    endpoint: env.APPWRITE_ENDPOINT,
+    projectId: env.APPWRITE_PROJECT_ID,
+    apiKey: env.APPWRITE_API_KEY,
+    baseUrl: env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  };
+}
+// clubedge:end

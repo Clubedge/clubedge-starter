@@ -23,6 +23,11 @@ export function requiredVariables(env: Env): Requirement[] {
     // clubedge:if auth=better-auth
     { key: "BETTER_AUTH_SECRET", use: "Better Auth sessions" },
     // clubedge:end
+    // clubedge:if auth=appwrite
+    { key: "APPWRITE_ENDPOINT", use: "Appwrite", url: true },
+    { key: "APPWRITE_PROJECT_ID", use: "Appwrite" },
+    { key: "APPWRITE_API_KEY", use: "Appwrite" },
+    // clubedge:end
     // clubedge:if auth=firebase
     { key: "FIREBASE_PROJECT_ID", use: "Firebase Authentication" },
     { key: "FIREBASE_API_KEY", use: "Firebase Authentication" },

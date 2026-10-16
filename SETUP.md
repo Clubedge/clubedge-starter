@@ -44,6 +44,7 @@ The variables are:
 - `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=tanstack-start && auth=supabase -->
 - `BETTER_AUTH_SECRET` (for sign-in): see [Better Auth](#better-auth). <!-- clubedge:only auth=better-auth -->
 - `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, and in production a service account: see [Firebase Authentication](#firebase-authentication). <!-- clubedge:only auth=firebase -->
+- `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, and `APPWRITE_API_KEY` (for sign-in): see [Appwrite](#appwrite). <!-- clubedge:only auth=appwrite -->
 - `REDIS_URL` (optional): see [Redis](#redis). <!-- clubedge:only cache=redis -->
 - `SMTP_URL` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM` (for sending email): see [Email](#email). <!-- clubedge:only email=resend -->
@@ -121,6 +122,21 @@ In production:
 4. Remove `FIREBASE_AUTH_EMULATOR_HOST`; `pnpm check:env` refuses it in production.
 
 Changing a password or resetting it signs out every other session; deleting an account removes it from Firebase after the app's own data for the user.
+
+<!-- clubedge:end -->
+
+<!-- clubedge:if auth=appwrite -->
+
+## Appwrite
+
+[Appwrite](https://appwrite.io) keeps the accounts, on Appwrite Cloud or your own server; the app's own pages sign users in, and the server holds the session's secret in an HTTP-only cookie (`a_session_<project>`). Appwrite sends the email confirmation and password recovery emails itself, through its SMTP settings, with links back to the app's `/auth/callback` and `/reset-password`.
+
+1. Create a project in [Appwrite Cloud](https://cloud.appwrite.io) (free tier) or on your Appwrite server.
+2. Under Overview, Platforms, add a **Web** platform for the app's hostname: `localhost` in development, your domain in production. Appwrite only sends links to registered hostnames.
+3. Under Overview, Integrations, API keys, create a key with the `sessions.write` and `users.write` scopes.
+4. Set `APPWRITE_ENDPOINT` (such as `https://cloud.appwrite.io/v1`), `APPWRITE_PROJECT_ID`, and `APPWRITE_API_KEY`. The key stays on the server.
+
+Changing or resetting a password signs out every other session; deleting an account removes the Appwrite user after the app's own data for them. A self-hosted Appwrite sends email only once its SMTP settings (`_APP_SMTP_HOST` and the rest) are set.
 
 <!-- clubedge:end -->
 

@@ -173,6 +173,51 @@
             "auth:dev": "npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge"
           }
         },
+        "appwrite": {
+          "name": "Appwrite",
+          "packages": {
+            "@clubedge/auth": "packages/auth",
+            "@clubedge/auth-appwrite": "packages/auth-appwrite"
+          },
+          "files": [
+            "apps/start/src/components/auth",
+            "apps/start/src/env/auth.ts",
+            "apps/start/src/lib/login-url.test.ts",
+            "apps/start/src/lib/login-url.ts",
+            "apps/start/src/routes/auth",
+            "apps/start/src/routes/forgot-password.tsx",
+            "apps/start/src/routes/login.tsx",
+            "apps/start/src/routes/reset-password.tsx",
+            "apps/start/src/routes/settings.tsx",
+            "apps/start/src/server/auth-forms.test.ts",
+            "apps/start/src/server/auth-forms.ts",
+            "apps/start/src/server/cookies.test.ts",
+            "apps/start/src/server/cookies.ts",
+            "apps/start/src/server/settings-forms.ts",
+            "apps/start/src/server/settings.functions.ts",
+            "apps/start/src/server/users.ts",
+            "apps/web/src/app/actions",
+            "apps/web/src/app/auth",
+            "apps/web/src/app/forgot-password",
+            "apps/web/src/app/login",
+            "apps/web/src/app/reset-password",
+            "apps/web/src/app/settings",
+            "apps/web/src/env/auth.ts",
+            "apps/web/src/lib/login-url.test.ts",
+            "apps/web/src/lib/login-url.ts",
+            "apps/web/src/server/cookies.ts",
+            "apps/web/src/server/users.ts",
+            "e2e/auth-flow.spec.ts",
+            "e2e/auth.spec.ts",
+            "e2e/inbox.ts",
+            "e2e/password-reset.spec.ts",
+            "e2e/settings.spec.ts"
+          ],
+          "replace": {
+            "apps/web/src/server/auth.ts": "apps/web/src/server/variants/auth.appwrite.ts",
+            "apps/start/src/server/auth.ts": "apps/start/src/server/variants/auth.appwrite.ts"
+          }
+        },
         "none": {
           "name": "None",
           "replace": {
@@ -277,7 +322,7 @@
             "@clubedge/payments-stripe": "packages/payments-stripe"
           },
           "requires": {
-            "auth": ["supabase", "better-auth", "firebase"]
+            "auth": ["supabase", "better-auth", "firebase", "appwrite"]
           },
           "files": [
             "apps/start/src/components/billing",

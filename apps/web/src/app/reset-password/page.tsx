@@ -1,4 +1,5 @@
 import { CircleAlert } from "lucide-react";
+import { linkToken } from "@clubedge/auth";
 import Link from "next/link";
 
 import { resetPassword } from "@/app/actions/auth";
@@ -14,9 +15,12 @@ const errorMessages: Record<string, string> = {
 export default async function ResetPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; token?: string }>;
+  searchParams: Promise<{ error?: string; token?: string; userId?: string; secret?: string }>;
 }) {
-  const { error, token } = await searchParams;
+  const search = await searchParams;
+  const { error } = search;
+  // Appwrite's links carry userId and secret instead of a token.
+  const token = linkToken(search, "token") ?? undefined;
 
   return (
     <AuthPage

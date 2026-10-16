@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@clubedge/auth": "workspace:*",
+    "@clubedge/auth-appwrite": "workspace:*",
     "@clubedge/auth-better-auth": "workspace:*",
     "@clubedge/auth-firebase": "workspace:*",
     "@clubedge/auth-supabase": "workspace:*",

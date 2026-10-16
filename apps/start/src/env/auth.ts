@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { optional, parseEnv } from "./server";
-// clubedge:if auth=better-auth|firebase
+// clubedge:if auth=better-auth|firebase|appwrite
 import { getAppUrl } from "./server";
 // clubedge:end
 
@@ -92,6 +92,35 @@ export function getFirebaseAuthEnv(): FirebaseAuthEnv | null {
     ...(env.FIREBASE_CLIENT_EMAIL ? { clientEmail: env.FIREBASE_CLIENT_EMAIL } : {}),
     ...(env.FIREBASE_PRIVATE_KEY ? { privateKey: env.FIREBASE_PRIVATE_KEY } : {}),
     ...(env.FIREBASE_AUTH_EMULATOR_HOST ? { emulatorHost: env.FIREBASE_AUTH_EMULATOR_HOST } : {}),
+    baseUrl: getAppUrl(),
+  };
+}
+// clubedge:end
+
+// clubedge:if auth=appwrite
+const appwriteAuthSchema = z.object({
+  // The API endpoint, such as https://cloud.appwrite.io/v1 or your server's /v1.
+  APPWRITE_ENDPOINT: optional(z.url()),
+  APPWRITE_PROJECT_ID: optional(z.string()),
+  // An API key with the sessions.write and users.write scopes (Overview, Integrations, API keys).
+  APPWRITE_API_KEY: optional(z.string()),
+});
+
+export interface AppwriteAuthEnv {
+  endpoint: string;
+  projectId: string;
+  apiKey: string;
+  baseUrl: string;
+}
+
+/** Appwrite settings, or null until the endpoint, project, and API key are set. */
+export function getAppwriteAuthEnv(): AppwriteAuthEnv | null {
+  const env = parseEnv(appwriteAuthSchema, "Appwrite");
+  if (!env.APPWRITE_ENDPOINT || !env.APPWRITE_PROJECT_ID || !env.APPWRITE_API_KEY) return null;
+  return {
+    endpoint: env.APPWRITE_ENDPOINT,
+    projectId: env.APPWRITE_PROJECT_ID,
+    apiKey: env.APPWRITE_API_KEY,
     baseUrl: getAppUrl(),
   };
 }

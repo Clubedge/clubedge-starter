@@ -1,4 +1,5 @@
 import { CircleAlert } from "lucide-react";
+import { linkToken } from "@clubedge/auth";
 import { Link, createFileRoute } from "@tanstack/react-router";
 
 import { AuthForm, PasswordField, SubmitButton } from "@/components/auth/auth-form-controls";
@@ -15,7 +16,8 @@ const asString = (value: unknown) => (typeof value === "string" ? value : undefi
 export const Route = createFileRoute("/reset-password")({
   validateSearch: (search: Record<string, unknown>): { error?: string; token?: string } => ({
     error: asString(search.error),
-    token: asString(search.token),
+    // Appwrite's links carry userId and secret instead of a token.
+    token: linkToken(search, "token") ?? undefined,
   }),
   component: ResetPasswordPage,
 });
