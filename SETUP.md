@@ -464,7 +464,7 @@ Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER
 
 `.github/workflows/preview.yml` gives each pull request its own database: a [Neon branch](https://neon.com/docs/introduction/branching) named `preview/pr-<number>`, a copy of the production branch made in seconds that shares its storage until it changes. It applies the pull request's migrations to the branch, comments the schema diff on the pull request, deploys a preview against it, and deletes the branch when the pull request closes. Pull requests from forks get no preview, since GitHub gives them no secrets.
 
-It runs once the repository has, in Settings, then Secrets and variables, then Actions:
+It runs once the repository has the Neon settings below, in Settings, then Secrets and variables, then Actions; each deploy step waits for its own platform's token, so a pull request gets its branch, migrations, and schema diff with the Neon settings alone:
 
 - the secret `NEON_API_KEY`, from the Neon console's account or organization settings, and the variable `NEON_PROJECT_ID`, from the project's settings. A free database the CLI created must be claimed first.
 - the secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`, as for the deploy workflow. The preview is a Vercel preview deployment with the project's Preview variables, except `DATABASE_URL` and `DATABASE_URL_DIRECT`, which point at the branch. <!-- clubedge:only deploy=vercel -->
