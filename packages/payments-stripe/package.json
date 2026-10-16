@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/payments-stripe",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Stripe provider for @clubedge/payments: Checkout, the customer portal, and verified webhooks.",
   "private": true,
   "license": "Apache-2.0",
