@@ -102,7 +102,7 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 | Payments      | `stripe`, `none`                                          | `none`     |
 | Jobs          | `pg-boss`, `none`                                         | `none`     |
 | Observability | `otel`, `sentry`, `none`                                  | `none`     |
-| Local infra   | `docker`, `supabase`, `local` (no Docker), `none`         | `docker`   |
+| Local infra   | `docker`, `supabase`, `local` (no Docker), `neon`, `none` | `docker`   |
 | Deploy        | `docker`, `fly`, `railway`, `render`, `vercel`, `netlify` | `docker`   |
 
 A module you leave out takes its packages, provider SDK, environment variables, documentation, and lockfile entries with it.
@@ -170,6 +170,16 @@ pnpm check:services
 <!-- clubedge:if infra=local -->
 
 Nothing else to install: `pnpm dev` starts a local PostgreSQL database (PGlite, stored in `.data/`) next to the app and applies the migrations. Files go to a local folder until you configure object storage.
+
+<!-- clubedge:end -->
+<!-- clubedge:if infra=neon -->
+
+Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/web/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations:
+
+```sh
+pnpm db:migrate
+pnpm clubedge neon claim   # when you want to keep the database
+```
 
 <!-- clubedge:end -->
 <!-- clubedge:if infra=none -->
@@ -279,6 +289,7 @@ Local services:
 - `pnpm infra:status`: print its URLs and keys. `pnpm infra:reset` stops it and deletes its data. <!-- clubedge:only infra=supabase -->
 - `pnpm infra:up`: run only the local database, for example for `pnpm check:services` or browser tests. <!-- clubedge:only infra=local -->
 - `pnpm infra:reset`: delete the local database and files in `.data/` (stop `pnpm dev` first). <!-- clubedge:only infra=local -->
+- `pnpm clubedge neon`: the Neon database's status and expiry; `pnpm clubedge neon claim` keeps it, `pnpm clubedge neon create` makes a new one. <!-- clubedge:only infra=neon -->
 
 Check the project:
 

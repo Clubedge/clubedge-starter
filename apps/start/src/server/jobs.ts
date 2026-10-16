@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 import { z } from "zod";
 import type { JobQueue } from "@clubedge/jobs";
+import { directDatabaseUrl } from "@clubedge/db/urls";
 import { createPgBossJobs } from "@clubedge/jobs-pg-boss";
 import { jobs } from "@/jobs";
 import { getServerEnv, optional, parseEnv } from "@/env/server";
@@ -37,10 +38,13 @@ const globalForJobs = globalThis as typeof globalThis & { clubedgeJobs?: JobQueu
 export function getJobs(): JobQueue {
   if (globalForJobs.clubedgeJobs) return globalForJobs.clubedgeJobs;
   const env = getServerEnv();
+  const worker = isWorkerEnabled();
   globalForJobs.clubedgeJobs = createPgBossJobs({
-    connectionString: env.DATABASE_URL,
+    // A worker holds its connections for the life of the process, so it takes the direct URL
+    // when there is one; processes that only enqueue stay on the pooled DATABASE_URL.
+    connectionString: worker ? (directDatabaseUrl(env) ?? env.DATABASE_URL) : env.DATABASE_URL,
     jobs,
-    worker: isWorkerEnabled(),
+    worker,
     maxConnections: env.NODE_ENV === "production" ? 4 : 2,
     onError: (error, context) =>
       reportError(error, {

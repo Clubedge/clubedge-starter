@@ -38,6 +38,23 @@ describe("production env check", () => {
     expect(checkProductionEnv(env).local).toEqual(["DATABASE_URL"]);
   });
 
+  it("checks the optional direct database URL", () => {
+    const direct = (value: string) =>
+      checkProductionEnv({ ...complete(), DATABASE_URL_DIRECT: value });
+    expect(direct("postgresql://u:p@ep-x-1.eu-central-1.aws.neon.tech/neondb")).toEqual({
+      missing: [],
+      local: [],
+      invalid: [],
+    });
+    expect(direct("postgresql://u:p@localhost:5432/app").local).toEqual(["DATABASE_URL_DIRECT"]);
+    expect(direct("https://db.example.com/app").invalid).toEqual([
+      "DATABASE_URL_DIRECT is not a postgresql:// URL",
+    ]);
+    expect(
+      direct("postgresql://u:p@ep-x-1-pooler.eu-central-1.aws.neon.tech/neondb").invalid,
+    ).toEqual(["DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"]);
+  });
+
   it("rejects a URL that isn't absolute", () => {
     const env = { ...complete(), NEXT_PUBLIC_APP_URL: "my-app.vercel.app" };
     expect(checkProductionEnv(env).invalid).toEqual(["NEXT_PUBLIC_APP_URL is not an absolute URL"]);

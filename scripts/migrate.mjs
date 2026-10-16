@@ -7,9 +7,11 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
-const url = process.env.DATABASE_URL;
+// The direct URL when there is one: a transaction pooler (Neon's -pooler host, Supabase's port
+// 6543) can break DDL, so migrations use a whole session.
+const url = process.env.DATABASE_URL_DIRECT?.trim() || process.env.DATABASE_URL?.trim();
 if (!url) {
-  console.error("DATABASE_URL is required to run migrations.");
+  console.error("DATABASE_URL (or DATABASE_URL_DIRECT) is required to run migrations.");
   process.exit(1);
 }
 

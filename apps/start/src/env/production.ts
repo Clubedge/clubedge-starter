@@ -1,6 +1,7 @@
 // The variables a production deploy needs, for the modules this project uses. Hosts that only run
 // the app (Vercel, Netlify) check them before the build with `pnpm check:env`, so a missing key
 // stops the deploy instead of shipping an app whose features fail at runtime.
+import { isNeonPooledUrl } from "@clubedge/db/urls";
 
 type Env = Record<string, string | undefined>;
 
@@ -83,6 +84,17 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   const invalid = urls
     .filter(({ key }) => urlHost(env[key]!) === null)
     .map(({ key }) => `${key} is not an absolute URL`);
+  // Optional, but migrations and the jobs worker use it instead of DATABASE_URL when it is set.
+  const direct = env.DATABASE_URL_DIRECT?.trim();
+  if (direct) {
+    if (urlHost(direct) === null) invalid.push("DATABASE_URL_DIRECT is not an absolute URL");
+    else if (!/^postgres(ql)?:\/\//i.test(direct)) {
+      invalid.push("DATABASE_URL_DIRECT is not a postgresql:// URL");
+    } else if (isLocalUrl(direct)) local.push("DATABASE_URL_DIRECT");
+    else if (isNeonPooledUrl(direct)) {
+      invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
+    }
+  }
   // clubedge:if auth=better-auth
   const secret = env.BETTER_AUTH_SECRET?.trim();
   if (secret && secret.length < 32) invalid.push("BETTER_AUTH_SECRET needs at least 32 characters");

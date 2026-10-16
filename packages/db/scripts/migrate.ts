@@ -1,8 +1,8 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { createDb } from "../src/client";
-import { requireDatabaseUrl } from "./load-env";
+import { requireDirectDatabaseUrl } from "./load-env";
 
-const db = createDb({ url: requireDatabaseUrl("run migrations") });
+const db = createDb({ url: requireDirectDatabaseUrl("run migrations") });
 try {
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.info("Database migrations applied.");

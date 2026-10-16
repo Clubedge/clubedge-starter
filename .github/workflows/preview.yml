@@ -1,0 +1,166 @@
+# A preview environment for each pull request: its own Neon branch (a copy of the database made in
+# seconds, sharing storage until it changes), with the pull request's migrations applied and their
+# schema diff posted as a comment. The branch is deleted when the pull request closes. It runs once
+# the repository has the NEON_API_KEY secret and the NEON_PROJECT_ID variable; SETUP.md has the rest.
+name: Preview
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  # One group per pull request: a new push replaces the preview being made, and closing waits for
+  # it, so cleanup never runs before a preview that would recreate the branch.
+  group: preview-${{ github.event.number }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+env:
+  NEON_BRANCH: preview/pr-${{ github.event.number }}
+  # clubedge:if deploy=railway
+  RAILWAY_ENVIRONMENT: pr-${{ github.event.number }}
+  # clubedge:end
+jobs:
+  preview:
+    # Pull requests from forks get no secrets, so they get no preview.
+    if: >-
+      github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    env:
+      # A deploy step runs once its platform's token is set; until then, the pull request still
+      # gets its branch, migrations, and schema diff.
+      HAS_VERCEL: ${{ secrets.VERCEL_TOKEN != '' }}
+      HAS_RAILWAY: ${{ secrets.RAILWAY_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Reuses the branch on later pushes, so the preview keeps its data.
+      - id: branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Apply the pull request's migrations to its branch
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+      # Comments the difference between the branch's schema and its parent's.
+      - uses: neondatabase/schema-diff-action@v1
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          compare_branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      # clubedge:if deploy=vercel
+      # A Vercel preview deployment with the project's Preview variables, except the database,
+      # which is the pull request's branch.
+      - name: Deploy the preview to Vercel
+        id: vercel
+        if: env.HAS_VERCEL == 'true'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          # The build (check:env, migrations, next build) reads the pulled variables.
+          file=.vercel/.env.preview.local
+          grep -v -E '^(DATABASE_URL|DATABASE_URL_DIRECT)=' "$file" > "$file.next" || true
+          printf 'DATABASE_URL="%s"\nDATABASE_URL_DIRECT="%s"\n' "$DATABASE_URL" "$DATABASE_URL_DIRECT" >> "$file.next"
+          mv "$file.next" "$file"
+          npx --yes vercel@latest build --token="$VERCEL_TOKEN"
+          url=$(npx --yes vercel@latest deploy --prebuilt --token="$VERCEL_TOKEN" \
+            --env DATABASE_URL="$DATABASE_URL" --env DATABASE_URL_DIRECT="$DATABASE_URL_DIRECT")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+      # clubedge:end
+      # clubedge:if deploy=railway
+      # A Railway environment per pull request, copied from production, with the pull request's
+      # branch as its database. It needs an account token (RAILWAY_API_TOKEN), since a project
+      # token can't create environments, and the RAILWAY_PROJECT_ID and RAILWAY_SERVICE variables.
+      - name: Deploy the preview to Railway
+        id: railway
+        if: env.HAS_RAILWAY == 'true'
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          railway() { npx --yes @railway/cli@5 "$@"; }
+          railway link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
+          railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
+          for key in DATABASE_URL DATABASE_URL_DIRECT; do
+            printf '%s' "${!key}" | railway variable set "$key" --stdin \
+              --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+          done
+          domain=$(railway domain list --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" \
+            | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1 || true)
+          if [ -z "$domain" ]; then
+            domain=$(railway domain --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
+              | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
+          fi
+          for key in APP_URL NEXT_PUBLIC_APP_URL; do
+            printf 'https://%s' "$domain" | railway variable set "$key" --stdin \
+              --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+          done
+          railway up --ci --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT"
+          echo "url=https://$domain" >> "$GITHUB_OUTPUT"
+      # clubedge:end
+      - name: Comment the preview on the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Empty without a deploy step.
+          URL: ${{ steps.vercel.outputs.url || steps.railway.outputs.url }}
+        run: |
+          set -euo pipefail
+          marker="<!-- clubedge-preview -->"
+          body="$marker
+          **Preview** for ${HEAD_SHA:0:7}
+          - Database: Neon branch \`$NEON_BRANCH\`, with this pull request's migrations"
+          if [ -n "$URL" ]; then body="$body
+          - App: $URL"; fi
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: neondatabase/delete-branch-action@v3
+        # A pull request closed before its preview was made has no branch.
+        continue-on-error: true
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      # clubedge:if deploy=railway
+      - name: Delete the Railway environment
+        continue-on-error: true
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+          RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
+        run: |
+          npx --yes @railway/cli@5 link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
+          npx --yes @railway/cli@5 environment delete "$RAILWAY_ENVIRONMENT" --yes
+      # clubedge:end
