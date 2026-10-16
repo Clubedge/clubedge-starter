@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/auth-appwrite",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Appwrite provider for @clubedge/auth, run from the server with an API key and session cookies.",
   "private": true,
   "license": "Apache-2.0",
