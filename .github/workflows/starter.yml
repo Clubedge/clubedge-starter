@@ -31,6 +31,35 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  # The Appwrite provider against Appwrite Cloud: the auth conformance suite on the Starter's test
+  # project, which removes the users it creates. Pull requests from forks get no secrets, so there
+  # it skips; the suite against node-appwrite's stand-in runs in every test run.
+  appwrite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+      APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+      APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+    steps:
+      - name: Skip without the Appwrite test project
+        if: env.APPWRITE_API_KEY == ''
+        run: echo "::notice::APPWRITE_* secrets are not available here; the live Appwrite suite is skipped."
+      - uses: actions/checkout@v7
+        if: env.APPWRITE_API_KEY != ''
+      - uses: pnpm/action-setup@v6
+        if: env.APPWRITE_API_KEY != ''
+      - uses: actions/setup-node@v7
+        if: env.APPWRITE_API_KEY != ''
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: env.APPWRITE_API_KEY != ''
+      - name: Run the auth conformance suite against Appwrite Cloud
+        if: env.APPWRITE_API_KEY != ''
+        run: pnpm exec vitest run packages/auth-appwrite/src/conformance.live.test.ts
+
   tanstack-start:
     runs-on: ubuntu-24.04
     env:
@@ -450,6 +479,13 @@ jobs:
               modules: --auth better-auth --payments stripe --jobs pg-boss --observability sentry,
               mail-api: "http://127.0.0.1:8025",
             }
+          # Firebase Authentication through its Auth Emulator; its emails go to Mailpit.
+          - {
+              infra: docker,
+              framework: next,
+              modules: --auth firebase --jobs pg-boss,
+              mail-api: "http://127.0.0.1:8025",
+            }
           # The other jobs providers: BullMQ on the Docker Redis, and Inngest through its Dev Server.
           - {
               infra: docker,
@@ -537,6 +573,14 @@ jobs:
           # The local database runs in the foreground, so keep it running for the next steps.
           nohup pnpm infra:up > "$RUNNER_TEMP/local-db.log" 2>&1 &
           timeout 180 bash -c 'until grep -q "Local database ready" "$RUNNER_TEMP/local-db.log"; do sleep 1; done'             || { cat "$RUNNER_TEMP/local-db.log"; exit 1; }
+      - name: Start the Firebase Auth Emulator
+        if: contains(matrix.modules, '--auth firebase')
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          timeout 240 bash -c 'until curl --silent --output /dev/null http://127.0.0.1:9099/; do sleep 2; done' \
+            || { cat "$RUNNER_TEMP/firebase.log"; exit 1; }
       - name: Use the local Supabase keys
         if: matrix.infra == 'supabase'
         working-directory: ${{ runner.temp }}/generated-app
@@ -592,6 +636,13 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm check:services
+      # The AuthProvider conformance suite against the real local Supabase Auth and its inbox.
+      - name: Run the auth conformance suite against Supabase
+        if: matrix.infra == 'supabase'
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          SUPABASE_INBOX_URL: ${{ matrix.mail-api }}
+        run: pnpm exec vitest run packages/auth-supabase
       # Inngest runs the jobs, auth emails included, by calling the app: its Dev Server must run
       # next to the app's dev server, which Playwright starts on port 3000.
       - name: Start the Inngest Dev Server
@@ -647,7 +698,7 @@ jobs:
           SENTRY_TRACES_SAMPLE_RATE: "1"
         run: pnpm test:e2e e2e/observability.spec.ts
       - name: Sign in only after confirming the email address
-        if: matrix.infra == 'docker'
+        if: matrix.infra == 'docker' && contains(matrix.modules, '--auth better-auth')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}

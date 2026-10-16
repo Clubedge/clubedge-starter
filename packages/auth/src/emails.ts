@@ -1,4 +1,5 @@
-// Verification and password reset emails sent through the app's email provider. Plain functions
+// Verification and password reset emails that providers without their own (Better Auth, Firebase)
+// send through the app's email provider. Plain functions
 // returning text and HTML, so they are easy to read and change.
 
 export interface AuthEmail {

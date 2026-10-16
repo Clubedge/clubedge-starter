@@ -57,6 +57,8 @@ Every combination in the CI matrix is generated as a real project and runs its f
 
 - Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase -->
 - Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth -->
+- Firebase Authentication through the app's own pages, with server-side session cookies, a protected dashboard, and rate-limited sign-in; the Auth Emulator in development. <!-- clubedge:only auth=firebase -->
+- Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite -->
 - Password reset by email, and email verification that can be required before sign-in. <!-- clubedge:only auth=better-auth && email!=none -->
 - Password reset by email, sent by Supabase. <!-- clubedge:only auth=supabase -->
 - An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none -->
@@ -97,7 +99,7 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 | Module        | Options                                                   | Default    |
 | ------------- | --------------------------------------------------------- | ---------- |
 | Framework     | `next`, `tanstack-start`                                  | `next`     |
-| Auth          | `supabase`, `better-auth`, `none`                         | `supabase` |
+| Auth          | `supabase`, `better-auth`, `firebase`, `appwrite`, `none` | `supabase` |
 | Storage       | `s3`, `supabase`, `none`                                  | `s3`       |
 | Cache         | `redis`, `memory`                                         | `redis`    |
 | Email         | `smtp`, `resend`, `none`                                  | `smtp`     |
@@ -218,6 +220,12 @@ flowchart TB
   %% clubedge:if auth=better-auth
   App -->|auth interface and server sessions| Auth[Better Auth]
   Auth -->|users and sessions| DB
+  %% clubedge:end
+  %% clubedge:if auth=firebase
+  App -->|auth interface and server sessions| Auth[Firebase Authentication]
+  %% clubedge:end
+  %% clubedge:if auth=appwrite
+  App -->|auth interface and server sessions| Auth[Appwrite]
   %% clubedge:end
   %% clubedge:if cache=redis
   App -->|cache and rate limits| Redis[(Redis, or memory)]
@@ -348,6 +356,8 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/auth/`: `AuthProvider` and `CookieStore` interfaces <!-- clubedge:only auth!=none -->
 - `packages/auth-supabase/`: Supabase Auth adapter <!-- clubedge:only auth=supabase -->
 - `packages/auth-better-auth/`: Better Auth adapter, with its own tables and migrations <!-- clubedge:only auth=better-auth -->
+- `packages/auth-firebase/`: Firebase Authentication adapter, with session cookies <!-- clubedge:only auth=firebase -->
+- `packages/auth-appwrite/`: Appwrite adapter, with session cookies <!-- clubedge:only auth=appwrite -->
 - `packages/storage/`: `StorageProvider` interface <!-- clubedge:only storage!=none -->
 - `packages/storage-s3/`: S3-compatible storage adapter <!-- clubedge:only storage=s3 -->
 - `packages/storage-supabase/`: Supabase Storage adapter <!-- clubedge:only storage=supabase -->

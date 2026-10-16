@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { linkToken } from "@clubedge/auth";
 import { safeRedirectPath } from "@clubedge/core";
 import { loginUrl } from "@/lib/login-url";
 import { getAuth } from "@/server/auth";
@@ -14,7 +15,8 @@ function redirectTo(path: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get("code");
+  // Appwrite's links carry userId and secret instead of a code.
+  const code = linkToken(request.nextUrl.searchParams, "code");
   const next = safeRedirectPath(request.nextUrl.searchParams.get("next"));
 
   if (code) {

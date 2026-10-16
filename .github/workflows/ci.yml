@@ -22,6 +22,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       REDIS_URL: redis://127.0.0.1:6379 # clubedge:only jobs=bullmq
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099 # clubedge:only auth=firebase
+      FIREBASE_PROJECT_ID: demo-clubedge # clubedge:only auth=firebase
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -33,6 +35,15 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      # clubedge:if auth=firebase
+      # Firebase's Auth Emulator (firebase.json), for the Firebase provider's conformance tests.
+      - name: Start the Firebase Auth Emulator
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          timeout 240 bash -c 'until curl --silent --output /dev/null http://127.0.0.1:9099/; do sleep 2; done' \
+            || { cat "$RUNNER_TEMP/firebase.log"; exit 1; }
+      # clubedge:end
       - run: pnpm test
       # Build the way the app is developed: with the env example copied into place.
       - run: cp .env.example apps/web/.env.local

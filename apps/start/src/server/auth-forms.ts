@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import { linkToken } from "@clubedge/auth";
 import { z } from "zod";
 import { getClientIp, safeRedirectPath, reportError } from "@clubedge/core";
 import { getAppUrl } from "@/env/server";
@@ -159,7 +160,8 @@ export async function handleSignOut(): Promise<Response> {
 
 export async function handleAuthCallback(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const code = url.searchParams.get("code");
+  // Appwrite's links carry userId and secret instead of a code.
+  const code = linkToken(url.searchParams, "code");
   const next = safeRedirectPath(url.searchParams.get("next"));
 
   if (code && isAuthConfigured()) {

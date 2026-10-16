@@ -1,0 +1,23 @@
+{
+  "name": "@clubedge/auth-firebase",
+  "version": "0.20.0",
+  "description": "Firebase Authentication provider for @clubedge/auth, run from the server with session cookies.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/auth": "workspace:*",
+    "@clubedge/core": "workspace:*",
+    "firebase-admin": "^14.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
