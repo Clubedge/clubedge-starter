@@ -53,22 +53,34 @@ interface ApiEvent {
   id: string;
   name: string;
   data: Record<string, unknown> | null;
-  receivedAt: string;
+  /** The Dev Server and the API return received_at; the published spec says receivedAt. */
+  received_at?: string;
+  receivedAt?: string;
 }
 interface ApiRun {
   run_id: string;
   run_started_at: string;
   ended_at: string | null;
-  status: "Running" | "Completed" | "Failed" | "Cancelled";
+  /** Running, Completed, Failed, or Cancelled. */
+  status: string;
   output: unknown;
 }
 
-const STATES: Record<ApiRun["status"], JobState> = {
-  Running: "active",
-  Completed: "completed",
-  Failed: "failed",
-  Cancelled: "cancelled",
+const STATES: Record<string, JobState> = {
+  running: "active",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "cancelled",
+  canceled: "cancelled",
 };
+
+/** A run's state; one Inngest hasn't started yet (Scheduled, Queued, ...) counts as queued. */
+const runState = (status: string): JobState => STATES[status.toLowerCase()] ?? "queued";
+
+const receivedAt = (event: ApiEvent) => Date.parse(event.received_at ?? event.receivedAt ?? "");
+
+/** Jobs enqueued here stay listed this long, until Inngest's API lists their events. */
+const PENDING_MS = 60_000;
 
 /** A failed run's output holds the error; keep its message, as other providers store it. */
 function failedOutput(output: unknown) {
@@ -153,6 +165,10 @@ export function createInngestJobs({
   });
 
   const handler = serve({ client, functions });
+  const pending = new Map<
+    string,
+    { job: string; data: Record<string, unknown>; createdAt: Date }
+  >();
 
   async function api<T>(path: string): Promise<T> {
     const response = await fetcher(`${apiUrl}${path}`, {
@@ -175,7 +191,7 @@ export function createInngestJobs({
       limit: "100",
     });
     const list = await api<ApiEvent[]>(`/v1/events?${query}`);
-    return list.sort((a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt));
+    return list.sort((a, b) => receivedAt(b) - receivedAt(a));
   }
 
   return {
@@ -200,6 +216,13 @@ export function createInngestJobs({
         data: { ...data, ...(key ? { [KEY]: key } : {}) },
         ...(delaySeconds ? { ts: Date.now() + delaySeconds * 1000 } : {}),
       });
+      // Inngest lists an event a moment after it accepts it: remember the job until then, so the
+      // page that queued it can already show it.
+      pending.set(id, {
+        job: definition.name,
+        data: data as Record<string, unknown>,
+        createdAt: new Date(),
+      });
       return id;
     },
 
@@ -216,7 +239,30 @@ export function createInngestJobs({
       const found = (await events(definition, Date.now() - 7 * DAY))
         .filter(matches)
         .slice(0, limit);
-      return await Promise.all(
+      // Jobs this process enqueued that Inngest doesn't list yet, as queued.
+      const listed = new Set(found.map((event) => event.id));
+      const waiting: JobRecord[] = [];
+      for (const [id, job] of pending) {
+        if (listed.has(id) || Date.now() - job.createdAt.getTime() > PENDING_MS) {
+          pending.delete(id);
+          continue;
+        }
+        const wanted =
+          !data || Object.entries(data).every(([key, value]) => job.data[key] === value);
+        if (job.job === definition.name && wanted) {
+          waiting.push({
+            id,
+            name: job.job,
+            state: "queued",
+            data: job.data,
+            output: null,
+            attempts: 0,
+            createdAt: job.createdAt,
+            completedAt: null,
+          });
+        }
+      }
+      const records = await Promise.all(
         found.map(async (event): Promise<JobRecord> => {
           const runs = await api<ApiRun[]>(
             `/v1/events/${encodeURIComponent(event.internal_id)}/runs`,
@@ -224,7 +270,7 @@ export function createInngestJobs({
           const run = runs.sort(
             (a, b) => Date.parse(b.run_started_at) - Date.parse(a.run_started_at),
           )[0];
-          const state = run ? STATES[run.status] : "queued";
+          const state = run ? runState(run.status) : "queued";
           const eventData = withoutKey(event.data);
           return {
             id: event.id,
@@ -240,11 +286,14 @@ export function createInngestJobs({
                   : null,
             // Inngest's API reports runs, not attempts: a finished or running job counts one.
             attempts: run ? 1 : 0,
-            createdAt: new Date(event.receivedAt),
+            createdAt: new Date(receivedAt(event)),
             completedAt: run?.ended_at ? new Date(run.ended_at) : null,
           };
         }),
       );
+      return [...waiting, ...records]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit);
     },
 
     async stop() {},

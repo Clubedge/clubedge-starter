@@ -90,14 +90,14 @@ describe("createInngestJobs", () => {
           id: "j1",
           name: eventName("greet"),
           data: { user: "ada" },
-          receivedAt: at(30),
+          received_at: at(30),
         },
         {
           internal_id: "e2",
           id: "j2",
           name: eventName("greet"),
           data: { user: "ada", __clubedgeKey: "ada" },
-          receivedAt: at(20),
+          received_at: at(20),
         },
         {
           internal_id: "e3",
@@ -111,7 +111,7 @@ describe("createInngestJobs", () => {
           id: "j4",
           name: eventName("greet"),
           data: { user: "grace" },
-          receivedAt: at(5),
+          received_at: at(5),
         },
       ],
       runs: {
@@ -152,6 +152,16 @@ describe("createInngestJobs", () => {
     expect(
       (await queue.recent(greet, { data: { user: "ada" }, limit: 1 })).map((job) => job.id),
     ).toEqual(["j3"]);
+  });
+
+  it("lists a job it just enqueued before Inngest's API does", async () => {
+    const fake = fakeInngest();
+    const queue = createInngestJobs({ jobs: [greet], dev: true, fetch: fake.fetcher });
+    const id = await queue.enqueue(greet, { user: "ada" });
+    expect(await queue.recent(greet, { data: { user: "ada" } })).toMatchObject([
+      { id, state: "queued", attempts: 0, data: { user: "ada" } },
+    ]);
+    expect(await queue.recent(greet, { data: { user: "grace" } })).toEqual([]);
   });
 
   it("has no worker to start and nothing to run on demand", async () => {
