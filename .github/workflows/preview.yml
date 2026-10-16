@@ -99,7 +99,10 @@ jobs:
           set -euo pipefail
           railway() { npx --yes @railway/cli@5 "$@"; }
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          for key in DATABASE_URL DATABASE_URL_DIRECT; do
+          # The image listens on PORT, and the domain below sends traffic to 3000: set it here
+          # rather than rely on production having it, since Railway otherwise assigns its own.
+          PORT=3000
+          for key in DATABASE_URL DATABASE_URL_DIRECT PORT; do
             printf '%s' "${!key}" | railway variable set "$key" --stdin \
               --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
           done
@@ -121,16 +124,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # Empty without a deploy step.
-          URL: ${{ steps.vercel.outputs.url || steps.railway.outputs.url }}
+          # Empty without their deploy step.
+          VERCEL_URL: ${{ steps.vercel.outputs.url }}
+          RAILWAY_URL: ${{ steps.railway.outputs.url }}
         run: |
           set -euo pipefail
           marker="<!-- clubedge-preview -->"
           body="$marker
           **Preview** for ${HEAD_SHA:0:7}
           - Database: Neon branch \`$NEON_BRANCH\`, with this pull request's migrations"
-          if [ -n "$URL" ]; then body="$body
-          - App: $URL"; fi
+          if [ -n "$VERCEL_URL" ]; then body="$body
+          - App on Vercel: $VERCEL_URL"; fi
+          if [ -n "$RAILWAY_URL" ]; then body="$body
+          - App on Railway: $RAILWAY_URL"; fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
           if [ -n "$id" ]; then
