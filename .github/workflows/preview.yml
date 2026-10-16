@@ -84,8 +84,8 @@ jobs:
       # clubedge:end
       # clubedge:if deploy=railway
       # A Railway environment per pull request, copied from production, with the pull request's
-      # branch as its database. It needs an account token (RAILWAY_API_TOKEN), since a project
-      # token can't create environments, and the RAILWAY_PROJECT_ID and RAILWAY_SERVICE variables.
+      # branch as its database. It needs an account or workspace token (RAILWAY_API_TOKEN), since a
+      # project token can't create environments; the CLI finds the project from RAILWAY_PROJECT_ID.
       - name: Deploy the preview to Railway
         id: railway
         if: env.HAS_RAILWAY == 'true'
@@ -98,7 +98,6 @@ jobs:
         run: |
           set -euo pipefail
           railway() { npx --yes @railway/cli@5 "$@"; }
-          railway link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
           for key in DATABASE_URL DATABASE_URL_DIRECT; do
             printf '%s' "${!key}" | railway variable set "$key" --stdin \
@@ -161,6 +160,5 @@ jobs:
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
         run: |
-          npx --yes @railway/cli@5 link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
           npx --yes @railway/cli@5 environment delete "$RAILWAY_ENVIRONMENT" --yes
       # clubedge:end
