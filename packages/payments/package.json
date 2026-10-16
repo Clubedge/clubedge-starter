@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/payments",
-  "version": "0.19.1",
+  "version": "0.20.0",
   "description": "Provider-neutral payments: the PaymentProvider interface, billing logic, and subscription tables.",
   "private": true,
   "license": "Apache-2.0",
