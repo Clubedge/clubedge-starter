@@ -24,6 +24,8 @@
     "@clubedge/email-resend": "workspace:*",
     "@clubedge/email-smtp": "workspace:*",
     "@clubedge/jobs": "workspace:*",
+    "@clubedge/jobs-bullmq": "workspace:*",
+    "@clubedge/jobs-inngest": "workspace:*",
     "@clubedge/jobs-pg-boss": "workspace:*",
     "@clubedge/observability": "workspace:*",
     "@clubedge/observability-otel": "workspace:*",

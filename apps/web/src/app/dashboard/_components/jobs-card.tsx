@@ -3,7 +3,7 @@ import { ListChecks } from "lucide-react";
 import { runSampleJob } from "./jobs-actions";
 import { sampleJob } from "@/jobs";
 import type { AuthUser } from "@/server/auth";
-import { getJobs, isWorkerEnabled, type JobRecord } from "@/server/jobs";
+import { getJobs, jobsRunner, type JobRecord } from "@/server/jobs";
 import { Badge } from "@clubedge/ui/components/badge";
 import { Button } from "@clubedge/ui/components/button";
 import {
@@ -14,6 +14,12 @@ import {
   CardTitle,
 } from "@clubedge/ui/components/card";
 import { reportError } from "@clubedge/core";
+
+const runnerDescriptions = {
+  worker: "Work runs outside requests in this server's worker, with retries.",
+  scheduler: "This server runs no worker: jobs run when /api/jobs/run is called.",
+  service: "A jobs service runs each job by calling this app, with retries.",
+};
 
 const timeFormat = new Intl.DateTimeFormat("en", { timeStyle: "medium", timeZone: "UTC" });
 
@@ -35,11 +41,7 @@ export async function JobsCard({ user }: { user: AuthUser | null }) {
       <CardHeader className="flex-row items-start justify-between gap-3 border-b px-5 py-5 sm:px-6">
         <div className="grid gap-1">
           <CardTitle className="text-base">Background jobs</CardTitle>
-          <CardDescription>
-            {isWorkerEnabled()
-              ? "Work runs outside requests in this server's worker, with retries."
-              : "This server runs no worker: jobs run when /api/jobs/run is called."}
-          </CardDescription>
+          <CardDescription>{runnerDescriptions[jobsRunner()]}</CardDescription>
         </div>
         <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <ListChecks aria-hidden="true" className="size-4" />

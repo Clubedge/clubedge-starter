@@ -45,9 +45,13 @@ export function requiredVariables(env: Env): Requirement[] {
     { key: "STRIPE_WEBHOOK_SECRET", use: "payments" },
     { key: "STRIPE_PRICE_PRO", use: "payments" },
     // clubedge:end
-    // clubedge:if jobs=pg-boss
+    // clubedge:if jobs=pg-boss|bullmq
     // No jobs worker runs there: Vercel Cron or another scheduler calls /api/jobs/run with it.
     { key: "CRON_SECRET", use: "background jobs, run by a cron", serverless: true },
+    // clubedge:end
+    // clubedge:if jobs=inngest
+    { key: "INNGEST_EVENT_KEY", use: "background jobs (Inngest's event key)" },
+    { key: "INNGEST_SIGNING_KEY", use: "background jobs (Inngest's signing key)" },
     // clubedge:end
   ];
   const serverless = Boolean(env.VERCEL || env.NETLIFY);
@@ -95,6 +99,12 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
   }
+  // clubedge:if jobs=inngest
+  // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
+  if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {
+    invalid.push("INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it");
+  }
+  // clubedge:end
   // clubedge:if auth=better-auth
   const secret = env.BETTER_AUTH_SECRET?.trim();
   if (secret && secret.length < 32) invalid.push("BETTER_AUTH_SECRET needs at least 32 characters");

@@ -11,6 +11,12 @@ import {
   CardTitle,
 } from "@clubedge/ui/components/card";
 
+const runnerDescriptions = {
+  worker: "Work runs outside requests in this server's worker, with retries.",
+  scheduler: "This server runs no worker: jobs run when /api/jobs/run is called.",
+  service: "A jobs service runs each job by calling this app, with retries.",
+};
+
 const timeFormat = new Intl.DateTimeFormat("en", { timeStyle: "medium", timeZone: "UTC" });
 
 /** Starts the sample job and lists the current user's recent runs. The form posts to /jobs/sample. */
@@ -22,11 +28,7 @@ export function JobsCard({ status }: { status: JobsStatus }) {
       <CardHeader className="flex-row items-start justify-between gap-3 border-b px-5 py-5 sm:px-6">
         <div className="grid gap-1">
           <CardTitle className="text-base">Background jobs</CardTitle>
-          <CardDescription>
-            {status.worker
-              ? "Work runs outside requests in this server's worker, with retries."
-              : "This server runs no worker: jobs run when /api/jobs/run is called."}
-          </CardDescription>
+          <CardDescription>{runnerDescriptions[status.runner]}</CardDescription>
         </div>
         <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
           <ListChecks aria-hidden="true" className="size-4" />

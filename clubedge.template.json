@@ -279,6 +279,69 @@
             "e2e/jobs.spec.ts"
           ]
         },
+        "bullmq": {
+          "name": "BullMQ (jobs stored in Redis)",
+          "packages": {
+            "@clubedge/jobs": "packages/jobs",
+            "@clubedge/jobs-bullmq": "packages/jobs-bullmq"
+          },
+          "requires": {
+            "cache": "redis"
+          },
+          "files": [
+            "apps/start/src/components/jobs",
+            "apps/start/src/jobs",
+            "apps/start/src/nitro/plugins/jobs.ts",
+            "apps/start/src/routes/api/jobs",
+            "apps/start/src/routes/jobs",
+            "apps/start/src/server/jobs-forms.ts",
+            "apps/start/src/server/jobs.functions.ts",
+            "apps/start/src/server/jobs.test.ts",
+            "apps/start/src/server/jobs.ts",
+            "apps/web/src/app/api/jobs",
+            "apps/web/src/app/dashboard/_components/jobs-actions.ts",
+            "apps/web/src/app/dashboard/_components/jobs-card.tsx",
+            "apps/web/src/instrumentation.ts",
+            "apps/web/src/jobs",
+            "apps/web/src/server/jobs.ts",
+            "e2e/jobs.spec.ts"
+          ],
+          "replace": {
+            "apps/web/src/server/jobs.ts": "apps/web/src/server/variants/jobs.bullmq.ts",
+            "apps/start/src/server/jobs.ts": "apps/start/src/server/variants/jobs.bullmq.ts"
+          }
+        },
+        "inngest": {
+          "name": "Inngest (runs each job by calling the app)",
+          "packages": {
+            "@clubedge/jobs": "packages/jobs",
+            "@clubedge/jobs-inngest": "packages/jobs-inngest"
+          },
+          "files": [
+            "apps/start/src/components/jobs",
+            "apps/start/src/jobs",
+            "apps/start/src/nitro/plugins/jobs.ts",
+            "apps/start/src/routes/api/inngest.ts",
+            "apps/start/src/routes/jobs",
+            "apps/start/src/server/jobs-forms.ts",
+            "apps/start/src/server/jobs.functions.ts",
+            "apps/start/src/server/jobs.ts",
+            "apps/web/src/app/api/inngest",
+            "apps/web/src/app/dashboard/_components/jobs-actions.ts",
+            "apps/web/src/app/dashboard/_components/jobs-card.tsx",
+            "apps/web/src/instrumentation.ts",
+            "apps/web/src/jobs",
+            "apps/web/src/server/jobs.ts",
+            "e2e/jobs.spec.ts"
+          ],
+          "replace": {
+            "apps/web/src/server/jobs.ts": "apps/web/src/server/variants/jobs.inngest.ts",
+            "apps/start/src/server/jobs.ts": "apps/start/src/server/variants/jobs.inngest.ts"
+          },
+          "scripts": {
+            "jobs:dev": "npx --yes --ignore-scripts=false inngest-cli@latest dev"
+          }
+        },
         "none": {
           "name": "None"
         }

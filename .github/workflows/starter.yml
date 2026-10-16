@@ -450,6 +450,19 @@ jobs:
               modules: --auth better-auth --payments stripe --jobs pg-boss --observability sentry,
               mail-api: "http://127.0.0.1:8025",
             }
+          # The other jobs providers: BullMQ on the Docker Redis, and Inngest through its Dev Server.
+          - {
+              infra: docker,
+              framework: next,
+              modules: --auth better-auth --jobs bullmq,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: tanstack-start,
+              modules: --auth better-auth --jobs inngest,
+              mail-api: "http://127.0.0.1:8025",
+            }
           - {
               infra: local,
               framework: next,
@@ -579,6 +592,16 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm check:services
+      # Inngest runs the jobs, auth emails included, by calling the app: its Dev Server must run
+      # next to the app's dev server, which Playwright starts on port 3000.
+      - name: Start the Inngest Dev Server
+        if: contains(matrix.modules, '--jobs inngest')
+        run: |
+          set -euo pipefail
+          nohup npx --yes --ignore-scripts=false inngest-cli@latest dev \
+            > "$RUNNER_TEMP/inngest.log" 2>&1 &
+          timeout 180 bash -c 'until curl --silent --fail --output /dev/null http://127.0.0.1:8288/; do sleep 2; done' \
+            || { cat "$RUNNER_TEMP/inngest.log"; exit 1; }
       - name: Sign up, out, and in, reset a password through the emailed link, and check readiness
         working-directory: ${{ runner.temp }}/generated-app
         env:
@@ -587,11 +610,31 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts e2e/settings.spec.ts
-      - name: Run a background job in the dev server's worker
+      - name: Run a background job (the dev server's worker, or Inngest)
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_DATABASE: "1"
         run: pnpm test:e2e e2e/jobs.spec.ts
+      - name: Show the Inngest Dev Server's log
+        if: failure() && contains(matrix.modules, '--jobs inngest')
+        run: tail -n 100 "$RUNNER_TEMP/inngest.log" || true
+      # Starts the app again and syncs it by hand, printing each answer, to show why Inngest found
+      # no functions.
+      - name: Show how the app syncs with Inngest
+        if: failure() && contains(matrix.modules, '--jobs inngest')
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          APP_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+        run: |
+          nohup pnpm dev > "$RUNNER_TEMP/app.log" 2>&1 &
+          for _ in $(seq 90); do curl --silent --fail --output /dev/null http://127.0.0.1:3000/api/health && break; sleep 2; done
+          echo "::group::GET /api/inngest"; curl --silent --show-error --include http://127.0.0.1:3000/api/inngest | head -c 3000; echo; echo "::endgroup::"
+          echo "::group::PUT /api/inngest"; curl --silent --show-error --include --request PUT http://127.0.0.1:3000/api/inngest | head -c 3000; echo; echo "::endgroup::"
+          sleep 10
+          echo "::group::GET localhost:3000 (as the Dev Server resolves it)"; curl --silent --show-error --include http://localhost:3000/api/inngest | head -c 600; echo; echo "::endgroup::"
+          echo "::group::Dev Server log"; tail -n 40 "$RUNNER_TEMP/inngest.log"; echo "::endgroup::"
+          echo "::group::App log"; tail -n 80 "$RUNNER_TEMP/app.log"; echo "::endgroup::"
       # Request traces to e2e/telemetry-fake.ts, a stand-in for an OpenTelemetry collector and for
       # Sentry; each project reads only its own provider's variables.
       - name: Send request traces to the observability provider
@@ -614,7 +657,7 @@ jobs:
       # Checkout, the webhook, and the portal against e2e/stripe-fake.ts, a stand-in for the
       # Stripe API; webhooks are signed with the secret below, as Stripe signs them.
       - name: Subscribe through checkout and the webhook, then open the billing portal
-        if: matrix.infra == 'docker'
+        if: matrix.infra == 'docker' && contains(matrix.modules, '--payments stripe')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_PAYMENTS: "1"

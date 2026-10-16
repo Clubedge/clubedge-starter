@@ -66,19 +66,64 @@ export interface JobQueue {
   startWorker(): Promise<void>;
   /**
    * Runs the jobs that are due now and returns, for platforms without long-running processes:
-   * call it from a scheduled request instead of starting a worker.
+   * call it from a scheduled request instead of starting a worker. `completed` counts the jobs that
+   * finished, and `failed` every attempt that failed, retries included.
    */
   runDue(options?: { limit?: number }): Promise<{ completed: number; failed: number }>;
   /** A job's most recent runs, newest first, optionally only those whose data contains `data`. */
   recent(job: JobDefinition, filter?: { data?: object; limit?: number }): Promise<JobRecord[]>;
   stop(): Promise<void>;
+  /**
+   * For providers that run jobs by calling the app (Inngest): answers their requests, at the
+   * app's /api/inngest. Queues that run jobs themselves have none.
+   */
+  handler?(request: Request): Promise<Response>;
 }
 
 export const JOB_DEFAULTS = { retryLimit: 2, retryDelaySeconds: 10, timeoutSeconds: 300 };
 
-const errorOutput = (error: unknown) => ({
-  message: error instanceof Error ? error.message : String(error),
-});
+/** How a job's result is stored: an object as it is, any other value as { value }, none as null. */
+export function jobOutput(value: unknown): object | null {
+  if (value === undefined || value === null) return null;
+  return typeof value === "object" ? value : { value };
+}
+
+/** How a failed attempt is stored: the error's message. */
+export function errorOutput(error: unknown): { message: string } {
+  return { message: error instanceof Error ? error.message : String(error) };
+}
+
+/**
+ * Runs one attempt of a job, the way every provider must: the signal aborts after timeoutSeconds
+ * (or with `signal`, when the provider cancels it), and the attempt fails then, even when run()
+ * ignores the signal. Resolves to the stored output; rejects with the attempt's error.
+ */
+export async function runAttempt<T extends object>(
+  definition: JobDefinition<T>,
+  data: T,
+  context: { id: string; attempt: number; signal?: AbortSignal },
+): Promise<object | null> {
+  const seconds = definition.timeoutSeconds ?? JOB_DEFAULTS.timeoutSeconds;
+  const timeout = AbortSignal.timeout(seconds * 1000);
+  const signal = context.signal ? AbortSignal.any([context.signal, timeout]) : timeout;
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () =>
+      reject(
+        signal.reason instanceof Error
+          ? signal.reason
+          : new Error(`The job "${definition.name}" was stopped.`),
+      );
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    const run = definition.run(data, { id: context.id, attempt: context.attempt, signal });
+    return jobOutput(await Promise.race([run, aborted]));
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
+}
 
 interface MemoryJob extends JobRecord {
   runAfter: number;
@@ -104,10 +149,9 @@ export function createMemoryJobs(
     job.state = "active";
     job.attempts += 1;
     try {
-      job.output = await definition.run(job.data as object, {
+      job.output = await runAttempt(definition, job.data as object, {
         id: job.id,
         attempt: job.attempts,
-        signal: new AbortController().signal,
       });
       job.state = "completed";
       job.completedAt = new Date(now());
@@ -131,7 +175,7 @@ export function createMemoryJobs(
       );
       if (!job) break;
       if (await runOne(job)) completed++;
-      else if (job.state === "failed") failed++;
+      else failed++;
     }
     return { completed, failed };
   }

@@ -16,10 +16,16 @@ const securityHeaders: Record<string, string> = {
 const safeMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Rejects cross-site form posts and server function calls (Next.js does this for actions).
-// Webhooks are cross-site by design; their handlers verify the sender's signature instead.
+// Webhooks and Inngest's calls to /api/inngest are cross-site by design; their handlers verify
+// the sender's signature instead (Inngest's with INNGEST_SIGNING_KEY).
+const crossSitePaths = ["/api/webhooks/", "/api/inngest"];
 const csrfProtection = createCsrfMiddleware({
-  filter: ({ request }) =>
-    !safeMethods.has(request.method) && !new URL(request.url).pathname.startsWith("/api/webhooks/"),
+  filter: ({ request }) => {
+    const path = new URL(request.url).pathname;
+    return (
+      !safeMethods.has(request.method) && !crossSitePaths.some((prefix) => path.startsWith(prefix))
+    );
+  },
 });
 
 // Refreshed cookies reach both later handlers in this request and the browser response.
