@@ -84,8 +84,8 @@ jobs:
       # clubedge:end
       # clubedge:if deploy=railway
       # A Railway environment per pull request, copied from production, with the pull request's
-      # branch as its database. It needs an account token (RAILWAY_API_TOKEN), since a project
-      # token can't create environments, and the RAILWAY_PROJECT_ID and RAILWAY_SERVICE variables.
+      # branch as its database. It needs an account or workspace token (RAILWAY_API_TOKEN), since a
+      # project token can't create environments; the CLI finds the project from RAILWAY_PROJECT_ID.
       - name: Deploy the preview to Railway
         id: railway
         if: env.HAS_RAILWAY == 'true'
@@ -98,9 +98,11 @@ jobs:
         run: |
           set -euo pipefail
           railway() { npx --yes @railway/cli@5 "$@"; }
-          railway link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          for key in DATABASE_URL DATABASE_URL_DIRECT; do
+          # The image listens on PORT, and the domain below sends traffic to 3000: set it here
+          # rather than rely on production having it, since Railway otherwise assigns its own.
+          PORT=3000
+          for key in DATABASE_URL DATABASE_URL_DIRECT PORT; do
             printf '%s' "${!key}" | railway variable set "$key" --stdin \
               --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
           done
@@ -122,16 +124,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # Empty without a deploy step.
-          URL: ${{ steps.vercel.outputs.url || steps.railway.outputs.url }}
+          # Empty without their deploy step.
+          VERCEL_URL: ${{ steps.vercel.outputs.url }}
+          RAILWAY_URL: ${{ steps.railway.outputs.url }}
         run: |
           set -euo pipefail
           marker="<!-- clubedge-preview -->"
           body="$marker
           **Preview** for ${HEAD_SHA:0:7}
           - Database: Neon branch \`$NEON_BRANCH\`, with this pull request's migrations"
-          if [ -n "$URL" ]; then body="$body
-          - App: $URL"; fi
+          if [ -n "$VERCEL_URL" ]; then body="$body
+          - App on Vercel: $VERCEL_URL"; fi
+          if [ -n "$RAILWAY_URL" ]; then body="$body
+          - App on Railway: $RAILWAY_URL"; fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
           if [ -n "$id" ]; then
@@ -161,6 +166,5 @@ jobs:
           RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
           RAILWAY_SERVICE: ${{ vars.RAILWAY_SERVICE }}
         run: |
-          npx --yes @railway/cli@5 link --project "$RAILWAY_PROJECT_ID" --environment production --service "$RAILWAY_SERVICE"
           npx --yes @railway/cli@5 environment delete "$RAILWAY_ENVIRONMENT" --yes
       # clubedge:end
