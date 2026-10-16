@@ -31,6 +31,35 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  # The Appwrite provider against Appwrite Cloud: the auth conformance suite on the Starter's test
+  # project, which removes the users it creates. Pull requests from forks get no secrets, so there
+  # it skips; the suite against node-appwrite's stand-in runs in every test run.
+  appwrite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+      APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+      APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+    steps:
+      - name: Skip without the Appwrite test project
+        if: env.APPWRITE_API_KEY == ''
+        run: echo "::notice::APPWRITE_* secrets are not available here; the live Appwrite suite is skipped."
+      - uses: actions/checkout@v7
+        if: env.APPWRITE_API_KEY != ''
+      - uses: pnpm/action-setup@v6
+        if: env.APPWRITE_API_KEY != ''
+      - uses: actions/setup-node@v7
+        if: env.APPWRITE_API_KEY != ''
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: env.APPWRITE_API_KEY != ''
+      - name: Run the auth conformance suite against Appwrite Cloud
+        if: env.APPWRITE_API_KEY != ''
+        run: pnpm exec vitest run packages/auth-appwrite/src/conformance.live.test.ts
+
   tanstack-start:
     runs-on: ubuntu-24.04
     env:
