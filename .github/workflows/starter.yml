@@ -598,7 +598,7 @@ jobs:
         if: contains(matrix.modules, '--jobs inngest')
         run: |
           set -euo pipefail
-          nohup npx --yes --ignore-scripts=false inngest-cli@latest dev -u http://127.0.0.1:3000/api/inngest \
+          nohup npx --yes --ignore-scripts=false inngest-cli@latest dev \
             > "$RUNNER_TEMP/inngest.log" 2>&1 &
           timeout 180 bash -c 'until curl --silent --fail --output /dev/null http://127.0.0.1:8288/; do sleep 2; done' \
             || { cat "$RUNNER_TEMP/inngest.log"; exit 1; }

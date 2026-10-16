@@ -339,7 +339,7 @@
             "apps/start/src/server/jobs.ts": "apps/start/src/server/variants/jobs.inngest.ts"
           },
           "scripts": {
-            "jobs:dev": "npx --yes --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/inngest"
+            "jobs:dev": "npx --yes --ignore-scripts=false inngest-cli@latest dev"
           }
         },
         "none": {

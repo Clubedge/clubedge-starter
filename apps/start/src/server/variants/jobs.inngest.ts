@@ -72,12 +72,19 @@ export function startJobsWorker() {
   let tries = 0;
   const sync = () =>
     fetch(endpoint, { method: "PUT", signal: AbortSignal.timeout(10_000) })
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error(`${response.status} ${(await response.text()).slice(0, 200)}`);
+        console.info("Background jobs: synced with the Inngest Dev Server.");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         // The server may not listen yet, or the Dev Server may not run: try for about a minute.
         if (++tries < 30) setTimeout(sync, 2_000).unref();
+        else
+          console.warn(
+            "Background jobs: could not sync with the Inngest Dev Server; is pnpm jobs:dev running?",
+            error,
+          );
       });
   setTimeout(sync, 2_000).unref();
 }
