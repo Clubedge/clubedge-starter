@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/jobs-inngest",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Inngest provider for @clubedge/jobs: jobs run by Inngest, which calls the app for each one.",
   "private": true,
   "license": "Apache-2.0",
