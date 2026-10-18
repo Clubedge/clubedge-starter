@@ -1,0 +1,26 @@
+{
+  "name": "File storage",
+  "default": "s3",
+  "options": {
+    "s3": {
+      "name": "S3-compatible",
+      "packages": {
+        "@clubedge/storage": "packages/storage",
+        "@clubedge/storage-s3": "packages/storage-s3"
+      }
+    },
+    "supabase": {
+      "name": "Supabase Storage",
+      "packages": {
+        "@clubedge/storage": "packages/storage",
+        "@clubedge/storage-supabase": "packages/storage-supabase"
+      },
+      "requires": {
+        "auth": "supabase"
+      }
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

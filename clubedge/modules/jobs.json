@@ -1,0 +1,39 @@
+{
+  "name": "Background jobs",
+  "default": "none",
+  "options": {
+    "pg-boss": {
+      "name": "pg-boss (jobs stored in PostgreSQL)",
+      "packages": {
+        "@clubedge/jobs": "packages/jobs",
+        "@clubedge/jobs-pg-boss": "packages/jobs-pg-boss"
+      },
+      "files": ["e2e/jobs.spec.ts"]
+    },
+    "bullmq": {
+      "name": "BullMQ (jobs stored in Redis)",
+      "packages": {
+        "@clubedge/jobs": "packages/jobs",
+        "@clubedge/jobs-bullmq": "packages/jobs-bullmq"
+      },
+      "files": ["e2e/jobs.spec.ts"],
+      "requires": {
+        "cache": "redis"
+      }
+    },
+    "inngest": {
+      "name": "Inngest (runs each job by calling the app)",
+      "packages": {
+        "@clubedge/jobs": "packages/jobs",
+        "@clubedge/jobs-inngest": "packages/jobs-inngest"
+      },
+      "files": ["e2e/jobs.spec.ts"],
+      "scripts": {
+        "jobs:dev": "npx --yes --ignore-scripts=false inngest-cli@latest dev"
+      }
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

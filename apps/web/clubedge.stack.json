@@ -1,0 +1,173 @@
+{
+  "id": "next",
+  "name": "Next.js",
+  "role": "fullstack",
+  "envExample": "../../.env.example",
+  "dockerfile": "../../Dockerfile",
+  "conditional": [
+    "next.config.ts",
+    "scripts/check-services.ts",
+    "src/app/dashboard/page.tsx",
+    "src/app/error.tsx",
+    "src/app/layout.tsx",
+    "src/app/page.tsx",
+    "src/app/settings/actions.ts",
+    "src/env/auth.ts",
+    "src/env/production.ts",
+    "src/instrumentation.ts",
+    "src/jobs/index.ts",
+    "src/server/auth-email.ts",
+    "src/server/storage.ts"
+  ],
+  "modules": {
+    "auth": {
+      "supabase|better-auth|firebase|appwrite": {
+        "files": [
+          "src/app/actions",
+          "src/app/auth",
+          "src/app/forgot-password",
+          "src/app/login",
+          "src/app/reset-password",
+          "src/app/settings",
+          "src/env/auth.ts",
+          "src/lib/login-url.test.ts",
+          "src/lib/login-url.ts",
+          "src/server/cookies.ts",
+          "src/server/users.ts"
+        ]
+      },
+      "supabase": {
+        "files": ["src/proxy.ts"]
+      },
+      "better-auth|firebase": {
+        "files": ["src/server/auth-email.ts"]
+      },
+      "better-auth": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.better-auth.ts",
+          "src/proxy.ts": "src/variants/proxy.better-auth.ts"
+        }
+      },
+      "firebase": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.firebase.ts"
+        }
+      },
+      "appwrite": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.appwrite.ts"
+        }
+      },
+      "none": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.none.ts",
+          "src/app/dashboard/_components/account-button.tsx": "src/app/dashboard/_components/variants/account-button.none.tsx"
+        }
+      }
+    },
+    "storage": {
+      "s3|supabase": {
+        "files": ["src/server/storage.ts"]
+      },
+      "supabase": {
+        "replace": {
+          "src/server/storage.ts": "src/server/variants/storage.supabase.ts"
+        }
+      },
+      "none": {}
+    },
+    "cache": {
+      "redis": {},
+      "memory": {
+        "replace": {
+          "src/server/cache.ts": "src/server/variants/cache.memory.ts"
+        }
+      }
+    },
+    "email": {
+      "smtp|resend": {
+        "files": ["src/server/email.ts"]
+      },
+      "resend": {
+        "replace": {
+          "src/server/email.ts": "src/server/variants/email.resend.ts"
+        }
+      },
+      "none": {}
+    },
+    "payments": {
+      "stripe": {
+        "files": [
+          "src/app/api/webhooks",
+          "src/app/dashboard/_components/billing-actions.ts",
+          "src/app/dashboard/_components/billing-card.tsx",
+          "src/config/plans.ts",
+          "src/server/payments.ts"
+        ]
+      },
+      "none": {}
+    },
+    "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": [
+          "src/app/dashboard/_components/jobs-actions.ts",
+          "src/app/dashboard/_components/jobs-card.tsx",
+          "src/instrumentation.ts",
+          "src/jobs",
+          "src/server/jobs.ts"
+        ]
+      },
+      "pg-boss|bullmq": {
+        "files": ["src/app/api/jobs"]
+      },
+      "bullmq": {
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.bullmq.ts"
+        }
+      },
+      "inngest": {
+        "files": ["src/app/api/inngest"],
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.inngest.ts"
+        }
+      },
+      "none": {}
+    },
+    "observability": {
+      "otel|sentry": {
+        "files": [
+          "src/app/api/client-errors",
+          "src/components/error-reporting.tsx",
+          "src/instrumentation.ts",
+          "src/server/observability.ts"
+        ]
+      },
+      "sentry": {
+        "replace": {
+          "src/components/error-reporting.tsx": "src/components/variants/error-reporting.sentry.tsx",
+          "src/server/observability.ts": "src/server/variants/observability.sentry.ts"
+        }
+      },
+      "none": {}
+    },
+    "infra": {
+      "docker": {},
+      "supabase": {},
+      "local": {},
+      "neon": {},
+      "none": {}
+    },
+    "deploy": {
+      "docker": {},
+      "fly": {},
+      "railway": {},
+      "render": {},
+      "vercel": {
+        "files": ["vercel.json"]
+      },
+      "netlify": {
+        "files": ["netlify.toml"]
+      }
+    }
+  }
+}

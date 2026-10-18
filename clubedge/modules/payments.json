@@ -1,0 +1,20 @@
+{
+  "name": "Payments",
+  "default": "none",
+  "options": {
+    "stripe": {
+      "name": "Stripe",
+      "packages": {
+        "@clubedge/payments": "packages/payments",
+        "@clubedge/payments-stripe": "packages/payments-stripe"
+      },
+      "files": ["e2e/payments.spec.ts", "e2e/stripe-fake.ts"],
+      "requires": {
+        "auth": ["supabase", "better-auth", "firebase", "appwrite"]
+      }
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

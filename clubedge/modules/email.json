@@ -1,0 +1,23 @@
+{
+  "name": "Email",
+  "default": "smtp",
+  "options": {
+    "smtp": {
+      "name": "SMTP (any provider, or a local inbox)",
+      "packages": {
+        "@clubedge/email": "packages/email",
+        "@clubedge/email-smtp": "packages/email-smtp"
+      }
+    },
+    "resend": {
+      "name": "Resend",
+      "packages": {
+        "@clubedge/email": "packages/email",
+        "@clubedge/email-resend": "packages/email-resend"
+      }
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

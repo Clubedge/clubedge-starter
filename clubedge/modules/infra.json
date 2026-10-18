@@ -1,0 +1,53 @@
+{
+  "name": "Local infrastructure",
+  "default": "docker",
+  "scope": "project",
+  "options": {
+    "docker": {
+      "name": "Docker Compose",
+      "files": ["docker-compose.dev.yml"],
+      "scripts": {
+        "dev": "turbo run dev --filter=@clubedge/web",
+        "infra:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+        "infra:down": "docker compose -f docker-compose.dev.yml down",
+        "infra:reset": "docker compose -f docker-compose.dev.yml down --volumes",
+        "infra:logs": "docker compose -f docker-compose.dev.yml logs --follow"
+      }
+    },
+    "supabase": {
+      "name": "Supabase CLI",
+      "files": ["supabase"],
+      "scripts": {
+        "dev": "turbo run dev --filter=@clubedge/web",
+        "infra:up": "npx --yes supabase@2 start",
+        "infra:down": "npx --yes supabase@2 stop",
+        "infra:reset": "npx --yes supabase@2 stop --no-backup",
+        "infra:status": "npx --yes supabase@2 status"
+      }
+    },
+    "local": {
+      "name": "No Docker (PGlite and a local folder)",
+      "packages": {
+        "@clubedge/local-db": "packages/local-db"
+      },
+      "scripts": {
+        "dev": "turbo run dev --filter=@clubedge/web --filter=@clubedge/local-db",
+        "infra:up": "pnpm --filter @clubedge/local-db dev",
+        "infra:reset": "node -e \"require('node:fs').rmSync('.data', { recursive: true, force: true })\""
+      }
+    },
+    "neon": {
+      "name": "Neon (hosted PostgreSQL, nothing to install)",
+      "files": [".github/workflows/preview.yml"],
+      "scripts": {
+        "dev": "turbo run dev --filter=@clubedge/web"
+      }
+    },
+    "none": {
+      "name": "None (bring your own services)",
+      "scripts": {
+        "dev": "turbo run dev --filter=@clubedge/web"
+      }
+    }
+  }
+}

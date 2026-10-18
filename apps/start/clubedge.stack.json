@@ -1,0 +1,186 @@
+{
+  "id": "tanstack-start",
+  "name": "TanStack Start",
+  "role": "fullstack",
+  "envExample": ".env.example",
+  "dockerfile": "Dockerfile",
+  "conditional": [
+    ".env.example",
+    "scripts/check-services.ts",
+    "src/components/route-error.tsx",
+    "src/env/auth.ts",
+    "src/env/production.ts",
+    "src/jobs/index.ts",
+    "src/routes/__root.tsx",
+    "src/routes/dashboard.tsx",
+    "src/routes/index.tsx",
+    "src/server/auth-email.ts",
+    "src/server/settings-forms.ts",
+    "src/server/storage.ts",
+    "src/start.ts",
+    "vite.config.ts"
+  ],
+  "modules": {
+    "auth": {
+      "supabase|better-auth|firebase|appwrite": {
+        "files": [
+          "src/components/auth",
+          "src/env/auth.ts",
+          "src/lib/login-url.test.ts",
+          "src/lib/login-url.ts",
+          "src/routes/auth",
+          "src/routes/forgot-password.tsx",
+          "src/routes/login.tsx",
+          "src/routes/reset-password.tsx",
+          "src/routes/settings.tsx",
+          "src/server/auth-forms.test.ts",
+          "src/server/auth-forms.ts",
+          "src/server/cookies.test.ts",
+          "src/server/cookies.ts",
+          "src/server/settings-forms.ts",
+          "src/server/settings.functions.ts",
+          "src/server/users.ts"
+        ]
+      },
+      "supabase": {
+        "files": ["src/env/auth.test.ts"]
+      },
+      "better-auth|firebase": {
+        "files": ["src/server/auth-email.ts"]
+      },
+      "better-auth": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.better-auth.ts"
+        }
+      },
+      "firebase": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.firebase.ts"
+        }
+      },
+      "appwrite": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.appwrite.ts"
+        }
+      },
+      "none": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.none.ts",
+          "src/server/auth.functions.ts": "src/server/variants/auth.functions.none.ts",
+          "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.none.tsx"
+        }
+      }
+    },
+    "storage": {
+      "s3|supabase": {
+        "files": ["src/server/storage.ts"]
+      },
+      "supabase": {
+        "replace": {
+          "src/server/storage.ts": "src/server/variants/storage.supabase.ts"
+        }
+      },
+      "none": {}
+    },
+    "cache": {
+      "redis": {
+        "files": ["src/server/cache.test.ts"]
+      },
+      "memory": {
+        "replace": {
+          "src/server/cache.ts": "src/server/variants/cache.memory.ts"
+        }
+      }
+    },
+    "email": {
+      "smtp|resend": {
+        "files": ["src/server/email.ts"]
+      },
+      "resend": {
+        "replace": {
+          "src/server/email.ts": "src/server/variants/email.resend.ts"
+        }
+      },
+      "none": {}
+    },
+    "payments": {
+      "stripe": {
+        "files": [
+          "src/components/billing",
+          "src/config/plans.ts",
+          "src/routes/api/webhooks",
+          "src/routes/billing",
+          "src/server/billing-forms.ts",
+          "src/server/billing.functions.ts",
+          "src/server/payments.ts"
+        ]
+      },
+      "none": {}
+    },
+    "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": [
+          "src/components/jobs",
+          "src/jobs",
+          "src/nitro/plugins/jobs.ts",
+          "src/routes/jobs",
+          "src/server/jobs-forms.ts",
+          "src/server/jobs.functions.ts",
+          "src/server/jobs.ts"
+        ]
+      },
+      "pg-boss|bullmq": {
+        "files": ["src/routes/api/jobs", "src/server/jobs.test.ts"]
+      },
+      "bullmq": {
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.bullmq.ts"
+        }
+      },
+      "inngest": {
+        "files": ["src/routes/api/inngest.ts"],
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.inngest.ts"
+        }
+      },
+      "none": {}
+    },
+    "observability": {
+      "otel|sentry": {
+        "files": [
+          "src/components/error-reporting.tsx",
+          "src/nitro/plugins/observability.ts",
+          "src/routes/api/client-errors.ts",
+          "src/server/observability.test.ts",
+          "src/server/observability.ts"
+        ]
+      },
+      "sentry": {
+        "replace": {
+          "src/components/error-reporting.tsx": "src/components/variants/error-reporting.sentry.tsx",
+          "src/server/observability.ts": "src/server/variants/observability.sentry.ts"
+        }
+      },
+      "none": {}
+    },
+    "infra": {
+      "docker": {},
+      "supabase": {},
+      "local": {},
+      "neon": {},
+      "none": {}
+    },
+    "deploy": {
+      "docker": {},
+      "fly": {},
+      "railway": {},
+      "render": {},
+      "vercel": {
+        "files": ["vercel.json"]
+      },
+      "netlify": {
+        "files": ["netlify.toml"]
+      }
+    }
+  }
+}
