@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=@clubedge/web",
     "build": "turbo run build",
-    "start": "pnpm --filter @clubedge/web start",
+    "start": "turbo run start --env-mode=loose --filter=@clubedge/web",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",

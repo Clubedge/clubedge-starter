@@ -313,6 +313,8 @@ jobs:
               framework: tanstack-start,
               modules: --auth better-auth --cache memory --jobs pg-boss,
             }
+          # A frontend and a separate API, joined by packages/contract.
+          - { name: vite-hono, framework: vite, modules: --api hono }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -360,6 +362,8 @@ jobs:
       # Pages that need no database must keep working when it is not configured, so a mistake
       # in the environment never takes the whole app down at startup.
       - name: Serve pages without a database configured
+        # A frontend and its API each need their own port, which one PORT can't give them.
+        if: ${{ !contains(matrix.modules, '--api') }}
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           set -euo pipefail

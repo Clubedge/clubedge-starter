@@ -54,6 +54,7 @@ export default defineConfig([
     "**/node_modules/**",
     "**/.next/**",
     "**/.output/**",
+    "**/dist/**",
     "**/.nitro/**",
     "**/.tanstack/**",
     "**/routeTree.gen.ts",

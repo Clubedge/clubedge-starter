@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- vite.config.ts fills in the name and description from src/config/site.json. -->
+    <title>%SITE_NAME%</title>
+    <meta name="description" content="%SITE_DESCRIPTION%" />
+    <link rel="icon" href="/favicon.ico" />
+    <!-- Applies the saved or preferred theme before first paint to avoid a flash. -->
+    <script>
+      try {
+        const saved = localStorage.getItem("clubedge-theme");
+        const theme =
+          saved === "light" || saved === "dark"
+            ? saved
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.style.colorScheme = theme;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

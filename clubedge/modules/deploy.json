@@ -1,7 +1,6 @@
 {
   "name": "Deployment",
   "default": "docker",
-  "scope": "project",
   "options": {
     "docker": {
       "name": "Docker image, on any container host"
