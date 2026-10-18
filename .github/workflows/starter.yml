@@ -28,7 +28,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Python apps (the FastAPI API) run their checks with uv.
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -329,7 +329,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Python apps (the FastAPI API) run their checks with uv.
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.0
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
