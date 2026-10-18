@@ -3,8 +3,9 @@ import { resolve } from "node:path";
 import { directDatabaseUrl } from "../src/urls";
 
 // Database commands run from packages/db and share the app's environment file, so a project
-// has one place for secrets. Variables already set in the shell take precedence.
-for (const file of ["../../apps/web/.env.local", ".env.local"]) {
+// has one place for secrets: the web app's, or the API's when a separate API owns the database.
+// Variables already set in the shell (or an earlier file) take precedence.
+for (const file of ["../../apps/web/.env.local", "../../apps/api/.env.local", ".env.local"]) {
   config({ path: resolve(process.cwd(), file), quiet: true });
 }
 

@@ -1,0 +1,33 @@
+{
+  "id": "hono",
+  "name": "Hono (TypeScript)",
+  "role": "api",
+  "envExample": ".env.example",
+  "dockerfile": "Dockerfile",
+  "modules": {
+    "auth": {
+      "none": {}
+    },
+    "storage": {
+      "none": {}
+    },
+    "cache": {
+      "memory": {}
+    },
+    "email": {
+      "none": {}
+    },
+    "payments": {
+      "none": {}
+    },
+    "jobs": {
+      "none": {}
+    },
+    "observability": {
+      "none": {}
+    },
+    "deploy": {
+      "docker": {}
+    }
+  }
+}

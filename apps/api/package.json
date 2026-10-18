@@ -1,0 +1,29 @@
+{
+  "name": "@clubedge/api",
+  "version": "0.21.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local --watch --import tsx src/index.ts",
+    "build": "node build.mjs",
+    "start": "node --env-file-if-exists=.env.local dist/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "check:services": "node --env-file-if-exists=.env.local --import tsx scripts/check-services.ts",
+    "check:env": "node --env-file-if-exists=.env.local --import tsx scripts/check-env.ts"
+  },
+  "dependencies": {
+    "@clubedge/contract": "workspace:*",
+    "@clubedge/core": "workspace:*",
+    "@clubedge/db": "workspace:*",
+    "@hono/node-server": "^2.1.5",
+    "hono": "^4.13.13",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

@@ -19,7 +19,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm --filter ${e2eApp.packageName} dev`,
+    // Through turbo, so a frontend's API (its dev task's `with`) starts too. Loose env mode
+    // passes the variables below to every app.
+    command: `pnpm exec turbo run dev --ui=stream --env-mode=loose --filter=${e2eApp.packageName}`,
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     // The dev server's own output, so server errors appear next to the failing test.

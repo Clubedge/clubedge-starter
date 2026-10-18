@@ -5,4 +5,23 @@ services:
       - "3000:3000"
     env_file:
       - ./apps/web/.env.local
+    # clubedge:if api!=none
+    environment:
+      # The frontend's server sends /api to the API service.
+      API_URL: http://api:3001
+    depends_on:
+      - api
+    # clubedge:end
     restart: unless-stopped
+  # clubedge:if api!=none
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - path: ./apps/api/.env.local
+        required: false
+    environment:
+      HOST: 0.0.0.0
+    restart: unless-stopped
+  # clubedge:end

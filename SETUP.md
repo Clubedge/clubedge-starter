@@ -594,6 +594,28 @@ In generated projects the app lives in `apps/web`, its Dockerfile is the root `D
 
 <!-- clubedge:end -->
 
+<!-- clubedge:if api!=none -->
+
+## The frontend and its API
+
+The app is two apps that meet at one HTTP contract:
+
+- `apps/web` is the frontend. It serves pages only and calls the API for everything else.
+- `apps/api` is the API. It owns the database and the provider modules, and reads `apps/api/.env.local` (from `apps/api/.env.example`). The database commands read `DATABASE_URL` from there too.
+- `packages/contract/openapi.yaml` is the contract between them. The frontend calls the API only through the client generated from it, so the API can be replaced by one in another language.
+
+`pnpm dev` starts both: the frontend on <http://localhost:3000>, and the API on port 3001. The frontend's server forwards `/api` to the API (its `API_URL`), so the browser sees one origin and cookies stay first-party.
+
+To change the API, edit `openapi.yaml` first, run `pnpm --filter @clubedge/contract generate`, then implement the change in the API. Its tests run `@clubedge/contract/conformance`, the suite every API passes; run it against any running API with:
+
+```sh
+API_URL=http://127.0.0.1:3001 pnpm exec vitest run packages/contract/src/remote.test.ts
+```
+
+In production, run each app's image: the root `Dockerfile` (the frontend, served by Caddy, with `API_URL` set to the API's address) and `apps/api/Dockerfile`. `docker compose up --build` runs both. Run `node migrate.mjs` in the API's image before a new version starts.
+
+<!-- clubedge:end -->
+
 ## Before deploying
 
 This project is a starting point; review the security and operational choices for your application before production use:
