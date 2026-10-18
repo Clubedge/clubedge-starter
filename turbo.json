@@ -13,6 +13,12 @@
       "cache": false,
       "persistent": true
     },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"],
       "outputs": []
