@@ -1,0 +1,25 @@
+{
+  "name": "Observability",
+  "default": "none",
+  "options": {
+    "otel": {
+      "name": "OpenTelemetry (OTLP to any collector)",
+      "packages": {
+        "@clubedge/observability": "packages/observability",
+        "@clubedge/observability-otel": "packages/observability-otel"
+      },
+      "files": ["e2e/observability.spec.ts", "e2e/telemetry-fake.ts"]
+    },
+    "sentry": {
+      "name": "Sentry",
+      "packages": {
+        "@clubedge/observability": "packages/observability",
+        "@clubedge/observability-sentry": "packages/observability-sentry"
+      },
+      "files": ["e2e/observability.spec.ts", "e2e/telemetry-fake.ts"]
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

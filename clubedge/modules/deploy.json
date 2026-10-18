@@ -1,0 +1,28 @@
+{
+  "name": "Deployment",
+  "default": "docker",
+  "scope": "project",
+  "options": {
+    "docker": {
+      "name": "Docker image, on any container host"
+    },
+    "fly": {
+      "name": "Fly.io",
+      "files": ["fly.toml"]
+    },
+    "railway": {
+      "name": "Railway",
+      "files": [".railway/railway.ts"]
+    },
+    "render": {
+      "name": "Render",
+      "files": ["render.yaml"]
+    },
+    "vercel": {
+      "name": "Vercel"
+    },
+    "netlify": {
+      "name": "Netlify"
+    }
+  }
+}

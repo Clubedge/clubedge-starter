@@ -1,29 +1,129 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// create-clubedge-app reads clubedge.template.json to scaffold projects from this repository.
+// create-clubedge-app scaffolds projects from this repository, assembled from packs (schema 4):
 //
-// Top-level paths describe the generated project: the selected framework's app always lands
-// in `app` as `appPackage`. Each framework entry says where that framework's files live here;
-// the CLI moves the app to `app` and its envExample and dockerfile to `env.example` and
-// `Dockerfile`, and leaves the other frameworks out.
+//   clubedge.template.json            slots (where apps land), the module order, shared files
+//   clubedge/modules/<id>.json        a module: options, packages, scripts, shared files
+//   apps/<name>/clubedge.stack.json   a stack: its role, and its own files for each option
+//
+// A stack's paths are relative to its folder. The CLI moves the selected stack's app to its
+// slot's path, and its envExample and dockerfile to the slot's, and leaves other stacks out.
+// The checks below run on the assembled view: each option's shared and stack files together.
 const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8"));
-const manifest = readJson("clubedge.template.json");
+const root = readJson("clubedge.template.json");
+const slot = root.slots.framework;
+
+type StackEntry = { files?: string[]; replace?: Record<string, string> };
+const stackDescriptors = readdirSync("apps", { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(`apps/${entry.name}/clubedge.stack.json`))
+  .map((entry) => ({
+    app: `apps/${entry.name}`,
+    ...readJson(`apps/${entry.name}/clubedge.stack.json`),
+  }));
+const inApp = (app: string, path: string) => posix.normalize(posix.join(app, path));
+
+const moduleDescriptors = Object.fromEntries(
+  (root.modules as string[]).map((id) => [id, readJson(`clubedge/modules/${id}.json`)]),
+);
+for (const stack of stackDescriptors) {
+  for (const [moduleId, entries] of Object.entries<Record<string, StackEntry>>(
+    stack.modules ?? {},
+  )) {
+    for (const [key, entry] of Object.entries(entries)) {
+      for (const optionId of key.split("|")) {
+        const option = moduleDescriptors[moduleId].options[optionId];
+        option.files = [
+          ...(option.files ?? []),
+          ...(entry.files ?? []).map((path) => inApp(stack.app, path)),
+        ];
+        for (const [target, variant] of Object.entries(entry.replace ?? {})) {
+          option.replace = {
+            ...option.replace,
+            [inApp(stack.app, target)]: inApp(stack.app, variant),
+          };
+        }
+      }
+    }
+  }
+}
+const manifest = {
+  ...root,
+  app: slot.path,
+  appPackage: slot.package,
+  frameworks: Object.fromEntries(
+    stackDescriptors.map((stack) => [
+      stack.id,
+      {
+        name: stack.name,
+        app: stack.app,
+        envExample: inApp(stack.app, stack.envExample),
+        dockerfile: inApp(stack.app, stack.dockerfile),
+      },
+    ]),
+  ),
+  modules: moduleDescriptors,
+  conditional: [
+    ...root.conditional,
+    ...stackDescriptors.flatMap((stack) =>
+      (stack.conditional ?? []).map((path: string) => inApp(stack.app, path)),
+    ),
+  ],
+  // The CLI leaves the descriptors out of generated projects.
+  exclude: [
+    ...root.exclude,
+    "clubedge/modules",
+    ...stackDescriptors.map((stack) => `${stack.app}/clubedge.stack.json`),
+  ],
+};
 const frameworks = Object.entries<Record<string, string>>(manifest.frameworks);
 
 /** Maps a generated-project path into the given framework's app in this repository. */
 const inFramework = (path: string, app: string) => path.replace(manifest.app, app);
 
+describe("stack packs", () => {
+  it.each(stackDescriptors.map((stack) => [stack.app, stack]))(
+    "%s fills a slot and implements every option of the app modules",
+    (_app, stack) => {
+      expect(
+        Object.values<{ roles: string[] }>(root.slots).some((s) => s.roles.includes(stack.role)),
+      ).toBe(true);
+      for (const [id, module] of Object.entries<{ scope?: string; options: object }>(
+        moduleDescriptors,
+      )) {
+        if (module.scope === "project") continue;
+        const implemented = [
+          ...new Set(Object.keys(stack.modules?.[id] ?? {}).flatMap((key) => key.split("|"))),
+        ];
+        // Full-stack apps implement every option; frontends and APIs say what they implement.
+        if (stack.role === "fullstack")
+          expect(implemented.sort(), `${stack.id}: ${id}`).toEqual(
+            Object.keys(module.options).sort(),
+          );
+        for (const option of implemented)
+          expect(Object.keys(module.options), `${stack.id}: ${id}`).toContain(option);
+      }
+    },
+  );
+
+  it("gives every stack its own id", () => {
+    const ids = stackDescriptors.map((stack) => stack.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain(slot.default);
+  });
+});
+
 describe("clubedge.template.json", () => {
   it("uses the schema version the CLI understands", () => {
-    expect(manifest.schemaVersion).toBe(3);
+    expect(manifest.schemaVersion).toBe(4);
     expect(manifest.packageManager).toBe("pnpm");
   });
 
   it("defaults to a framework it describes", () => {
-    expect(Object.keys(manifest.frameworks)).toContain(manifest.defaultFramework);
-    expect(manifest.frameworks[manifest.defaultFramework].app).toBe(manifest.app);
+    expect(Object.keys(manifest.frameworks)).toContain(slot.default);
+    expect(manifest.frameworks[slot.default].app).toBe(manifest.app);
   });
 
   it.each(frameworks)("points at files that exist for %s", (_id, framework) => {

@@ -1,0 +1,15 @@
+{
+  "name": "Cache and rate limits",
+  "default": "redis",
+  "options": {
+    "redis": {
+      "name": "Redis, or memory without REDIS_URL",
+      "packages": {
+        "@clubedge/cache-redis": "packages/cache-redis"
+      }
+    },
+    "memory": {
+      "name": "Memory only"
+    }
+  }
+}
