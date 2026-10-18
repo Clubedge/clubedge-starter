@@ -5,6 +5,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
+  "bin": {
+    "clubedge-contract-check": "./scripts/check-api.mjs"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./conformance": "./src/conformance.ts",

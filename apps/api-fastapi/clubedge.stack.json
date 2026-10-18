@@ -1,0 +1,39 @@
+{
+  "id": "fastapi",
+  "name": "FastAPI (Python)",
+  "role": "api",
+  "envExample": ".env.example",
+  "dockerfile": "Dockerfile",
+  "toolchain": {
+    "name": "uv",
+    "check": ["uv", "--version"],
+    "install": ["uv", "sync"],
+    "url": "https://docs.astral.sh/uv/getting-started/installation/"
+  },
+  "modules": {
+    "auth": {
+      "none": {}
+    },
+    "storage": {
+      "none": {}
+    },
+    "cache": {
+      "memory": {}
+    },
+    "email": {
+      "none": {}
+    },
+    "payments": {
+      "none": {}
+    },
+    "jobs": {
+      "none": {}
+    },
+    "observability": {
+      "none": {}
+    },
+    "deploy": {
+      "docker": {}
+    }
+  }
+}

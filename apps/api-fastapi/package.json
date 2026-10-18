@@ -1,0 +1,20 @@
+{
+  "name": "@clubedge/api-fastapi",
+  "version": "0.22.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "uv run python -m clubedge_api --reload",
+    "build": "uv run python -m compileall -q src",
+    "start": "uv run --no-dev python -m clubedge_api",
+    "lint": "uv run ruff check . && uv run ruff format --check .",
+    "typecheck": "uv run mypy",
+    "test": "uv run pytest && clubedge-contract-check -- uv run python -m clubedge_api",
+    "check:services": "uv run python -m clubedge_api.check_services",
+    "check:env": "uv run python -m clubedge_api.check_env"
+  },
+  "dependencies": {
+    "@clubedge/contract": "workspace:*"
+  }
+}

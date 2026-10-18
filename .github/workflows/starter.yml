@@ -27,6 +27,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # Python apps (the FastAPI API) run their checks with uv.
+      - uses: astral-sh/setup-uv@v10
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -315,6 +317,7 @@ jobs:
             }
           # A frontend and a separate API, joined by packages/contract.
           - { name: vite-hono, framework: vite, modules: --api hono }
+          - { name: vite-fastapi, framework: vite, modules: --api fastapi }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -325,6 +328,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # Python apps (the FastAPI API) run their checks with uv.
+      - uses: astral-sh/setup-uv@v10
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail

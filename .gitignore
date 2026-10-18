@@ -25,3 +25,10 @@ supabase/.branches/
 # Build output of the Vercel and Netlify presets
 .vercel/
 .netlify/
+
+# Python apps
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
