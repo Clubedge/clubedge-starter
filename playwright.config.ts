@@ -18,9 +18,16 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `pnpm --filter ${e2eApp.packageName} dev`,
-    url: "http://127.0.0.1:3000",
+  // The app, and the packages its dev task runs with (a frontend's API), each started here so
+  // Playwright stops every one of them afterwards. An API is up once the app forwards its health.
+  webServer: [
+    { command: `pnpm --filter ${e2eApp.packageName} dev`, url: "http://127.0.0.1:3000" },
+    ...e2eApp.siblings.map((name) => ({
+      command: `pnpm --filter ${name} dev`,
+      url: "http://127.0.0.1:3000/api/health",
+    })),
+  ].map((server) => ({
+    ...server,
     reuseExistingServer: !process.env.CI,
     // The dev server's own output, so server errors appear next to the failing test.
     stdout: "pipe",
@@ -34,5 +41,5 @@ export default defineConfig({
       APP_URL: "http://127.0.0.1:3000",
       NODE_ENV: "development",
     },
-  },
+  })),
 });

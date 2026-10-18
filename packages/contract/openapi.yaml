@@ -1,0 +1,101 @@
+# The HTTP contract between a frontend and its API. Every API stack implements it, whatever its
+# language, and proves it by passing the conformance suite (src/conformance.ts); every frontend
+# calls it through the client generated from this file (src/schema.ts, `pnpm generate`).
+# Change the API here first, then in each stack.
+openapi: 3.1.0
+info:
+  title: Clubedge API
+  version: 0.1.0
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Liveness. Checks nothing, so it answers while the database is down.
+      responses:
+        "200":
+          description: The API is running.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /api/ready:
+    get:
+      operationId: getReady
+      summary: Readiness. Ready when the database answers. Never cached.
+      responses:
+        "200":
+          description: Ready for traffic.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+        "503":
+          description: Not ready, for example while the database is unreachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ready"
+  /api/session:
+    get:
+      operationId: getSession
+      summary: The signed-in user, or null.
+      responses:
+        "200":
+          description: The current session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, service, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+          description: The project's service id, from the API's site config.
+        timestamp:
+          type: string
+          format: date-time
+    Ready:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+    Session:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+    User:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: [string, "null"]
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Stable and machine-readable, such as not_found.
+            message:
+              type: string

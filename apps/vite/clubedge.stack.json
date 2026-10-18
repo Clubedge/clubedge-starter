@@ -1,0 +1,15 @@
+{
+  "id": "vite",
+  "name": "React + Vite",
+  "role": "frontend",
+  "envExample": ".env.example",
+  "dockerfile": "Dockerfile",
+  "modules": {
+    "auth": {
+      "none": {}
+    },
+    "deploy": {
+      "docker": {}
+    }
+  }
+}

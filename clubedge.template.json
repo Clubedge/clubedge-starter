@@ -15,8 +15,24 @@
         "target": "apps/web/.env.local"
       },
       "dockerfile": "Dockerfile",
-      "roles": ["fullstack"],
+      "roles": ["fullstack", "frontend"],
       "default": "next"
+    },
+    "api": {
+      "name": "API",
+      "question": "Which API should the frontend call?",
+      "path": "apps/api",
+      "package": "@clubedge/api",
+      "env": {
+        "example": "apps/api/.env.example",
+        "target": "apps/api/.env.local"
+      },
+      "dockerfile": "apps/api/Dockerfile",
+      "roles": ["api"],
+      "siteConfig": "apps/api/src/config/site.json",
+      "packages": {
+        "@clubedge/contract": "packages/contract"
+      }
     }
   },
   "modules": [
@@ -39,6 +55,7 @@
     "README.md",
     "SETUP.md",
     "docker-compose.dev.yml",
+    "docker-compose.yml",
     "render.yaml",
     "supabase/config.toml"
   ],
