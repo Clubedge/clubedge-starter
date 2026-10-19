@@ -15,7 +15,10 @@ function firebaseAuth() {
   return getAuth(app);
 }
 
-export async function getCurrentUser(request: Request): Promise<User | null> {
+export async function getCurrentUser(
+  request: Request,
+  _config?: { url: string; publishableKey: string },
+): Promise<User | null> {
   const token = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "")?.[1];
   if (!token) return null;
   try {

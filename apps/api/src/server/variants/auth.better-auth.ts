@@ -1,6 +1,9 @@
 import type { User } from "@clubedge/contract";
 
-export async function getCurrentUser(request: Request): Promise<User | null> {
+export async function getCurrentUser(
+  request: Request,
+  _config?: { url: string; publishableKey: string },
+): Promise<User | null> {
   const authUrl = process.env.BETTER_AUTH_URL;
   const cookie = request.headers.get("cookie");
   if (!authUrl || !cookie) return null;

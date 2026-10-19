@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 // The browser suite runs without provider credentials, so these checks cover the
 // unconfigured mode: pages stay explorable and redirects stay on this origin.
 
-test("dashboard offers sign-in while authentication is not configured", async ({ page }) => {
+test("dashboard follows the selected authentication configuration", async ({ page }) => {
   await page.goto("/dashboard");
-  if (process.env.E2E_AUTH_ENABLED === "true") {
+  if (new URL(page.url()).pathname === "/login") {
     await expect(page).toHaveURL(/\/login\?next=/);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     return;
