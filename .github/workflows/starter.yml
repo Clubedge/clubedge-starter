@@ -385,11 +385,34 @@ jobs:
           pnpm lint
           pnpm typecheck
           pnpm test
+      - name: Start Firebase Auth Emulator
+        if: contains(matrix.modules, '--auth firebase')
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --silent --output /dev/null http://127.0.0.1:9099/ && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/firebase.log"
+          exit 1
       - name: Browser checks
         working-directory: ${{ runner.temp }}/generated-app
+        env:
+          FIREBASE_PROJECT_ID: demo-clubedge
+          FIREBASE_API_KEY: fake-api-key
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          VITE_FIREBASE_PROJECT_ID: demo-clubedge
+          VITE_FIREBASE_API_KEY: fake-api-key
+          VITE_FIREBASE_AUTH_DOMAIN: localhost
+          VITE_FIREBASE_AUTH_EMULATOR_URL: http://127.0.0.1:9099
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e
+      - name: Show Firebase emulator log on failure
+        if: failure() && contains(matrix.modules, '--auth firebase')
+        run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
       - name: Build, start, and smoke-test
         working-directory: ${{ runner.temp }}/generated-app
         run: |
@@ -527,7 +550,6 @@ jobs:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
       BETTER_AUTH_URL: http://127.0.0.1:3000
-      VITE_BETTER_AUTH_URL: http://127.0.0.1:3000
       E2E_AUTH_FLOW: "1"
     steps:
       - uses: actions/checkout@v7

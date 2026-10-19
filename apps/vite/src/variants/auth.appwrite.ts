@@ -37,7 +37,12 @@ export const authClient: AuthClient = {
     });
     const verificationUrl = new URL(returnUrl);
     verificationUrl.searchParams.set("next", "/dashboard");
-    await account.createVerification({ url: verificationUrl.toString() });
+    await account.createEmailPasswordSession({ email, password });
+    try {
+      await account.createVerification({ url: verificationUrl.toString() });
+    } finally {
+      await account.deleteSession({ sessionId: "current" });
+    }
     return { needsConfirmation: true };
   },
   async completeEmailVerification(params) {

@@ -7,7 +7,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { betterAuth } from "better-auth/minimal";
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-const id = () => uuid("id").default(sql`gen_random_uuid()`).primaryKey();
+const id = () =>
+  uuid("id")
+    .default(sql`gen_random_uuid()`)
+    .primaryKey();
 const createdAt = () => timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
 const updatedAt = () =>
   timestamp("updated_at", { withTimezone: true })
@@ -31,13 +34,17 @@ const session = pgTable("auth_session", {
   updatedAt: updatedAt(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  userId: uuid("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
 });
 const account = pgTable("auth_account", {
   id: id(),
   accountId: text("account_id").notNull(),
   providerId: text("provider_id").notNull(),
-  userId: uuid("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
@@ -58,6 +65,14 @@ const verification = pgTable("auth_verification", {
 });
 
 let authServer;
+const maxAuthBodyBytes = 1024 * 1024;
+
+class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("Authentication request body exceeds the 1 MiB limit.");
+    this.name = "RequestBodyTooLargeError";
+  }
+}
 
 async function sendEmail({ to, subject, text, html }) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -125,9 +140,7 @@ function getAuthServer() {
             },
           }
         : {}),
-      ...(hasEmailProvider
-        ? { resetPasswordTokenExpiresIn: 60 * 60 }
-        : {}),
+      ...(hasEmailProvider ? { resetPasswordTokenExpiresIn: 60 * 60 } : {}),
     },
     ...(hasEmailProvider
       ? {
@@ -163,14 +176,33 @@ async function toWebRequest(request) {
     if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
   const method = request.method ?? "GET";
-  const body = method === "GET" || method === "HEAD"
-    ? undefined
-    : await new Promise((resolve, reject) => {
-        const chunks = [];
-        request.on("data", (chunk) => chunks.push(chunk));
-        request.on("end", () => resolve(Buffer.concat(chunks)));
-        request.on("error", reject);
+  let body;
+  if (method !== "GET" && method !== "HEAD") {
+    const contentLength = Number(request.headers["content-length"]);
+    if (Number.isFinite(contentLength) && contentLength > maxAuthBodyBytes) {
+      request.resume();
+      throw new RequestBodyTooLargeError();
+    }
+    body = await new Promise((resolve, reject) => {
+      const chunks = [];
+      let size = 0;
+      let tooLarge = false;
+      request.on("data", (chunk) => {
+        if (tooLarge) return;
+        size += chunk.length;
+        if (size > maxAuthBodyBytes) {
+          tooLarge = true;
+          reject(new RequestBodyTooLargeError());
+          return;
+        }
+        chunks.push(chunk);
       });
+      request.on("end", () => {
+        if (!tooLarge) resolve(Buffer.concat(chunks));
+      });
+      request.on("error", reject);
+    });
+  }
   return new Request(new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`), {
     method,
     headers,
@@ -194,9 +226,20 @@ export async function serveAuthRequest(request, response) {
     }
     response.writeHead(result.status, headers);
     response.end(Buffer.from(await result.arrayBuffer()));
-  } catch {
-    response.writeHead(500, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "Authentication request failed." }));
+  } catch (error) {
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+    const tooLarge = error instanceof RequestBodyTooLargeError;
+    response.writeHead(tooLarge ? 413 : 500, { "content-type": "application/json" });
+    response.end(
+      JSON.stringify({
+        error: tooLarge
+          ? "Authentication request body is too large."
+          : "Authentication request failed.",
+      }),
+    );
   }
 }
 

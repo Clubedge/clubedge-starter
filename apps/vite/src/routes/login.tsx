@@ -30,7 +30,9 @@ export function LoginPage() {
       ? "If that email has an account, we sent it a link to reset the password."
       : params.get("notice") === "password-updated"
         ? "Password updated. Sign in with your new password."
-        : "",
+        : params.get("notice") === "password-reset"
+          ? "Your password has been reset. Sign in with your new password."
+          : "",
   );
   const [error, setError] = useState(
     params.get("error") === "rate-limited"
@@ -54,11 +56,7 @@ export function LoginPage() {
           window.history.replaceState({}, "", "/login");
         }
       })
-      .catch(() =>
-        setError(
-          "That email confirmation link is invalid or has expired.",
-        ),
-      );
+      .catch(() => setError("That email confirmation link is invalid or has expired."));
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -87,11 +85,19 @@ export function LoginPage() {
       }
       setBusy(false);
       await navigate({ href: next });
-    } catch {
+    } catch (cause) {
       setBusy(false);
-      setError(
-        signup ? "We could not create that account." : "Email or password could not be verified.",
-      );
+      if (cause instanceof Error && cause.name === "EmailVerificationRequiredError") {
+        setError("Your email is not verified. We sent a new verification link.");
+      } else if (cause instanceof Error && cause.name === "EmailVerificationDeliveryError") {
+        setError(
+          "Your account was created, but we could not send the verification email. Sign in to request another link.",
+        );
+      } else {
+        setError(
+          signup ? "We could not create that account." : "Email or password could not be verified.",
+        );
+      }
     }
   }
 

@@ -108,11 +108,32 @@ function proxy(request, response) {
 
 async function proxyBetterAuth(request, response) {
   try {
+    await fs.access(new URL("./dist/auth.server.mjs", import.meta.url));
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      response.writeHead(404, { "content-type": "application/json" });
+      response.end(JSON.stringify({ error: "Better Auth is not included in this project." }));
+      return;
+    }
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+    response.writeHead(500, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "Authentication request failed." }));
+    return;
+  }
+
+  try {
     const authServer = await import("./dist/auth.server.mjs");
     await authServer.serveAuthRequest(request, response);
   } catch {
-    response.writeHead(404, { "content-type": "application/json" });
-    response.end(JSON.stringify({ error: "Better Auth is not included in this project." }));
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+    response.writeHead(500, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "Authentication request failed." }));
   }
 }
 

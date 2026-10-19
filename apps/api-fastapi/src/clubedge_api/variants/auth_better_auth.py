@@ -21,7 +21,10 @@ async def get_current_user(request: Request, *_: str | None) -> User | None:
             )
         if response.status_code != 200:
             return None
-        user = response.json().get("user")
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return None
+        user = payload.get("user")
         if not isinstance(user, dict):
             return None
         user_id, email = user.get("id"), user.get("email")

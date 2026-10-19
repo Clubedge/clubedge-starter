@@ -5,7 +5,6 @@ const providerEnv = Object.fromEntries(
   [
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
-    "VITE_BETTER_AUTH_URL",
     "FIREBASE_PROJECT_ID",
     "FIREBASE_API_KEY",
     "FIREBASE_AUTH_EMULATOR_HOST",

@@ -1,8 +1,8 @@
 import { createAuthClient } from "better-auth/react";
 import type { AuthClient } from "@/lib/auth-client";
 
-const baseURL = import.meta.env.VITE_BETTER_AUTH_URL || window.location.origin;
-const configured = Boolean(import.meta.env.VITE_BETTER_AUTH_URL);
+const baseURL = window.location.origin;
+const configured = true;
 const client = createAuthClient({ baseURL });
 
 export const authClient: AuthClient = {

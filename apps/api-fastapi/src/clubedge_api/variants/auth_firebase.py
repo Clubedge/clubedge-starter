@@ -29,10 +29,15 @@ async def get_current_user(request: Request, *_: str | None) -> User | None:
             )
         if response.status_code != 200:
             return None
-        users = response.json().get("users")
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return None
+        users = payload.get("users")
         if not isinstance(users, list) or not users:
             return None
         record = users[0]
+        if not isinstance(record, dict):
+            return None
         uid, email = record.get("localId"), record.get("email")
         if (
             not isinstance(uid, str)

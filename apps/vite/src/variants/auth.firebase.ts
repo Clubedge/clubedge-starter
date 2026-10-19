@@ -33,22 +33,39 @@ if (auth && import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL) {
 export const authClient: AuthClient = {
   configured,
   async getAccessToken() {
-    return auth?.currentUser?.getIdToken();
+    if (!auth) return undefined;
+    await auth.authStateReady();
+    return auth.currentUser?.getIdToken();
   },
   async signIn(email, password) {
     if (!auth) throw new Error("Firebase Auth is not configured.");
     const result = await signInWithEmailAndPassword(auth, email, password);
     if (!result.user.emailVerified) {
-      await signOut(auth);
-      throw new Error("Confirm your email address before signing in.");
+      try {
+        await sendEmailVerification(result.user);
+      } finally {
+        await signOut(auth);
+      }
+      const error = new Error("Your email is not verified yet.");
+      error.name = "EmailVerificationRequiredError";
+      throw error;
     }
   },
   async signUp(email, password, returnUrl) {
     if (!auth) throw new Error("Firebase Auth is not configured.");
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    await sendEmailVerification(result.user, { url: returnUrl });
-    await signOut(auth);
-    return { needsConfirmation: true };
+    try {
+      try {
+        await sendEmailVerification(result.user, { url: returnUrl });
+      } catch {
+        const error = new Error("Could not send a verification email for the new account.");
+        error.name = "EmailVerificationDeliveryError";
+        throw error;
+      }
+      return { needsConfirmation: true };
+    } finally {
+      await signOut(auth);
+    }
   },
   async completeEmailVerification(params) {
     if (!auth || params.get("mode") !== "verifyEmail") return;
@@ -58,7 +75,9 @@ export const authClient: AuthClient = {
   },
   async requestPasswordReset(email, returnUrl) {
     if (!auth) throw new Error("Firebase Auth is not configured.");
-    await sendPasswordResetEmail(auth, email, { url: returnUrl, handleCodeInApp: true });
+    const continueUrl = new URL("/login?notice=password-reset", returnUrl).toString();
+    // Firebase's hosted action handler completes the reset before redirecting to our app.
+    await sendPasswordResetEmail(auth, email, { url: continueUrl });
   },
   async resetPassword(password, params) {
     if (!auth) throw new Error("Firebase Auth is not configured.");

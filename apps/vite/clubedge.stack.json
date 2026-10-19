@@ -77,6 +77,7 @@
         "files": [
           "auth.server.mjs",
           "src/lib/auth-client.ts",
+          "src/variants/api.better-auth.ts",
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
@@ -89,7 +90,7 @@
         "replace": {
           "src/lib/auth.ts": "src/variants/auth.better-auth.ts",
           "src/router.tsx": "src/variants/router.supabase.tsx",
-          "src/lib/api.ts": "src/variants/api.supabase.ts",
+          "src/lib/api.ts": "src/variants/api.better-auth.ts",
           "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",
           "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
         }
