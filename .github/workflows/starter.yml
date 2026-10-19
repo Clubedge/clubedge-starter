@@ -404,7 +404,7 @@ jobs:
       - name: Browser checks
         working-directory: ${{ runner.temp }}/generated-app
         env:
-          E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth') }}
+          E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth better-auth') || contains(matrix.modules, '--auth firebase') }}
           FIREBASE_PROJECT_ID: demo-clubedge
           FIREBASE_API_KEY: fake-api-key
           FIREBASE_AUTH_EMULATOR_HOST: ${{ contains(matrix.modules, '--auth firebase') && '127.0.0.1:9099' || '' }}
@@ -425,7 +425,7 @@ jobs:
           pnpm build
           pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
           trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
-          node "$RUNNER_TEMP/cli/scripts/smoke-generated-app.mjs"
+          node "$GITHUB_WORKSPACE/scripts/smoke-generated-app.mjs"
       # Pages that need no database must keep working when it is not configured, so a mistake
       # in the environment never takes the whole app down at startup.
       - name: Serve pages without a database configured

@@ -49,6 +49,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@grpc/grpc-js": "^1.13.6",
       "esbuild": "^0.25.0",
       "fast-xml-parser": "^5.10.1"
     }
