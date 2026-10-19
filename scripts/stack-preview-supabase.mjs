@@ -26,7 +26,13 @@ function cli(args, { allowFailure = false } = {}) {
   return { ok: result.status === 0, output: result.stdout };
 }
 
-const args = ["branches", action === "ensure" ? "get" : "delete", branch, "--project-ref", projectRef];
+const args = [
+  "branches",
+  action === "ensure" ? "get" : "delete",
+  branch,
+  "--project-ref",
+  projectRef,
+];
 if (action === "ensure") args.push("-o", "env");
 
 if (action === "delete") {
@@ -52,7 +58,8 @@ if (action === "delete") {
           .map(([, key, value]) => [key, value.replace(/^(['"])(.*)\1$/, "$2")]),
       );
       const url = values.SUPABASE_URL || values.API_URL;
-      const key = values.SUPABASE_PUBLISHABLE_KEY || values.PUBLISHABLE_KEY || values.ANON_KEY;
+      const key =
+        values.SUPABASE_PUBLISHABLE_KEY || values.PUBLISHABLE_KEY || values.ANON_KEY;
       if (url && key) {
         credentials = { url, key };
         break;
@@ -62,10 +69,14 @@ if (action === "delete") {
   }
 
   if (!credentials) {
-    throw new Error(`Supabase branch ${branch} did not become ready with API credentials within 10 minutes.`);
+    throw new Error(
+      `Supabase branch ${branch} did not become ready with API credentials within 10 minutes.`,
+    );
   }
 
-  for (const value of Object.values(credentials)) process.stdout.write(`::add-mask::${value}\n`);
+  for (const value of Object.values(credentials)) {
+    process.stdout.write(`::add-mask::${value}\n`);
+  }
   if (process.env.GITHUB_ENV) {
     await appendFile(
       process.env.GITHUB_ENV,
