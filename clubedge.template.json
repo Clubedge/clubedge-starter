@@ -73,7 +73,6 @@
     "scripts/stack-preview-render.mjs",
     "scripts/stack-preview-generate.mjs",
     "scripts/stack-preview-supabase.mjs",
-    "apps/vite/server.mjs",
     "scripts/template-manifest.test.ts"
   ]
 }
