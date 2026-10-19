@@ -95,18 +95,60 @@ jobs:
           NODE
 
           railway() { npx --yes @railway/cli@5 "$@"; }
+          if [ "$api" = fastapi ]; then sleep 35; fi
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          node "$RUNNER_TEMP/cli/bin/create.mjs" deploy --yes
+          railway environment list --json | grep -Fq "$RAILWAY_ENVIRONMENT"
 
           base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
-          domain=$(railway domain list --service "${base}-vite" --environment "$RAILWAY_ENVIRONMENT" \
+          web_service="${base}-web"
+          api_service="${base}-api"
+          railway add --service "$web_service" || true
+          railway add --service "$api_service" || true
+
+          domain=$(railway domain list --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" \
             | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1 || true)
           if [ -z "$domain" ]; then
-            domain=$(railway domain --service "${base}-vite" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
+            domain=$(railway domain --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
               | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
           fi
+          frontend_url="https://${domain}"
+          for pair in \
+            "DATABASE_URL|$DATABASE_URL" \
+            "DATABASE_URL_DIRECT|$DATABASE_URL_DIRECT" \
+            "FRONTEND_URL|$frontend_url" \
+            "PORT|3001"; do
+            key=${pair%%|*}
+            value=${pair#*|}
+            printf '%s' "$value" | railway variable set "$key" --stdin \
+              --service "$api_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+          done
+          if [ "$auth" = supabase ]; then
+            for pair in \
+              "SUPABASE_URL|$SUPABASE_URL" \
+              "SUPABASE_PUBLISHABLE_KEY|$SUPABASE_PUBLISHABLE_KEY"; do
+              key=${pair%%|*}
+              value=${pair#*|}
+              printf '%s' "$value" | railway variable set "$key" --stdin \
+                --service "$api_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+            done
+            for pair in \
+              "VITE_SUPABASE_URL|$SUPABASE_URL" \
+              "VITE_SUPABASE_PUBLISHABLE_KEY|$SUPABASE_PUBLISHABLE_KEY"; do
+              key=${pair%%|*}
+              value=${pair#*|}
+              printf '%s' "$value" | railway variable set "$key" --stdin \
+                --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+            done
+          fi
+          printf '%s' 3000 | railway variable set PORT --stdin \
+            --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
+          pnpm add --save-dev --workspace-root railway
+          railway config apply --yes
+          railway up --ci --service "$api_service" --environment "$RAILWAY_ENVIRONMENT"
+          railway up --ci --service "$web_service" --environment "$RAILWAY_ENVIRONMENT"
+
           echo "auth=${auth}" >> "$GITHUB_OUTPUT"
-          echo "url=https://${domain}" >> "$GITHUB_OUTPUT"
+          echo "url=${frontend_url}" >> "$GITHUB_OUTPUT"
       - name: Save the preview URL
         if: steps.deploy.outputs.url != ''
         env:
