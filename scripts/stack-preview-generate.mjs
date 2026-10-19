@@ -21,8 +21,10 @@ if (!new Set(["none", "supabase"]).has(auth))
 const branch = `stack-preview/pr-${pr}-${api}`;
 const destination = await mkdtemp(join(tmpdir(), `clubedge-${api}-`));
 const project = join(destination, "project");
+const publisher = join(destination, "publisher");
 const run = (command, args, options = {}) =>
   execFileSync(command, args, { cwd: workspace, stdio: "inherit", ...options });
+let publisherCreated = false;
 
 try {
   run("pnpm", [
@@ -47,16 +49,19 @@ try {
     "--yes",
   ]);
 
-  // This runner is disposable. Replace its checkout with the generated project and publish it
-  // on a PR-specific branch for Render to build. Each matrix job has a distinct branch.
-  run("git", ["switch", "--orphan", branch]);
-  run("git", ["rm", "-rf", "."]);
-  await cp(project, workspace, { recursive: true, force: true });
-  run("git", ["add", "-A"]);
-  run("git", ["config", "user.name", "github-actions[bot]"]);
-  run("git", ["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
-  run("git", ["commit", "-m", `chore: generate ${api} ${auth} preview for PR #${pr}`]);
-  run("git", ["push", "--force", "origin", `HEAD:refs/heads/${branch}`]);
+  // The CLI can update tracked files in the Starter checkout while using --template-dir.
+  // Publish from a clean worktree so those generation changes don't block orphan-branch creation.
+  run("git", ["worktree", "add", "--detach", publisher, "HEAD"]);
+  publisherCreated = true;
+  const publish = (args) => run("git", args, { cwd: publisher });
+  publish(["switch", "--orphan", branch]);
+  publish(["rm", "-rf", "."]);
+  await cp(project, publisher, { recursive: true, force: true });
+  publish(["add", "-A"]);
+  publish(["config", "user.name", "github-actions[bot]"]);
+  publish(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
+  publish(["commit", "-m", `chore: generate ${api} ${auth} preview for PR #${pr}`]);
+  publish(["push", "--force", "origin", `HEAD:refs/heads/${branch}`]);
 
   if (process.env.GITHUB_OUTPUT) {
     const fs = await import("node:fs/promises");
@@ -64,5 +69,15 @@ try {
   }
   console.log(`Published ${api} with ${auth} auth to ${branch}.`);
 } finally {
+  if (publisherCreated) {
+    try {
+      execFileSync("git", ["worktree", "remove", "--force", publisher], {
+        cwd: workspace,
+        stdio: "ignore",
+      });
+    } catch {
+      // The GitHub Actions checkout is disposable; cleanup failure must not hide the real error.
+    }
+  }
   await rm(destination, { recursive: true, force: true });
 }
