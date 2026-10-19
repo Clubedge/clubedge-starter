@@ -5,7 +5,26 @@ import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("./dist/", import.meta.url)));
-const apiUrl = process.env.API_URL;
+const configuredApiUrl = process.env.API_URL;
+const apiTarget = configuredApiUrl ? new URL(configuredApiUrl) : undefined;
+if (
+  apiTarget &&
+  (!["http:", "https:"].includes(apiTarget.protocol) ||
+    apiTarget.username ||
+    apiTarget.password ||
+    apiTarget.pathname !== "/" ||
+    apiTarget.search ||
+    apiTarget.hash)
+) {
+  throw new Error("API_URL must be an HTTP(S) origin without credentials, a path, or query.");
+}
+// Only these contract endpoints are proxied. The upstream host comes from API_URL;
+// request input can select a fixed path, but can never supply the request URL.
+const apiRoutes = new Map([
+  ["GET /api/health", "/api/health"],
+  ["GET /api/ready", "/api/ready"],
+  ["GET /api/session", "/api/session"],
+]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -31,18 +50,24 @@ const hopByHopHeaders = new Set([
 ]);
 
 function proxy(request, response) {
-  if (!apiUrl) {
+  if (!apiTarget) {
     response.writeHead(503, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: "API_URL is not configured." }));
     return;
   }
 
-  let target;
+  let upstreamPath;
   try {
-    target = new URL(request.url ?? "/", apiUrl);
+    const requestPath = new URL(request.url ?? "/", "http://frontend.invalid").pathname;
+    upstreamPath = apiRoutes.get(`${request.method} ${requestPath}`);
   } catch {
-    response.writeHead(502);
-    response.end("Invalid API_URL.");
+    response.writeHead(400);
+    response.end("Bad request.");
+    return;
+  }
+  if (!upstreamPath) {
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "No such API endpoint." }));
     return;
   }
 
@@ -51,15 +76,25 @@ function proxy(request, response) {
       ([name, value]) => value !== undefined && !hopByHopHeaders.has(name),
     ),
   );
-  headers.host = target.host;
+  headers.host = apiTarget.host;
   headers["x-forwarded-host"] = request.headers.host ?? "";
   headers["x-forwarded-proto"] = "https";
 
-  const send = target.protocol === "https:" ? httpsRequest : httpRequest;
-  const upstream = send(target, { method: request.method, headers }, (upstreamResponse) => {
-    response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
-    upstreamResponse.pipe(response);
-  });
+  const send = apiTarget.protocol === "https:" ? httpsRequest : httpRequest;
+  const upstream = send(
+    {
+      protocol: apiTarget.protocol,
+      hostname: apiTarget.hostname,
+      port: apiTarget.port || undefined,
+      method: request.method,
+      path: upstreamPath,
+      headers,
+    },
+    (upstreamResponse) => {
+      response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+      upstreamResponse.pipe(response);
+    },
+  );
   upstream.on("error", () => {
     if (!response.headersSent) response.writeHead(502, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: "The API preview is unavailable." }));
