@@ -3,12 +3,26 @@
 import { appendFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+// The Vercel project may be configured from either the Next.js app or the generated Vite app.
+// Both use the same Supabase project, but their public variable names differ.
+const supabaseUrl =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL;
 const supabasePublishableKey =
-  process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 if (!supabaseUrl || !supabasePublishableKey) {
+  const available = Object.keys(process.env)
+    .filter((name) => /^(?:SUPABASE_|NEXT_PUBLIC_SUPABASE_|VITE_SUPABASE_)/.test(name))
+    .sort();
   throw new Error(
-    "The Vercel Preview environment must define the Supabase URL and publishable key (SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, or their NEXT_PUBLIC_ equivalents).",
+    `The Vercel Preview environment must define the Supabase URL and publishable key. ` +
+      `Supported names: SUPABASE_URL/SUPABASE_PUBLISHABLE_KEY, ` +
+      `NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, or ` +
+      `VITE_SUPABASE_URL/VITE_SUPABASE_PUBLISHABLE_KEY. ` +
+      `Available Supabase variable names: ${available.join(", ") || "none"}.`,
   );
 }
 
