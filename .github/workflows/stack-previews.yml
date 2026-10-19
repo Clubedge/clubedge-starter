@@ -97,8 +97,23 @@ jobs:
           railway() { npx --yes @railway/cli@5 "$@"; }
           if [ "$api" = fastapi ]; then sleep 35; fi
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          railway environment list --json | grep -Fq "$RAILWAY_ENVIRONMENT"
-          railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --json
+          environment_id=$(railway environment list --json | node -e '
+            const fs = require("node:fs");
+            const wanted = process.argv[1];
+            const data = JSON.parse(fs.readFileSync(0, "utf8"));
+            const find = (value) => {
+              if (Array.isArray(value)) return value.map(find).find(Boolean);
+              if (!value || typeof value !== "object") return undefined;
+              const name = value.name ?? value.environmentName;
+              const id = value.id ?? value.environmentId;
+              if (name === wanted && typeof id === "string") return id;
+              return Object.values(value).map(find).find(Boolean);
+            };
+            const id = find(data);
+            if (!id) process.exit(1);
+            process.stdout.write(id);
+          ' "$RAILWAY_ENVIRONMENT")
+          export RAILWAY_ENVIRONMENT_ID="$environment_id"
 
           base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
           web_service="${base}-web"
