@@ -42,16 +42,23 @@ export function LoginPage() {
   useEffect(() => {
     if (!authClient.completeEmailVerification) return;
     const verificationParams = new URLSearchParams(window.location.search);
-    void authClient.completeEmailVerification(verificationParams).then(() => {
-      if (
-        verificationParams.has("oobCode") ||
-        (verificationParams.has("userId") && verificationParams.has("secret")) ||
-        verificationParams.has("code")
-      ) {
-        setMessage("Email confirmed. You can now sign in.");
-        window.history.replaceState({}, "", "/login");
-      }
-    }).catch(() => setError("That email confirmation link is invalid or has expired."));
+    void authClient
+      .completeEmailVerification(verificationParams)
+      .then(() => {
+        if (
+          verificationParams.has("oobCode") ||
+          (verificationParams.has("userId") && verificationParams.has("secret")) ||
+          verificationParams.has("code")
+        ) {
+          setMessage("Email confirmed. You can now sign in.");
+          window.history.replaceState({}, "", "/login");
+        }
+      })
+      .catch(() =>
+        setError(
+          "That email confirmation link is invalid or has expired.",
+        ),
+      );
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
