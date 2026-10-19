@@ -17,14 +17,14 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     name: React + Vite + ${{ matrix.api }}
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      PREVIEW_SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
-      PREVIEW_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -44,29 +44,34 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-      - name: Select auth for the stack preview
+      - name: Read Supabase settings from Vercel Preview
         id: auth
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          set -euo pipefail
-          if [ -n "$PREVIEW_SUPABASE_URL" ] && [ -n "$PREVIEW_SUPABASE_PUBLISHABLE_KEY" ]; then
-            echo "auth=supabase" >> "$GITHUB_OUTPUT"
-          else
-            echo "auth=none" >> "$GITHUB_OUTPUT"
-          fi
+          pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          pnpm dlx vercel@latest env run --environment=preview -- node scripts/stack-preview-auth.mjs
+      - name: Generate and publish the selected stack
+        id: generated
+        env:
+          API_KIND: ${{ matrix.api }}
+          AUTH_KIND: ${{ steps.auth.outputs.auth }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: node scripts/stack-preview-generate.mjs
       - name: Deploy the API and Vite frontend to Render
         id: deploy
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
           REPOSITORY: ${{ github.repository }}
-          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ steps.generated.outputs.branch }}
           PR_NUMBER: ${{ github.event.number }}
           API_KIND: ${{ matrix.api }}
           AUTH_KIND: ${{ steps.auth.outputs.auth }}
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-          SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
         run: node scripts/stack-preview-render.mjs deploy
       - name: Save the preview URL
         if: steps.deploy.outputs.url != ''
@@ -131,6 +136,8 @@ jobs:
       github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -151,6 +158,12 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
           API_KIND: ${{ matrix.api }}
         run: node scripts/stack-preview-render.mjs cleanup
+      - name: Delete the generated stack branch
+        continue-on-error: true
+        env:
+          API_KIND: ${{ matrix.api }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: git push origin --delete "stack-preview/pr-${PR_NUMBER}-${API_KIND}"
       - uses: neondatabase/delete-branch-action@v3
         continue-on-error: true
         with:

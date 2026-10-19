@@ -71,6 +71,8 @@
     "ROADMAP.md",
     "clubedge.template.json",
     "scripts/stack-preview-render.mjs",
+    "scripts/stack-preview-generate.mjs",
+    "scripts/stack-preview-auth.mjs",
     "apps/vite/server.mjs",
     "scripts/template-manifest.test.ts"
   ]

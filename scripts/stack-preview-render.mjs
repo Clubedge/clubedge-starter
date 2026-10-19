@@ -146,7 +146,9 @@ if (process.argv[2] === "cleanup") {
 
   const apiName = serviceNames.api;
   const webName = serviceNames.web;
-  const apiImageDir = apiKind === "fastapi" ? "apps/api-fastapi" : "apps/api";
+  // The CLI-generated preview normalizes either API stack to apps/api and React + Vite to
+  // apps/web, while moving their Dockerfiles to apps/api/Dockerfile and Dockerfile.
+  const apiImageDir = "apps/api";
   const apiPackage = apiKind === "hono" ? "@clubedge/api" : undefined;
   const apiUrlFallback = `https://${apiName}.onrender.com`;
   const webUrlFallback = `https://${webName}.onrender.com`;
@@ -179,10 +181,10 @@ if (process.argv[2] === "cleanup") {
   const frontend = await createService(
     owner,
     webName,
-    "apps/vite/Dockerfile",
+    "Dockerfile",
     {
-      APP_DIR: "apps/vite",
-      APP_PACKAGE: "@clubedge/vite",
+      APP_DIR: "apps/web",
+      APP_PACKAGE: "@clubedge/web",
       API_URL: apiUrl,
       PORT: "10000",
       ...(auth
