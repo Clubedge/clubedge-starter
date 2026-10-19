@@ -58,8 +58,7 @@ if (action === "delete") {
           .map(([, key, value]) => [key, value.replace(/^(['"])(.*)\1$/, "$2")]),
       );
       const url = values.SUPABASE_URL || values.API_URL;
-      const key =
-        values.SUPABASE_PUBLISHABLE_KEY || values.PUBLISHABLE_KEY || values.ANON_KEY;
+      const key = values.SUPABASE_PUBLISHABLE_KEY || values.PUBLISHABLE_KEY || values.ANON_KEY;
       if (url && key) {
         credentials = { url, key };
         break;
