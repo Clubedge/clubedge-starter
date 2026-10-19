@@ -27,7 +27,8 @@ jobs:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
       RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
       HAS_RAILWAY: ${{ secrets.RAILWAY_API_TOKEN != '' }}
-      HAS_VERCEL: ${{ secrets.VERCEL_TOKEN != '' }}
+      PREVIEW_SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
+      PREVIEW_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -47,34 +48,15 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-      - name: Read Supabase preview settings from the existing Vercel project
-        id: supabase
-        if: env.HAS_VERCEL == 'true'
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Select auth for the stack preview
+        id: auth
         run: |
           set -euo pipefail
-          mkdir -p .vercel
-          node -e 'require("node:fs").writeFileSync(".vercel/project.json", JSON.stringify({orgId: process.env.VERCEL_ORG_ID, projectId: process.env.VERCEL_PROJECT_ID}))'
-          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
-          node <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require("node:fs");
-          const source = fs.readFileSync(".vercel/.env.preview.local", "utf8");
-          const values = Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
-            const match = /^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)=(.*)$/.exec(line);
-            if (!match) return [];
-            let value = match[2].trim();
-            if (value.startsWith('"')) value = JSON.parse(value);
-            return [[match[1], value]];
-          }));
-          const url = values.NEXT_PUBLIC_SUPABASE_URL;
-          const key = values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-          if (!url || !key) throw new Error("The Vercel Preview environment needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
-          console.log(`supabase_url=${url}`);
-          console.log(`supabase_key=${key}`);
-          NODE
+          if [ -n "$PREVIEW_SUPABASE_URL" ] && [ -n "$PREVIEW_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "auth=supabase" >> "$GITHUB_OUTPUT"
+          else
+            echo "auth=none" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build the project generator
         run: |
           set -euo pipefail
@@ -84,21 +66,23 @@ jobs:
           pnpm build
       - name: Generate and deploy the stack preview
         id: deploy
-        if: steps.supabase.outputs.supabase_url != '' && env.HAS_RAILWAY == 'true'
+        if: env.HAS_RAILWAY == 'true'
         env:
           PR_NUMBER: ${{ github.event.number }}
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-          SUPABASE_URL: ${{ steps.supabase.outputs.supabase_url }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ steps.supabase.outputs.supabase_key }}
+          PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
+          SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
           api='${{ matrix.api }}'
+          auth="$PREVIEW_AUTH"
           target="$RUNNER_TEMP/stack-preview/clubedge-vite-${api}-pr-${PR_NUMBER}"
           mkdir -p "$(dirname "$target")"
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$target" \
             --template-dir "$GITHUB_WORKSPACE" --framework vite --api "$api" \
-            --deploy railway --auth supabase --no-git --no-install --yes
+            --deploy railway --auth "$auth" --no-git --no-install --yes
 
           cd "$target"
           node <<'NODE'
@@ -122,12 +106,14 @@ jobs:
             domain=$(railway domain --service "${base}-vite" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
               | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
           fi
+          echo "auth=${auth}" >> "$GITHUB_OUTPUT"
           echo "url=https://${domain}" >> "$GITHUB_OUTPUT"
       - name: Save the preview URL
         if: steps.deploy.outputs.url != ''
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
-        run: printf '%s\n' "$PREVIEW_URL" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
+          PREVIEW_AUTH: ${{ steps.deploy.outputs.auth }}
+        run: printf '%s\n%s\n' "$PREVIEW_URL" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
       - uses: actions/upload-artifact@v4
         if: steps.deploy.outputs.url != ''
         with:
@@ -157,24 +143,24 @@ jobs:
           marker="<!-- clubedge-stack-previews -->"
           body="$marker
           **Additional stack previews** for ${HEAD_SHA:0:7}
-          Each URL serves the React + Vite frontend; its API runs as a separate Railway service and the frontend proxies `/api` to it."
+          Each URL serves the React + Vite frontend; its API runs as a separate Railway service and the frontend proxies the api route to it."
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
             body="$body
-          - React + Vite + Hono (TypeScript) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
+          - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
           elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
             body="$body
           - React + Vite + Hono (TypeScript): no URL was published; check its job in the Stack previews workflow."
           fi
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
             body="$body
-          - React + Vite + FastAPI (Python) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
+          - React + Vite + FastAPI (Python, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
           elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
             body="$body
           - React + Vite + FastAPI (Python): no URL was published; check its job in the Stack previews workflow."
           fi
           if [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ] && [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
             body="$body
-          - No additional stack preview was published. Check the Stack previews workflow and the Railway, Neon, and Vercel settings described in SETUP.md."
+          - No additional stack preview was published. Check the Stack previews workflow and the Railway and Neon settings described in SETUP.md."
           fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
