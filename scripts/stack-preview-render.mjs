@@ -27,7 +27,15 @@ async function render(path, init = {}) {
   });
   const body = await response.text();
   if (!response.ok) {
-    throw new Error(`Render API ${init.method ?? "GET"} ${path} returned ${response.status}.`);
+    const detail = body ? `: ${body}` : "";
+    const reset = response.headers.get("ratelimit-reset");
+    const resetAt =
+      response.status === 429 && reset
+        ? ` Rate limit resets at ${new Date(Number(reset) * 1000).toISOString()}.`
+        : "";
+    throw new Error(
+      `Render API ${init.method ?? "GET"} ${path} returned ${response.status}${detail}.${resetAt}`,
+    );
   }
   return body ? JSON.parse(body) : undefined;
 }
@@ -59,20 +67,6 @@ async function deleteServices(owner) {
   }
 }
 
-async function waitUntilDeleted(owner) {
-  const deadline = Date.now() + 120_000;
-  while (Date.now() < deadline) {
-    const remaining = await Promise.all(
-      Object.values(serviceNames).map((name) => servicesNamed(owner, name)),
-    );
-    if (remaining.every((services) => services.length === 0)) return;
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
-  }
-  throw new Error(
-    "Render still lists the previous preview services after deletion; retry this workflow run.",
-  );
-}
-
 function envVars(entries) {
   return Object.entries(entries)
     .filter(([, value]) => value !== undefined && value !== null)
@@ -80,13 +74,56 @@ function envVars(entries) {
 }
 
 async function createService(owner, name, dockerfilePath, variables, healthCheckPath) {
+  const existing = (await servicesNamed(owner, name))[0];
+  const desiredEnvVars = envVars(variables);
+  if (existing) {
+    const currentEnvVars = await render(`/services/${encodeURIComponent(existing.id)}/env-vars`);
+    const current = (currentEnvVars ?? [])
+      .map((entry) => entry.envVar ?? entry)
+      .map(({ key, value }) => ({ key, value: String(value) }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    const desired = [...desiredEnvVars].sort((a, b) => a.key.localeCompare(b.key));
+    const envChanged = JSON.stringify(current) !== JSON.stringify(desired);
+    if (envChanged) {
+      await render(`/services/${encodeURIComponent(existing.id)}/env-vars`, {
+        method: "PUT",
+        body: JSON.stringify(desiredEnvVars),
+      });
+    }
+
+    const updates = { autoDeployTrigger: "commit" };
+    if (existing.repo !== `https://github.com/${process.env.REPOSITORY}`)
+      updates.repo = `https://github.com/${process.env.REPOSITORY}`;
+    if (existing.branch !== process.env.BRANCH) updates.branch = process.env.BRANCH;
+    const serviceNeedsUpdate =
+      existing.autoDeployTrigger !== "commit" || updates.repo || updates.branch;
+    if (serviceNeedsUpdate) {
+      await render(`/services/${encodeURIComponent(existing.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+    }
+
+    if (envChanged || serviceNeedsUpdate) {
+      await render(`/services/${encodeURIComponent(existing.id)}/deploys`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+    }
+
+    const url = existing.serviceDetails?.url;
+    if (!url) throw new Error(`Existing Render service ${name} has no public URL.`);
+    console.log(`Reusing Render service ${name}: ${url}`);
+    return { ...existing, url };
+  }
+
   const payload = {
     type: "web_service",
     name,
     ownerId: owner,
     repo: `https://github.com/${process.env.REPOSITORY}`,
     branch: process.env.BRANCH,
-    autoDeployTrigger: "off",
+    autoDeployTrigger: "commit",
     envVars: envVars(variables),
     serviceDetails: {
       runtime: "docker",
@@ -141,9 +178,6 @@ if (process.argv[2] === "cleanup") {
   if (!process.env.REPOSITORY || !process.env.BRANCH) {
     throw new Error("REPOSITORY and BRANCH are required to create Render services.");
   }
-  await deleteServices(owner);
-  await waitUntilDeleted(owner);
-
   const apiName = serviceNames.api;
   const webName = serviceNames.web;
   // The CLI-generated preview normalizes either API stack to apps/api and React + Vite to

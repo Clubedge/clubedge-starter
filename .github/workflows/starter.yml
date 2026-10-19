@@ -612,6 +612,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           # mail-api is the local inbox the browser tests read emails from; local mode has none,
@@ -678,13 +679,13 @@ jobs:
               infra: supabase,
               framework: next,
               modules: --auth supabase --storage supabase --jobs pg-boss,
-              mail-api: "http://127.0.0.1:54324",
+              mail-api: "http://127.0.0.1:55424",
             }
           - {
               infra: supabase,
               framework: tanstack-start,
               modules: --auth supabase --storage supabase --jobs pg-boss,
-              mail-api: "http://127.0.0.1:54324",
+              mail-api: "http://127.0.0.1:55424",
             }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -711,11 +712,30 @@ jobs:
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
         run: pnpm install --frozen-lockfile
+      - name: Move Supabase services to unused CI ports
+        if: matrix.infra == 'supabase'
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          sed -i \
+            -e 's/^port = 54321$/port = 55421/' \
+            -e 's/^port = 54322$/port = 55422/' \
+            -e 's/^port = 54323$/port = 55423/' \
+            -e 's/^port = 54324$/port = 55424/' \
+            -e 's/^smtp_port = 54325$/smtp_port = 55425/' \
+            supabase/config.toml
       - name: Start the local services
         working-directory: ${{ runner.temp }}/generated-app
         if: matrix.infra != 'neon'
         run: |
           if [ "${{ matrix.infra }}" != local ]; then
+            if [ "${{ matrix.infra }}" = supabase ]; then
+              for attempt in 1 2 3; do
+                if pnpm infra:up; then exit 0; fi
+                pnpm infra:down || true
+                sleep $((attempt * 10))
+              done
+              exit 1
+            fi
             pnpm infra:up
             exit 0
           fi
@@ -740,6 +760,7 @@ jobs:
           {
             echo "SUPABASE_URL=$API_URL"
             echo "SUPABASE_PUBLISHABLE_KEY=$key"
+            echo "DATABASE_URL=$DB_URL"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$key"
             # Lets the settings page delete accounts.
@@ -774,7 +795,7 @@ jobs:
             echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
             echo "DATABASE_URL_DIRECT=$direct" >> "$GITHUB_ENV"
           elif [ "${{ matrix.infra }}" = supabase ]; then
-            echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres" >> "$GITHUB_ENV"
+            : # DATABASE_URL comes from `supabase status -o env` above.
           elif [ "${{ matrix.infra }}" = local ]; then
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres" >> "$GITHUB_ENV"
           else
