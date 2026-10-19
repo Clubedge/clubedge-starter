@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import Any, TypedDict
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
@@ -24,6 +25,7 @@ class ApiDependencies:
     service_id: str
     is_ready: Callable[[], Awaitable[bool]]
     get_current_user: Callable[[Request], Awaitable[User | None]]
+    frontend_origin: str = "http://localhost:3000"
 
 
 def error(code: str, message: str, status: int) -> JSONResponse:
@@ -33,6 +35,13 @@ def error(code: str, message: str, status: int) -> JSONResponse:
 def create_app(dependencies: ApiDependencies) -> FastAPI:
     # The contract is openapi.yaml, so FastAPI's generated schema and docs are not served.
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[dependencies.frontend_origin],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:

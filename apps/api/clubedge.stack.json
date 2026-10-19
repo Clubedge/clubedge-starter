@@ -4,9 +4,20 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "deployment": {
+    "id": "api",
+    "port": 3001,
+    "healthPath": "/api/health",
+    "platforms": ["docker", "railway"]
+  },
   "modules": {
     "auth": {
-      "none": {}
+      "none": {},
+      "supabase": {
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.supabase.ts"
+        }
+      }
     },
     "storage": {
       "none": {}
@@ -27,7 +38,8 @@
       "none": {}
     },
     "deploy": {
-      "docker": {}
+      "docker": {},
+      "railway": {}
     }
   }
 }

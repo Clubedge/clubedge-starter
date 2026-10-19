@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from clubedge_api.app import ApiDependencies
-from clubedge_api.auth import get_current_user
+from fastapi import Request
+
+from clubedge_api.app import ApiDependencies, User
+from clubedge_api import auth
 from clubedge_api.db import is_database_ready
 from clubedge_api.settings import get_settings
 
@@ -24,8 +26,16 @@ def dependencies() -> ApiDependencies:
     async def is_ready() -> bool:
         return await is_database_ready(settings.database_url)
 
+    async def get_current_user(request: Request) -> User | None:
+        return await auth.get_current_user(
+            request,
+            settings.supabase_url,
+            settings.supabase_publishable_key,
+        )
+
     return ApiDependencies(
         service_id=str(site_config()["serviceId"]),
         is_ready=is_ready,
         get_current_user=get_current_user,
+        frontend_origin=settings.frontend_origin,
     )

@@ -11,6 +11,26 @@ export interface SupabaseAuthConfig {
   secretKey?: string;
 }
 
+/** Verifies a bearer token with Supabase Auth and maps it to the API's public user shape. */
+export async function getSupabaseBearerUser(
+  url: string,
+  publishableKey: string,
+  token: string,
+): Promise<{ id: string; email: string; displayName: string | null } | null> {
+  const client = createClient(url, publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data.user?.email) return null;
+  const metadata = data.user.user_metadata;
+  const displayName = metadata.full_name ?? metadata.name ?? null;
+  return {
+    id: data.user.id,
+    email: data.user.email,
+    displayName: typeof displayName === "string" ? displayName : null,
+  };
+}
+
 /** A request-scoped Supabase client. Storage adapters can reuse it for user-scoped access. */
 export function createSupabaseServerClient({
   url,

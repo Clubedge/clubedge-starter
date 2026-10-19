@@ -13,6 +13,7 @@
     "check:env": "pnpm --filter @clubedge/api check:env"
   },
   "dependencies": {
+    "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/contract": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",

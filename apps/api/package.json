@@ -13,6 +13,7 @@
     "check:env": "node --env-file-if-exists=.env.local --import tsx scripts/check-env.ts"
   },
   "dependencies": {
+    "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/contract": "workspace:*",
     "@clubedge/core": "workspace:*",
     "@clubedge/db": "workspace:*",

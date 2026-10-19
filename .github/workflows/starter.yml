@@ -14,6 +14,7 @@ permissions:
   contents: read
 env:
   DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+  UV_LOCKED: "1"
 jobs:
   # Unit tests on Windows: the local database server, folder storage (junctions instead of
   # symlinks), and scripts must work for developers on Windows too.
@@ -151,21 +152,25 @@ jobs:
   # TanStack Start projects for serverless platforms also build with that platform's preset. The
   # image's migrator itself is exercised by the docker jobs.
   deploy-config:
-    name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }})
+    name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }}, ${{ matrix.api || 'none' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { deploy: docker, framework: next }
-          - { deploy: fly, framework: next }
-          - { deploy: railway, framework: next }
-          - { deploy: render, framework: next }
-          - { deploy: vercel, framework: next }
-          - { deploy: vercel, framework: tanstack-start }
-          - { deploy: netlify, framework: next }
-          - { deploy: netlify, framework: tanstack-start }
+          - { deploy: docker, framework: next, auth: better-auth }
+          - { deploy: fly, framework: next, auth: better-auth }
+          - { deploy: railway, framework: next, auth: better-auth }
+          - { deploy: render, framework: next, auth: better-auth }
+          - { deploy: vercel, framework: next, auth: better-auth }
+          - { deploy: vercel, framework: tanstack-start, auth: better-auth }
+          - { deploy: netlify, framework: next, auth: better-auth }
+          - { deploy: netlify, framework: tanstack-start, auth: better-auth }
+          - { deploy: docker, framework: vite, api: hono, auth: supabase }
+          - { deploy: railway, framework: vite, api: hono, auth: supabase }
+          - { deploy: docker, framework: vite, api: fastapi, auth: supabase }
+          - { deploy: railway, framework: vite, api: fastapi, auth: supabase }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
     steps:
@@ -183,7 +188,7 @@ jobs:
           pnpm build
       - name: Generate the project
         run: |
-          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth better-auth             --no-git --no-install --yes
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth ${{ matrix.auth }} ${{ matrix.api && format('--api {0}', matrix.api) || '' }}             --no-git --no-install --yes
       - name: Check the platform config
         working-directory: ${{ runner.temp }}/app
         run: |
@@ -198,6 +203,17 @@ jobs:
             esac
             if [ "$want" = "${{ matrix.deploy }}" ]; then test -f "$config"; else test ! -e "$config"; fi
           done
+          if [ -n "${{ matrix.api }}" ]; then
+            python3 - <<'PY'
+          import json
+          services = json.load(open("package.json", encoding="utf-8"))["clubedge"]["services"]
+          assert services["framework"]["role"] == "frontend"
+          assert services["framework"]["id"] == "web"
+          assert services["api"]["role"] == "api"
+          assert services["api"]["id"] == "api"
+          assert services["api"]["dockerfile"] == f"apps/api/Dockerfile"
+          PY
+          fi
           case "${{ matrix.deploy }}" in
             fly)
               python3 - <<'PY'

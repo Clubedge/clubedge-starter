@@ -101,6 +101,11 @@ export function LandingPage() {
             >
               Dashboard
             </Link>
+            {/* clubedge:if auth=supabase */}
+            <Link className="text-sm text-muted-foreground hover:text-foreground" to={"/login" as never}>
+              Sign in
+            </Link>
+            {/* clubedge:end */}
           </div>
         </nav>
       </header>

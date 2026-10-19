@@ -10,8 +10,8 @@ import {
   Settings2,
   ShieldCheck,
 } from "lucide-react";
-import { getRouteApi } from "@tanstack/react-router";
-import { createApiClient, type Ready, type User } from "@clubedge/contract";
+import { getRouteApi, redirect } from "@tanstack/react-router";
+import { type Ready, type User } from "@clubedge/contract";
 
 import { Badge } from "@clubedge/ui/components/badge";
 import { buttonVariants } from "@clubedge/ui/components/button";
@@ -34,6 +34,8 @@ import {
 import { siteConfig } from "@/config/site";
 import { AccountButton } from "@/components/dashboard/account-button";
 import { DashboardShell, type DashboardArea } from "@/components/dashboard/dashboard-shell";
+import { api } from "@/lib/api";
+import { authEnabled } from "@/lib/auth-enabled";
 
 const modules = [
   {
@@ -65,8 +67,6 @@ const setupRows = [
   },
 ];
 
-const api = createApiClient();
-
 type DashboardData = {
   user: User | null;
   /** The API's readiness, or "unavailable" when it could not be reached. */
@@ -82,6 +82,9 @@ export async function loadDashboard(): Promise<DashboardData> {
     api.GET("/api/session").catch(() => null),
     api.GET("/api/ready").catch(() => null),
   ]);
+  if (authEnabled && session && !session.data?.user) {
+    throw redirect({ href: "/login?next=%2Fdashboard" });
+  }
   return {
     user: session?.data?.user ?? null,
     api: ready?.data?.status === "ok" ? "ok" : "unavailable",

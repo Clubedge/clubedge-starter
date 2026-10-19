@@ -20,6 +20,10 @@ RUN pnpm dlx turbo@^2.5.0 prune ${APP_PACKAGE} --docker
 
 # The manifests come first, so the install layer is cached until a dependency changes.
 FROM base AS builder
+ARG VITE_API_URL
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ENV VITE_API_URL=${VITE_API_URL} VITE_SUPABASE_URL=${VITE_SUPABASE_URL} VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
 COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .

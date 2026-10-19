@@ -21,6 +21,7 @@ jobs:
     # clubedge:end
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      UV_LOCKED: "1"
       REDIS_URL: redis://127.0.0.1:6379 # clubedge:only jobs=bullmq
       FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099 # clubedge:only auth=firebase
       FIREBASE_PROJECT_ID: demo-clubedge # clubedge:only auth=firebase

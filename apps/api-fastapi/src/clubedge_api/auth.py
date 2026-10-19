@@ -1,13 +1,13 @@
-"""The signed-in user for a request.
-
-This API has no authentication module yet, so nobody is signed in; an auth provider replaces
-this module the way the full-stack apps' variants do.
-"""
+"""Default auth implementation for an API without an auth provider."""
 
 from fastapi import Request
 
 from clubedge_api.app import User
 
 
-async def get_current_user(request: Request) -> User | None:
+async def get_current_user(
+    request: Request,
+    supabase_url: str | None = None,
+    supabase_publishable_key: str | None = None,
+) -> User | None:
     return None

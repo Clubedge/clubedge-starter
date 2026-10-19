@@ -4,15 +4,26 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "deployment": {
+    "id": "api",
+    "port": 3001,
+    "healthPath": "/api/health",
+    "platforms": ["docker", "railway"]
+  },
   "toolchain": {
     "name": "uv",
     "check": ["uv", "--version"],
-    "install": ["uv", "sync"],
+    "install": ["uv", "sync", "--locked"],
     "url": "https://docs.astral.sh/uv/getting-started/installation/"
   },
   "modules": {
     "auth": {
-      "none": {}
+      "none": {},
+      "supabase": {
+        "replace": {
+          "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_supabase.py"
+        }
+      }
     },
     "storage": {
       "none": {}
@@ -33,7 +44,8 @@
       "none": {}
     },
     "deploy": {
-      "docker": {}
+      "docker": {},
+      "railway": {}
     }
   }
 }

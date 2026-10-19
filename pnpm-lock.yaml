@@ -42,6 +42,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@clubedge/auth-supabase':
+        specifier: workspace:*
+        version: link:../../packages/auth-supabase
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract
@@ -209,6 +212,9 @@ importers:
 
   apps/vite:
     dependencies:
+      '@clubedge/auth-supabase':
+        specifier: workspace:*
+        version: link:../../packages/auth-supabase
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract
