@@ -70,6 +70,8 @@
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
     "clubedge.template.json",
+    "scripts/stack-preview-render.mjs",
+    "apps/vite/server.mjs",
     "scripts/template-manifest.test.ts"
   ]
 }

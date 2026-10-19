@@ -5,12 +5,18 @@
 # the production database before a new version starts.
 ARG APP_DIR=apps/api
 
-FROM node:22-slim AS node-runtime
+# Build the shared migrator in a Node workspace that has esbuild and the database packages.
+FROM node:22-slim AS migrator-builder
+RUN corepack enable
+WORKDIR /workspace
+COPY . .
+RUN pnpm install --frozen-lockfile \
+    && node scripts/build-migrator.mjs /tmp/.migrator
 
 FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
+COPY --from=migrator-builder /usr/local/bin/node /usr/local/bin/node
 COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /uvx /bin/
 ARG APP_DIR
 WORKDIR /app
@@ -22,10 +28,8 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY ${APP_DIR}/src ./src
 RUN uv sync --locked --no-dev
 
-# Railway runs migrations before switching API deployments. Bundle the shared Node migrator in
-# this Python image too, so the generated Railway configuration can use the same release command.
-COPY scripts/migrate.mjs scripts/build-migrator.mjs ./scripts/
-RUN node scripts/build-migrator.mjs /tmp/.migrator && cp -R /tmp/.migrator/. /app/
+# Bundle the shared Node migrator so deploy platforms can run it before release.
+COPY --from=migrator-builder /tmp/.migrator/ ./
 
 RUN useradd --system --uid 1001 app
 USER app

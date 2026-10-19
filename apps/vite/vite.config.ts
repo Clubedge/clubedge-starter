@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
   }
 
   // The browser calls the API on its own origin, so cookies stay first-party. The dev server
-  // and `vite preview` forward /api to the API, as the Caddyfile does in production.
+  // and `vite preview` forward /api to the API, as the production server does.
   const proxy = {
     "/api": { target: process.env.API_URL ?? "http://127.0.0.1:3001", changeOrigin: true },
   };

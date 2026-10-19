@@ -1,5 +1,5 @@
-# Production image for the React + Vite app: Caddy serves the static build and forwards /api
-# to the API (see Caddyfile). Build it from the repository root.
+# Production image for the React + Vite app: Node serves the static build and forwards /api
+# to the API (see server.mjs). Build it from the repository root.
 # Generated projects keep the app in apps/web; the starter repository builds it with
 #   docker build -f apps/vite/Dockerfile --build-arg APP_DIR=apps/vite \
 #     --build-arg APP_PACKAGE=@clubedge/vite .
@@ -30,10 +30,12 @@ COPY --from=pruner /app/out/full/ .
 COPY tsconfig.base.json ./
 RUN pnpm build
 
-# The build is static files, so the runtime needs no Node.js.
-FROM caddy:2-alpine AS runner
+# Serve static files and proxy API requests from a standard Node runtime.
+FROM node:22-alpine AS runner
 ARG APP_DIR
 ENV PORT=3000
-COPY --from=builder /app/${APP_DIR}/Caddyfile /etc/caddy/Caddyfile
-COPY --from=builder /app/${APP_DIR}/dist /srv
+WORKDIR /srv
+COPY --from=builder /app/${APP_DIR}/dist ./dist
+COPY --from=builder /app/${APP_DIR}/server.mjs ./server.mjs
 EXPOSE 3000
+CMD ["node", "server.mjs"]

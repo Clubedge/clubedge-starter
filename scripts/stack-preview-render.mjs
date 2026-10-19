@@ -7,7 +7,8 @@ const apiKind = process.env.API_KIND;
 
 if (!token) throw new Error("RENDER_API_KEY is required.");
 if (!pr || !/^\d+$/.test(pr)) throw new Error("PR_NUMBER must be a pull request number.");
-if (!new Set(["hono", "fastapi"]).has(apiKind)) throw new Error("API_KIND must be hono or fastapi.");
+if (!new Set(["hono", "fastapi"]).has(apiKind))
+  throw new Error("API_KIND must be hono or fastapi.");
 
 const serviceNames = {
   api: `clubedge-starter-vite-${apiKind}-pr-${pr}-api`,
@@ -61,11 +62,15 @@ async function deleteServices(owner) {
 async function waitUntilDeleted(owner) {
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    const remaining = await Promise.all(Object.values(serviceNames).map((name) => servicesNamed(owner, name)));
+    const remaining = await Promise.all(
+      Object.values(serviceNames).map((name) => servicesNamed(owner, name)),
+    );
     if (remaining.every((services) => services.length === 0)) return;
     await new Promise((resolve) => setTimeout(resolve, 5_000));
   }
-  throw new Error("Render still lists the previous preview services after deletion; retry this workflow run.");
+  throw new Error(
+    "Render still lists the previous preview services after deletion; retry this workflow run.",
+  );
 }
 
 function envVars(entries) {
@@ -116,7 +121,9 @@ async function waitForHealth(url, name) {
     }
     await new Promise((resolve) => setTimeout(resolve, 10_000));
   }
-  throw new Error(`${name} did not pass /api/health within 20 minutes (last result: ${lastStatus}).`);
+  throw new Error(
+    `${name} did not pass /api/health within 20 minutes (last result: ${lastStatus}).`,
+  );
 }
 
 async function output(name, value) {
