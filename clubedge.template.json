@@ -48,11 +48,15 @@
   ],
   "conditional": [
     ".env.example",
+    "apps/vite/.env.example",
+    "apps/api/.env.example",
+    "apps/api-fastapi/.env.example",
     ".github/workflows/ci.yml",
     ".github/workflows/deploy.yml",
     ".github/workflows/preview.yml",
     "AGENTS.md",
     "README.md",
+    "apps/vite/src/routes/index.tsx",
     "SETUP.md",
     "docker-compose.dev.yml",
     "docker-compose.yml",
@@ -63,8 +67,12 @@
     ".github/assets",
     ".github/dependabot.yml",
     ".github/workflows/starter.yml",
+    ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
     "clubedge.template.json",
+    "scripts/stack-preview-render.mjs",
+    "scripts/stack-preview-generate.mjs",
+    "scripts/stack-preview-supabase.mjs",
     "scripts/template-manifest.test.ts"
   ]
 }

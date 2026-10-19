@@ -57,6 +57,37 @@ jobs:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           compare_branch: ${{ env.NEON_BRANCH }}
           api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Identify the app stack for the preview comment
+        id: stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f apps/web/package.json ]; then
+            framework=$(node -e 'const p=require("./apps/web/package.json"); const d={...p.dependencies,...p.devDependencies}; console.log(d.vite ? "React + Vite" : d["@tanstack/react-start"] ? "TanStack Start" : "Next.js")')
+          else
+            framework="Next.js"
+          fi
+          api=""
+          if [ "$framework" = "React + Vite" ]; then
+            if [ -f apps/api/pyproject.toml ] || { [ -f apps/api-fastapi/pyproject.toml ] && [ ! -f apps/api/package.json ]; }; then
+              api=" + FastAPI (Python)"
+            elif [ -f apps/api/package.json ]; then
+              api=" + Hono (TypeScript)"
+            fi
+          fi
+          auth=""
+          if [ -f clubedge/modules/auth.json ]; then
+            auth=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("clubedge/modules/auth.json", "utf8")).default)')
+            case "$auth" in
+              supabase) auth=" + Supabase Auth" ;;
+              better-auth) auth=" + Better Auth" ;;
+              firebase) auth=" + Firebase Auth" ;;
+              appwrite) auth=" + Appwrite Auth" ;;
+              none) auth="" ;;
+              *) auth=" + $auth auth" ;;
+            esac
+          fi
+          echo "label=${framework}${api}${auth}" >> "$GITHUB_OUTPUT"
       # clubedge:if deploy=vercel
       # A Vercel preview deployment with the project's Preview variables, except the database,
       # which is the pull request's branch.
@@ -124,6 +155,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          STACK_LABEL: ${{ steps.stack.outputs.label }}
           # Empty without their deploy step.
           VERCEL_URL: ${{ steps.vercel.outputs.url }}
           RAILWAY_URL: ${{ steps.railway.outputs.url }}
@@ -132,11 +164,12 @@ jobs:
           marker="<!-- clubedge-preview -->"
           body="$marker
           **Preview** for ${HEAD_SHA:0:7}
+          - Stack: $STACK_LABEL
           - Database: Neon branch \`$NEON_BRANCH\`, with this pull request's migrations"
           if [ -n "$VERCEL_URL" ]; then body="$body
-          - App on Vercel: $VERCEL_URL"; fi
+          - Vercel app ($STACK_LABEL): $VERCEL_URL"; fi
           if [ -n "$RAILWAY_URL" ]; then body="$body
-          - App on Railway: $RAILWAY_URL"; fi
+          - Railway app ($STACK_LABEL): $RAILWAY_URL"; fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
           if [ -n "$id" ]; then

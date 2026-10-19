@@ -5,8 +5,14 @@ import type { ApiDependencies } from "@/app";
 import { getCurrentUser } from "./auth";
 import { isReady } from "./db";
 
+const supabase = {
+  url: process.env.SUPABASE_URL ?? "",
+  publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
+};
+
 export const dependencies: ApiDependencies = {
   serviceId: siteConfig.serviceId,
+  frontendOrigin: process.env.FRONTEND_URL ?? "http://localhost:3000",
   isReady,
-  getCurrentUser,
+  getCurrentUser: (request) => getCurrentUser(request, supabase),
 };

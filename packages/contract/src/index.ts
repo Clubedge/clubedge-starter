@@ -14,11 +14,28 @@ export type ApiError = components["schemas"]["Error"];
  * A typed client for the API. Paths start with /api, so the default base URL (the page's own
  * origin) reaches the API through the frontend's proxy and keeps cookies first-party.
  */
-export function createApiClient(options: { baseUrl?: string; fetch?: typeof fetch } = {}) {
-  return createClient<paths>({
+export function createApiClient(
+  options: {
+    baseUrl?: string;
+    fetch?: typeof fetch;
+    accessToken?: () => Promise<string | undefined>;
+  } = {},
+) {
+  const client = createClient<paths>({
     baseUrl: options.baseUrl ?? "",
     ...(options.fetch ? { fetch: options.fetch } : {}),
   });
+  if (options.accessToken) {
+    const getAccessToken = options.accessToken;
+    client.use({
+      async onRequest({ request }) {
+        const token = await getAccessToken();
+        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+        return request;
+      },
+    });
+  }
+  return client;
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;

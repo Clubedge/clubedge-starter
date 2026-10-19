@@ -1,10 +1,12 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import type { ApiError, Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError } from "@clubedge/core";
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
   serviceId: string;
+  frontendOrigin?: string;
   isReady(): Promise<boolean>;
   getCurrentUser(request: Request): Promise<User | null>;
 }
@@ -15,6 +17,15 @@ const internal: ApiError = { error: { code: "internal_error", message: "Somethin
 /** The API, implementing packages/contract/openapi.yaml. */
 export function createApp(dependencies: ApiDependencies) {
   const app = new Hono();
+  app.use(
+    "/api/*",
+    cors({
+      origin: dependencies.frontendOrigin ?? "http://localhost:3000",
+      allowHeaders: ["Authorization", "Content-Type"],
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      maxAge: 600,
+    }),
+  );
 
   app.get("/api/health", (c) =>
     c.json<Health>({

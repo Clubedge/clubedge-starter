@@ -23,6 +23,9 @@ class Settings:
     host: str
     port: int
     database_url: str | None
+    frontend_origin: str
+    supabase_url: str | None
+    supabase_publishable_key: str | None
 
 
 @cache
@@ -32,4 +35,7 @@ def get_settings() -> Settings:
         host=os.environ.get("HOST") or "127.0.0.1",
         port=int(os.environ.get("PORT") or "3001"),
         database_url=os.environ.get("DATABASE_URL") or None,
+        frontend_origin=os.environ.get("FRONTEND_URL") or "http://localhost:3000",
+        supabase_url=os.environ.get("SUPABASE_URL") or None,
+        supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY") or None,
     )

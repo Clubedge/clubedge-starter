@@ -1,0 +1,169 @@
+# Additional previews for both decoupled Vite stacks. This maintainer workflow is excluded from
+# generated projects; the existing Preview workflow remains unchanged.
+name: Stack previews
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: stack-preview-${{ github.event.number }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+jobs:
+  deploy:
+    if: >-
+      github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    name: React + Vite + ${{ matrix.api }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [hono, fastapi]
+    env:
+      NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Apply migrations to this stack's Neon branch
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+      - name: Read the main Supabase project's URL and publishable key
+        id: auth
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
+        run: node scripts/stack-preview-supabase.mjs
+      - name: Generate and publish the selected stack
+        id: generated
+        env:
+          API_KIND: ${{ matrix.api }}
+          AUTH_KIND: ${{ steps.auth.outputs.auth }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: node scripts/stack-preview-generate.mjs
+      - name: Deploy the API and Vite frontend to Render
+        id: deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ steps.generated.outputs.branch }}
+          PR_NUMBER: ${{ github.event.number }}
+          API_KIND: ${{ matrix.api }}
+          AUTH_KIND: ${{ steps.auth.outputs.auth }}
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+        run: node scripts/stack-preview-render.mjs deploy
+      - name: Save the preview URL
+        if: steps.deploy.outputs.url != ''
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
+        run: printf '%s\n%s\n' "$PREVIEW_URL" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
+      - uses: actions/upload-artifact@v4
+        if: steps.deploy.outputs.url != ''
+        with:
+          name: stack-preview-${{ matrix.api }}
+          path: ${{ runner.temp }}/stack-preview-${{ matrix.api }}.txt
+
+  comment:
+    if: >-
+      always() && github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [deploy]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: stack-preview-*
+          path: ${{ runner.temp }}/stack-previews
+          merge-multiple: true
+      - name: Comment the additional previews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          marker="<!-- clubedge-stack-previews -->"
+          body="$marker
+          **Additional stack previews** for ${HEAD_SHA:0:7}
+          Each URL serves the React + Vite frontend; its API runs as a separate Render web service, and the frontend sends its API requests there. Render free services may take about a minute to wake after inactivity."
+          if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
+          else
+            body="$body
+          - React + Vite + Hono (TypeScript): no URL was published; check its job in the Stack previews workflow."
+          fi
+          if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
+            body="$body
+          - React + Vite + FastAPI (Python, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
+          else
+            body="$body
+          - React + Vite + FastAPI (Python): no URL was published; check its job in the Stack previews workflow."
+          fi
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [hono, fastapi]
+    env:
+      NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Delete the stack's Render services
+        continue-on-error: true
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
+          API_KIND: ${{ matrix.api }}
+        run: node scripts/stack-preview-render.mjs cleanup
+      - name: Delete the generated stack branch
+        continue-on-error: true
+        env:
+          API_KIND: ${{ matrix.api }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: git push origin --delete "stack-preview/pr-${PR_NUMBER}-${API_KIND}"
+      - uses: neondatabase/delete-branch-action@v3
+        continue-on-error: true
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
