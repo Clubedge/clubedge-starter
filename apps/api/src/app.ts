@@ -17,12 +17,15 @@ const internal: ApiError = { error: { code: "internal_error", message: "Somethin
 /** The API, implementing packages/contract/openapi.yaml. */
 export function createApp(dependencies: ApiDependencies) {
   const app = new Hono();
-  app.use("/api/*", cors({
-    origin: dependencies.frontendOrigin ?? "http://localhost:3000",
-    allowHeaders: ["Authorization", "Content-Type"],
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    maxAge: 600,
-  }));
+  app.use(
+    "/api/*",
+    cors({
+      origin: dependencies.frontendOrigin ?? "http://localhost:3000",
+      allowHeaders: ["Authorization", "Content-Type"],
+      allowMethods: ["GET", "POST", "OPTIONS"],
+      maxAge: 600,
+    }),
+  );
 
   app.get("/api/health", (c) =>
     c.json<Health>({

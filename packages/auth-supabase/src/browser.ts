@@ -6,4 +6,3 @@ export function createSupabaseBrowserClient(url: string, publishableKey: string)
     auth: { autoRefreshToken: true, detectSessionInUrl: true, persistSession: true },
   });
 }
-

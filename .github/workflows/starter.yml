@@ -261,11 +261,21 @@ jobs:
           PY
               ;;
           esac
-          # check:env keeps only the selected modules' requirements (this job uses Better Auth).
-          ! grep -n "clubedge:" apps/web/src/env/production.ts
+          # Full-stack apps check their own environment schema; Vite delegates to its API.
+          if [ "${{ matrix.framework }}" = vite ]; then env_schema=apps/api/.env.example; else env_schema=apps/web/src/env/production.ts; fi
+          ! grep -n "clubedge:" "$env_schema"
           grep -q '"check:env"' apps/web/package.json
-          grep -q 'BETTER_AUTH_SECRET' apps/web/src/env/production.ts
-          ! grep -q 'SUPABASE' apps/web/src/env/production.ts
+          case "${{ matrix.auth }}" in
+            better-auth)
+              grep -q 'BETTER_AUTH_SECRET' "$env_schema"
+              ! grep -q 'SUPABASE' "$env_schema"
+              ;;
+            supabase)
+              grep -q 'SUPABASE_URL' "$env_schema"
+              grep -q 'SUPABASE_PUBLISHABLE_KEY' "$env_schema"
+              ! grep -q 'BETTER_AUTH_SECRET' "$env_schema"
+              ;;
+          esac
       - name: Lint the deploy workflow
         working-directory: ${{ runner.temp }}/app
         run: |

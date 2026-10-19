@@ -13,17 +13,35 @@ import { ResetPasswordPage } from "@/routes/reset-password";
 const rootRoute = createRootRoute({
   component: () => (
     <ThemeProvider>
-      <TooltipProvider><Outlet /></TooltipProvider>
+      <TooltipProvider>
+        <Outlet />
+      </TooltipProvider>
     </ThemeProvider>
   ),
   errorComponent: RouteError,
   notFoundComponent: NotFound,
 });
 
-const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: LandingPage });
-const loginRoute = createRoute({ getParentRoute: () => rootRoute, path: "/login", component: LoginPage });
-const forgotPasswordRoute = createRoute({ getParentRoute: () => rootRoute, path: "/forgot-password", component: ForgotPasswordPage });
-const resetPasswordRoute = createRoute({ getParentRoute: () => rootRoute, path: "/reset-password", component: ResetPasswordPage });
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: LandingPage,
+});
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  component: LoginPage,
+});
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: ResetPasswordPage,
+});
 export const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
@@ -31,5 +49,15 @@ export const dashboardRoute = createRoute({
   component: DashboardPage,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, loginRoute, forgotPasswordRoute, resetPasswordRoute, dashboardRoute]);
-export const router = createRouter({ routeTree, scrollRestoration: true, defaultPreload: "intent" });
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  loginRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+  dashboardRoute,
+]);
+export const router = createRouter({
+  routeTree,
+  scrollRestoration: true,
+  defaultPreload: "intent",
+});

@@ -16,19 +16,19 @@
       "supabase": {
         "files": [
           "src/lib/auth.ts",
-          "src/lib/api.supabase.ts",
+          "src/variants/api.supabase.ts",
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
           "src/variants/router.supabase.tsx",
-          "src/components/dashboard/account-button.supabase.tsx",
-          "src/lib/auth-enabled.supabase.ts"
+          "src/components/dashboard/variants/account-button.supabase.tsx",
+          "src/variants/auth-enabled.supabase.ts"
         ],
         "replace": {
           "src/router.tsx": "src/variants/router.supabase.tsx",
-          "src/lib/api.ts": "src/lib/api.supabase.ts",
-          "src/lib/auth-enabled.ts": "src/lib/auth-enabled.supabase.ts",
-          "src/components/dashboard/account-button.tsx": "src/components/dashboard/account-button.supabase.tsx"
+          "src/lib/api.ts": "src/variants/api.supabase.ts",
+          "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
         }
       }
     },
