@@ -45,7 +45,7 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
       - name: Create this stack's Supabase preview branch and read its generated keys
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
       - name: Delete this stack's Supabase preview branch
