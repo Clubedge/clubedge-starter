@@ -103,7 +103,7 @@ jobs:
           marker="<!-- clubedge-stack-previews -->"
           body="$marker
           **Additional stack previews** for ${HEAD_SHA:0:7}
-          Each URL serves the React + Vite frontend; its API runs as a separate Render web service and the frontend proxies `/api` to it. Render free services may take about a minute to wake after inactivity."
+          Each URL serves the React + Vite frontend; its API runs as a separate Render web service, and the frontend sends its API requests there. Render free services may take about a minute to wake after inactivity."
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
             body="$body
           - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
