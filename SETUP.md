@@ -520,6 +520,7 @@ It runs once the repository has the Neon settings below, in Settings, then Secre
 - the secret `RAILWAY_API_TOKEN`, an account or workspace token (a project token can't create environments), and the variables `RAILWAY_PROJECT_ID` and `RAILWAY_SERVICE`. Each pull request gets a Railway environment, `pr-<number>`, copied from production with its own domain and the branch as its database; it is deleted with the branch. <!-- clubedge:only deploy=railway -->
 
 <!-- clubedge:only starter-repository -->
+
 The Starter repository also runs `.github/workflows/stack-previews.yml`, which deploys additional React + Vite previews with Hono and FastAPI APIs to separate Railway environments. It uses the existing `NEON_PROJECT_ID`, `RAILWAY_PROJECT_ID`, `NEON_API_KEY`, and `RAILWAY_API_TOKEN` settings. By default, these previews use no auth provider. To preview Supabase Auth too, set the repository variables `STACK_PREVIEW_SUPABASE_URL` and `STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY` to a dedicated preview Supabase project. Each stack gets its own Neon branch and Railway environment; both are deleted when the pull request closes. The preview comment labels the Hono and FastAPI URLs and auth selection separately. These settings apply only to the Starter repository and are not copied into generated projects.
 <!-- clubedge:only starter-repository -->
 

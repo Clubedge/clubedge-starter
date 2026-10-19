@@ -98,6 +98,7 @@ jobs:
           if [ "$api" = fastapi ]; then sleep 35; fi
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
           railway environment list --json | grep -Fq "$RAILWAY_ENVIRONMENT"
+          railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --json
 
           base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
           web_service="${base}-web"
