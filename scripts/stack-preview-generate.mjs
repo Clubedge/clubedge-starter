@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -55,7 +55,9 @@ try {
   publisherCreated = true;
   const publish = (args) => run("git", args, { cwd: publisher });
   publish(["switch", "--orphan", branch]);
-  publish(["rm", "-rf", "."]);
+  for (const entry of await readdir(publisher)) {
+    if (entry !== ".git") await rm(join(publisher, entry), { recursive: true, force: true });
+  }
   await cp(project, publisher, { recursive: true, force: true });
   publish(["add", "-A"]);
   publish(["config", "user.name", "github-actions[bot]"]);
