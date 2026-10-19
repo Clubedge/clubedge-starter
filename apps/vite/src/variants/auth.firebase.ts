@@ -43,6 +43,8 @@ export const authClient: AuthClient = {
     if (!result.user.emailVerified) {
       try {
         await sendEmailVerification(result.user);
+      } catch {
+        // Preserve the verification-required error even when Firebase cannot resend now.
       } finally {
         await signOut(auth);
       }

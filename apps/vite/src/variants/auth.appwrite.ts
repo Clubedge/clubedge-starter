@@ -8,6 +8,12 @@ const account = configured
   ? new Account(new Client().setEndpoint(endpoint).setProject(projectId))
   : undefined;
 
+function verificationUrl(returnUrl: string): string {
+  const url = new URL(returnUrl);
+  url.searchParams.set("next", "/dashboard");
+  return url.toString();
+}
+
 export const authClient: AuthClient = {
   configured,
   async getAccessToken() {
@@ -23,8 +29,18 @@ export const authClient: AuthClient = {
     await account.createEmailPasswordSession({ email, password });
     const user = await account.get();
     if (!user.emailVerification) {
-      await account.deleteSession({ sessionId: "current" });
-      throw new Error("Confirm your email address before signing in.");
+      try {
+        await account.createVerification({
+          url: verificationUrl(`${window.location.origin}/login?next=%2Fdashboard`),
+        });
+      } catch {
+        // Keep the verification-required result: the UI can invite the user to retry later.
+      } finally {
+        await account.deleteSession({ sessionId: "current" });
+      }
+      const error = new Error("Your email is not verified yet.");
+      error.name = "EmailVerificationRequiredError";
+      throw error;
     }
   },
   async signUp(email, password, returnUrl) {
@@ -35,13 +51,17 @@ export const authClient: AuthClient = {
       password,
       name: email.split("@")[0] ?? email,
     });
-    const verificationUrl = new URL(returnUrl);
-    verificationUrl.searchParams.set("next", "/dashboard");
-    await account.createEmailPasswordSession({ email, password });
+    let sessionCreated = false;
     try {
-      await account.createVerification({ url: verificationUrl.toString() });
+      await account.createEmailPasswordSession({ email, password });
+      sessionCreated = true;
+      await account.createVerification({ url: verificationUrl(returnUrl) });
+    } catch {
+      const error = new Error("Could not send a verification email for the new account.");
+      error.name = "EmailVerificationDeliveryError";
+      throw error;
     } finally {
-      await account.deleteSession({ sessionId: "current" });
+      if (sessionCreated) await account.deleteSession({ sessionId: "current" });
     }
     return { needsConfirmation: true };
   },

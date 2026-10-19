@@ -88,7 +88,9 @@ export function LoginPage() {
     } catch (cause) {
       setBusy(false);
       if (cause instanceof Error && cause.name === "EmailVerificationRequiredError") {
-        setError("Your email is not verified. We sent a new verification link.");
+        setError(
+          "Your email is not verified. Check your inbox or try signing in again for a new link.",
+        );
       } else if (cause instanceof Error && cause.name === "EmailVerificationDeliveryError") {
         setError(
           "Your account was created, but we could not send the verification email. Sign in to request another link.",
