@@ -96,7 +96,11 @@ function proxy(request, response) {
     },
   );
   upstream.on("error", () => {
-    if (!response.headersSent) response.writeHead(502, { "content-type": "application/json" });
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+    response.writeHead(502, { "content-type": "application/json" });
     response.end(JSON.stringify({ error: "The API preview is unavailable." }));
   });
   request.pipe(upstream);
