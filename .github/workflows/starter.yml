@@ -342,8 +342,8 @@ jobs:
               modules: --auth better-auth --cache memory --jobs pg-boss,
             }
           # A frontend and a separate API, joined by packages/contract.
-          - { name: vite-hono, framework: vite, modules: --api hono }
-          - { name: vite-fastapi, framework: vite, modules: --api fastapi }
+          - { name: vite-hono, framework: vite, modules: --auth none --api hono }
+          - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
