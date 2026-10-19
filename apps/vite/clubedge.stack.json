@@ -15,6 +15,7 @@
       "none": {},
       "supabase": {
         "files": [
+          "src/lib/auth-client.ts",
           "src/lib/auth.ts",
           "src/variants/api.supabase.ts",
           "src/routes/login.tsx",
@@ -25,6 +26,68 @@
           "src/variants/auth-enabled.supabase.ts"
         ],
         "replace": {
+          "src/lib/auth.ts": "src/variants/auth.supabase.ts",
+          "src/router.tsx": "src/variants/router.supabase.tsx",
+          "src/lib/api.ts": "src/variants/api.supabase.ts",
+          "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
+        }
+      },
+      "firebase": {
+        "files": [
+          "src/lib/auth-client.ts",
+          "src/routes/login.tsx",
+          "src/routes/forgot-password.tsx",
+          "src/routes/reset-password.tsx",
+          "src/variants/auth.firebase.ts",
+          "src/variants/router.supabase.tsx",
+          "src/variants/api.supabase.ts",
+          "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/variants/account-button.supabase.tsx"
+        ],
+        "replace": {
+          "src/lib/auth.ts": "src/variants/auth.firebase.ts",
+          "src/router.tsx": "src/variants/router.supabase.tsx",
+          "src/lib/api.ts": "src/variants/api.supabase.ts",
+          "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
+        }
+      },
+      "appwrite": {
+        "files": [
+          "src/lib/auth-client.ts",
+          "src/routes/login.tsx",
+          "src/routes/forgot-password.tsx",
+          "src/routes/reset-password.tsx",
+          "src/variants/auth.appwrite.ts",
+          "src/variants/router.supabase.tsx",
+          "src/variants/api.supabase.ts",
+          "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/variants/account-button.supabase.tsx"
+        ],
+        "replace": {
+          "src/lib/auth.ts": "src/variants/auth.appwrite.ts",
+          "src/router.tsx": "src/variants/router.supabase.tsx",
+          "src/lib/api.ts": "src/variants/api.supabase.ts",
+          "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
+        }
+      },
+      "better-auth": {
+        "files": [
+          "auth.server.mjs",
+          "src/lib/auth-client.ts",
+          "src/routes/login.tsx",
+          "src/routes/forgot-password.tsx",
+          "src/routes/reset-password.tsx",
+          "src/variants/auth.better-auth.ts",
+          "src/variants/router.supabase.tsx",
+          "src/variants/api.supabase.ts",
+          "src/variants/auth-enabled.supabase.ts",
+          "src/components/dashboard/variants/account-button.supabase.tsx"
+        ],
+        "replace": {
+          "src/lib/auth.ts": "src/variants/auth.better-auth.ts",
           "src/router.tsx": "src/variants/router.supabase.tsx",
           "src/lib/api.ts": "src/variants/api.supabase.ts",
           "src/lib/auth-enabled.ts": "src/variants/auth-enabled.supabase.ts",

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { User } from "@clubedge/contract";
 import { Button, buttonVariants } from "@clubedge/ui/components/button";
-import { supabase } from "@/lib/auth";
+import { authClient } from "@/lib/auth";
 
 type AccountButtonProps = { user: User | null; className?: string };
 
@@ -24,16 +24,12 @@ export function AccountButton({ user, className }: AccountButtonProps) {
         className={className}
         onClick={async () => {
           setError(null);
-          if (!supabase) {
-            setError("Sign out is unavailable because Supabase is not configured.");
+          if (!authClient.configured) {
+            setError("Sign out is unavailable because authentication is not configured.");
             return;
           }
           try {
-            const result = await supabase.auth.signOut();
-            if (result.error) {
-              setError("Sign out failed. Please try again.");
-              return;
-            }
+            await authClient.signOut();
           } catch {
             setError("Sign out failed. Please try again.");
             return;

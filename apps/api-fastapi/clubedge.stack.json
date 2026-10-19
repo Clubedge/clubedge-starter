@@ -23,6 +23,24 @@
         "replace": {
           "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_supabase.py"
         }
+      },
+      "firebase": {
+        "files": ["src/clubedge_api/variants/auth_firebase.py"],
+        "replace": {
+          "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_firebase.py"
+        }
+      },
+      "appwrite": {
+        "files": ["src/clubedge_api/variants/auth_appwrite.py"],
+        "replace": {
+          "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_appwrite.py"
+        }
+      },
+      "better-auth": {
+        "files": ["src/clubedge_api/variants/auth_better_auth.py"],
+        "replace": {
+          "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_better_auth.py"
+        }
       }
     },
     "storage": {

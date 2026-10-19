@@ -5,8 +5,8 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node --env-file-if-exists=.env.local dev.mjs",
+    "build": "vite build && node build-auth-server.mjs",
     "start": "vite preview",
     "typecheck": "tsc --noEmit",
     "check:services": "pnpm --filter @clubedge/api check:services",
@@ -17,6 +17,10 @@
     "@clubedge/contract": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
+    "appwrite": "^29.1.0",
+    "better-auth": "^1.7.7",
+    "drizzle-orm": "^0.45.4",
+    "firebase": "^12.15.0",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
@@ -26,6 +30,7 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^6.1.2",
+    "postgres": "^3.4.7",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^8.3.4"

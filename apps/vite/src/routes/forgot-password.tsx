@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
-import { supabase } from "@/lib/auth";
+import { authClient } from "@/lib/auth";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -14,14 +14,18 @@ export function ForgotPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!supabase) return setError("Configure Supabase Auth before requesting a reset link.");
+    if (!authClient.configured) {
+      return setError("Configure the selected authentication provider first.");
+    }
     setBusy(true);
-    const { error: result } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (result) setError("We could not send a reset email. Try again later.");
-    else await navigate({ href: "/login?notice=reset-sent" });
+    try {
+      await authClient.requestPasswordReset(email, `${window.location.origin}/reset-password`);
+      setBusy(false);
+      await navigate({ href: "/login?notice=reset-sent" });
+    } catch {
+      setBusy(false);
+      setError("We could not send a reset email. Try again later.");
+    }
   }
 
   return (

@@ -106,6 +106,16 @@ function proxy(request, response) {
   request.pipe(upstream);
 }
 
+async function proxyBetterAuth(request, response) {
+  try {
+    const authServer = await import("./dist/auth.server.mjs");
+    await authServer.serveAuthRequest(request, response);
+  } catch {
+    response.writeHead(404, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "Better Auth is not included in this project." }));
+  }
+}
+
 async function serveFile(request, response) {
   let pathname;
   try {
@@ -161,6 +171,10 @@ createServer(async (request, response) => {
     return;
   }
   if (isApiRequest) {
+    if (request.url?.startsWith("/api/auth/")) {
+      void proxyBetterAuth(request, response);
+      return;
+    }
     proxy(request, response);
     return;
   }

@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
 import { siteConfig } from "@/config/site";
-import { supabase } from "@/lib/auth";
+import { authClient } from "@/lib/auth";
 
 function safeNext(value: string | null): string {
   if (!value) return "/dashboard";
@@ -39,35 +39,52 @@ export function LoginPage() {
   );
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (!authClient.completeEmailVerification) return;
+    const verificationParams = new URLSearchParams(window.location.search);
+    void authClient.completeEmailVerification(verificationParams).then(() => {
+      if (
+        verificationParams.has("oobCode") ||
+        (verificationParams.has("userId") && verificationParams.has("secret")) ||
+        verificationParams.has("code")
+      ) {
+        setMessage("Email confirmed. You can now sign in.");
+        window.history.replaceState({}, "", "/login");
+      }
+    }).catch(() => setError("That email confirmation link is invalid or has expired."));
+  }, []);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setError("");
-    if (!supabase) {
-      setError(
-        "Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY to apps/web/.env.local first.",
-      );
+    if (!authClient.configured) {
+      setError("Configure the selected authentication provider before signing in.");
       return;
     }
     setBusy(true);
-    const result = signup
-      ? await supabase.auth.signUp({
+    try {
+      if (signup) {
+        const result = await authClient.signUp(
           email,
           password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent(next)}`,
-          },
-        })
-      : await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (result.error) {
+          `${window.location.origin}/login?next=${encodeURIComponent(next)}`,
+        );
+        if (result.needsConfirmation) {
+          setMessage("Check your email to confirm your account, then sign in.");
+          setBusy(false);
+          return;
+        }
+      } else {
+        await authClient.signIn(email, password);
+      }
+      setBusy(false);
+      await navigate({ href: next });
+    } catch {
+      setBusy(false);
       setError(
         signup ? "We could not create that account." : "Email or password could not be verified.",
       );
-    } else if (signup && !result.data.session) {
-      setMessage("Check your email to confirm your account, then sign in.");
-    } else {
-      await navigate({ href: next });
     }
   }
 
