@@ -25,7 +25,6 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      SUPABASE_BRANCH: pr-${{ github.event.number }}-vite-${{ matrix.api }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -45,16 +44,12 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-      - uses: supabase/setup-cli@v3
-        with:
-          version: latest
-      - name: Create this stack's Supabase preview branch and read its generated keys
+      - name: Read the main Supabase project's URL and publishable key
         id: auth
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
-        run: node scripts/stack-preview-supabase.mjs ensure
+        run: node scripts/stack-preview-supabase.mjs
       - name: Generate and publish the selected stack
         id: generated
         env:
@@ -146,22 +141,11 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      SUPABASE_BRANCH: pr-${{ github.event.number }}-vite-${{ matrix.api }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: supabase/setup-cli@v3
-        with:
-          version: latest
-      - name: Delete this stack's Supabase preview branch
-        continue-on-error: true
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
-        run: node scripts/stack-preview-supabase.mjs delete
       - name: Delete the stack's Render services
         continue-on-error: true
         env:
