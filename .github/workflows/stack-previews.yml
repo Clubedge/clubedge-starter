@@ -96,7 +96,6 @@ jobs:
 
           railway() { npx --yes @railway/cli@5 "$@"; }
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --json
           node "$RUNNER_TEMP/cli/bin/create.mjs" deploy --yes
 
           base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
