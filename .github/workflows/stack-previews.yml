@@ -52,7 +52,7 @@ jobs:
         id: auth
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
         run: node scripts/stack-preview-supabase.mjs ensure
       - name: Generate and publish the selected stack
@@ -159,7 +159,7 @@ jobs:
         continue-on-error: true
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
           SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
         run: node scripts/stack-preview-supabase.mjs delete
       - name: Delete the stack's Render services
