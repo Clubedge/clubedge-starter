@@ -19,6 +19,7 @@ export async function getCurrentUser(
   request: Request,
   _config?: { url: string; publishableKey: string },
 ): Promise<User | null> {
+  void _config;
   const token = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "")?.[1];
   if (!token) return null;
   try {

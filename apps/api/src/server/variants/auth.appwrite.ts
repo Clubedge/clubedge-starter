@@ -4,6 +4,7 @@ export async function getCurrentUser(
   request: Request,
   _config?: { url: string; publishableKey: string },
 ): Promise<User | null> {
+  void _config;
   const token = /^Bearer\s+(.+)$/i.exec(request.headers.get("authorization") ?? "")?.[1];
   const endpoint = process.env.APPWRITE_ENDPOINT;
   const projectId = process.env.APPWRITE_PROJECT_ID;
