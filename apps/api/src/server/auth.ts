@@ -8,5 +8,7 @@ export async function getCurrentUser(
   _request: Request,
   _config?: { url: string; publishableKey: string },
 ): Promise<User | null> {
+  void _request;
+  void _config;
   return null;
 }

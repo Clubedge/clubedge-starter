@@ -24,7 +24,7 @@ export function LoginPage() {
   const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signup, setSignup] = useState(params.get("mode") === "signup");
+  const [signup] = useState(params.get("mode") === "signup");
   const [message, setMessage] = useState(
     params.get("notice") === "reset-sent"
       ? "If that email has an account, we sent it a link to reset the password."
