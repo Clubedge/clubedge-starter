@@ -1,5 +1,5 @@
-# Additional previews for both decoupled Vite stacks. This is a Starter maintainer workflow and
-# is excluded from generated projects; the existing Preview workflow remains the default app path.
+# Additional previews for both decoupled Vite stacks. This maintainer workflow is excluded from
+# generated projects; the existing Preview workflow remains unchanged.
 name: Stack previews
 on:
   pull_request:
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   deploy:
     if: >-
-      github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' && vars.RAILWAY_PROJECT_ID != '' &&
+      github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' &&
       github.event.pull_request.head.repo.full_name == github.repository
     name: React + Vite + ${{ matrix.api }}
     runs-on: ubuntu-24.04
@@ -23,10 +23,6 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      RAILWAY_ENVIRONMENT: pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
-      HAS_RAILWAY: ${{ secrets.RAILWAY_API_TOKEN != '' }}
       PREVIEW_SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
       PREVIEW_SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
     steps:
@@ -57,119 +53,26 @@ jobs:
           else
             echo "auth=none" >> "$GITHUB_OUTPUT"
           fi
-      - name: Build the project generator
-        run: |
-          set -euo pipefail
-          git clone --depth 1 https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
-          cd "$RUNNER_TEMP/cli"
-          pnpm install --frozen-lockfile
-          pnpm build
-      - name: Generate and deploy the stack preview
+      - name: Deploy the API and Vite frontend to Render
         id: deploy
-        if: env.HAS_RAILWAY == 'true'
         env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
           PR_NUMBER: ${{ github.event.number }}
+          API_KIND: ${{ matrix.api }}
+          AUTH_KIND: ${{ steps.auth.outputs.auth }}
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-          PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
           SUPABASE_URL: ${{ vars.STACK_PREVIEW_SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.STACK_PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
-        run: |
-          set -euo pipefail
-          api='${{ matrix.api }}'
-          auth="$PREVIEW_AUTH"
-          target="$RUNNER_TEMP/stack-preview/clubedge-vite-${api}-pr-${PR_NUMBER}"
-          mkdir -p "$(dirname "$target")"
-          node "$RUNNER_TEMP/cli/bin/create.mjs" "$target" \
-            --template-dir "$GITHUB_WORKSPACE" --framework vite --api "$api" \
-            --deploy railway --auth "$auth" --no-git --no-install --yes
-
-          cd "$target"
-          node <<'NODE'
-          const { writeFileSync } = require("node:fs");
-          const keys = ["DATABASE_URL", "DATABASE_URL_DIRECT", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
-          const values = Object.fromEntries(keys.map((key) => [key, process.env[key] || ""]));
-          values.VITE_SUPABASE_URL = values.SUPABASE_URL;
-          values.VITE_SUPABASE_PUBLISHABLE_KEY = values.SUPABASE_PUBLISHABLE_KEY;
-          writeFileSync(".env.production", Object.entries(values).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join("\n") + "\n");
-          NODE
-
-          railway() { npx --yes @railway/cli@5 "$@"; }
-          if [ "$api" = fastapi ]; then sleep 35; fi
-          railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          environment_id=$(railway environment list --json | node -e '
-            const fs = require("node:fs");
-            const wanted = process.argv[1];
-            const data = JSON.parse(fs.readFileSync(0, "utf8"));
-            const find = (value) => {
-              if (Array.isArray(value)) return value.map(find).find(Boolean);
-              if (!value || typeof value !== "object") return undefined;
-              const name = value.name ?? value.environmentName;
-              const id = value.id ?? value.environmentId;
-              if (name === wanted && typeof id === "string") return id;
-              return Object.values(value).map(find).find(Boolean);
-            };
-            const id = find(data);
-            if (!id) process.exit(1);
-            process.stdout.write(id);
-          ' "$RAILWAY_ENVIRONMENT")
-          export RAILWAY_ENVIRONMENT_ID="$environment_id"
-
-          base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
-          web_service="${base}-web"
-          api_service="${base}-api"
-          railway add --service "$web_service" || true
-          railway add --service "$api_service" || true
-
-          domain=$(railway domain list --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" \
-            | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1 || true)
-          if [ -z "$domain" ]; then
-            domain=$(railway domain --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
-              | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
-          fi
-          frontend_url="https://${domain}"
-          for pair in \
-            "DATABASE_URL|$DATABASE_URL" \
-            "DATABASE_URL_DIRECT|$DATABASE_URL_DIRECT" \
-            "FRONTEND_URL|$frontend_url" \
-            "PORT|3001"; do
-            key=${pair%%|*}
-            value=${pair#*|}
-            printf '%s' "$value" | railway variable set "$key" --stdin \
-              --service "$api_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
-          done
-          if [ "$auth" = supabase ]; then
-            for pair in \
-              "SUPABASE_URL|$SUPABASE_URL" \
-              "SUPABASE_PUBLISHABLE_KEY|$SUPABASE_PUBLISHABLE_KEY"; do
-              key=${pair%%|*}
-              value=${pair#*|}
-              printf '%s' "$value" | railway variable set "$key" --stdin \
-                --service "$api_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
-            done
-            for pair in \
-              "VITE_SUPABASE_URL|$SUPABASE_URL" \
-              "VITE_SUPABASE_PUBLISHABLE_KEY|$SUPABASE_PUBLISHABLE_KEY"; do
-              key=${pair%%|*}
-              value=${pair#*|}
-              printf '%s' "$value" | railway variable set "$key" --stdin \
-                --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
-            done
-          fi
-          printf '%s' 3000 | railway variable set PORT --stdin \
-            --service "$web_service" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
-          pnpm add --save-dev --workspace-root railway
-          railway config apply --yes
-          railway up --ci --service "$api_service" --environment "$RAILWAY_ENVIRONMENT"
-          railway up --ci --service "$web_service" --environment "$RAILWAY_ENVIRONMENT"
-
-          echo "auth=${auth}" >> "$GITHUB_OUTPUT"
-          echo "url=${frontend_url}" >> "$GITHUB_OUTPUT"
+        run: node scripts/stack-preview-render.mjs deploy
       - name: Save the preview URL
         if: steps.deploy.outputs.url != ''
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
-          PREVIEW_AUTH: ${{ steps.deploy.outputs.auth }}
+          PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
         run: printf '%s\n%s\n' "$PREVIEW_URL" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
       - uses: actions/upload-artifact@v4
         if: steps.deploy.outputs.url != ''
@@ -200,24 +103,20 @@ jobs:
           marker="<!-- clubedge-stack-previews -->"
           body="$marker
           **Additional stack previews** for ${HEAD_SHA:0:7}
-          Each URL serves the React + Vite frontend; its API runs as a separate Railway service and the frontend proxies the api route to it."
+          Each URL serves the React + Vite frontend; its API runs as a separate Render web service and the frontend proxies `/api` to it. Render free services may take about a minute to wake after inactivity."
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
             body="$body
-          - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
-          elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
+          - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
+          else
             body="$body
           - React + Vite + Hono (TypeScript): no URL was published; check its job in the Stack previews workflow."
           fi
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
             body="$body
-          - React + Vite + FastAPI (Python, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
-          elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
+          - React + Vite + FastAPI (Python, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
+          else
             body="$body
           - React + Vite + FastAPI (Python): no URL was published; check its job in the Stack previews workflow."
-          fi
-          if [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ] && [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
-            body="$body
-          - No additional stack preview was published. Check the Stack previews workflow and the Railway and Neon settings described in SETUP.md."
           fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
@@ -229,7 +128,7 @@ jobs:
 
   cleanup:
     if: >-
-      github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' && vars.RAILWAY_PROJECT_ID != '' &&
+      github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     strategy:
@@ -238,17 +137,23 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
-      RAILWAY_ENVIRONMENT: pr-${{ github.event.number }}-vite-${{ matrix.api }}
     steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Delete the stack's Render services
+        continue-on-error: true
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.number }}
+          API_KIND: ${{ matrix.api }}
+        run: node scripts/stack-preview-render.mjs cleanup
       - uses: neondatabase/delete-branch-action@v3
         continue-on-error: true
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: ${{ env.NEON_BRANCH }}
           api_key: ${{ secrets.NEON_API_KEY }}
-      - name: Delete the stack's Railway environment
-        continue-on-error: true
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
-        run: npx --yes @railway/cli@5 environment delete "$RAILWAY_ENVIRONMENT" --yes
