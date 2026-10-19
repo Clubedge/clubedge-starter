@@ -25,6 +25,7 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+      SUPABASE_BRANCH: pr-${{ github.event.number }}-vite-${{ matrix.api }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -44,15 +45,16 @@ jobs:
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
-      - name: Read Supabase settings from Vercel Preview
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Create this stack's Supabase preview branch and read its generated keys
         id: auth
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          pnpm dlx vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
-          pnpm dlx vercel@latest env run --environment=preview -- node scripts/stack-preview-auth.mjs
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
+        run: node scripts/stack-preview-supabase.mjs ensure
       - name: Generate and publish the selected stack
         id: generated
         env:
@@ -144,11 +146,22 @@ jobs:
         api: [hono, fastapi]
     env:
       NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+      SUPABASE_BRANCH: pr-${{ github.event.number }}-vite-${{ matrix.api }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Delete this stack's Supabase preview branch
+        continue-on-error: true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_BRANCH: ${{ env.SUPABASE_BRANCH }}
+        run: node scripts/stack-preview-supabase.mjs delete
       - name: Delete the stack's Render services
         continue-on-error: true
         env:
