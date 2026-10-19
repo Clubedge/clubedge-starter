@@ -404,6 +404,7 @@ jobs:
       - name: Browser checks
         working-directory: ${{ runner.temp }}/generated-app
         env:
+          E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth better-auth') || contains(matrix.modules, '--auth firebase') }}
           FIREBASE_PROJECT_ID: demo-clubedge
           FIREBASE_API_KEY: fake-api-key
           FIREBASE_AUTH_EMULATOR_HOST: ${{ contains(matrix.modules, '--auth firebase') && '127.0.0.1:9099' || '' }}

@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-// The browser suite runs without provider credentials, so these checks cover the
-// unconfigured mode: pages stay explorable and redirects stay on this origin.
+// CI sets this per generated auth provider. Better Auth and Firebase are configured in
+// browser checks; Supabase and Appwrite have no external credentials and stay unconfigured.
 
 test("dashboard follows the selected authentication configuration", async ({ page }) => {
   await page.goto("/dashboard");
-  if (new URL(page.url()).pathname === "/login") {
+  if (process.env.E2E_AUTH_ENABLED === "true") {
     await expect(page).toHaveURL(/\/login\?next=/);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     return;

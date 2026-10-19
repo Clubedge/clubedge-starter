@@ -13,7 +13,7 @@ test("dashboard route responds according to the selected authentication configur
   page,
 }) => {
   await page.goto("/dashboard");
-  if (new URL(page.url()).pathname === "/login") {
+  if (process.env.E2E_AUTH_ENABLED === "true") {
     await expect(page).toHaveURL(/\/login\?next=/);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     return;
