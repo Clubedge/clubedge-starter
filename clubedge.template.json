@@ -67,6 +67,7 @@
     ".github/assets",
     ".github/dependabot.yml",
     ".github/workflows/starter.yml",
+    ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
     "clubedge.template.json",
     "scripts/template-manifest.test.ts"

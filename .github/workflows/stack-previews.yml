@@ -1,0 +1,211 @@
+# Additional previews for both decoupled Vite stacks. This is a Starter maintainer workflow and
+# is excluded from generated projects; the existing Preview workflow remains the default app path.
+name: Stack previews
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: stack-preview-${{ github.event.number }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
+jobs:
+  deploy:
+    if: >-
+      github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' && vars.RAILWAY_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    name: React + Vite + ${{ matrix.api }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [hono, fastapi]
+    env:
+      NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+      RAILWAY_ENVIRONMENT: pr-${{ github.event.number }}-vite-${{ matrix.api }}
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+      HAS_RAILWAY: ${{ secrets.RAILWAY_API_TOKEN != '' }}
+      HAS_VERCEL: ${{ secrets.VERCEL_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Apply migrations to this stack's Neon branch
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+      - name: Read Supabase preview settings from the existing Vercel project
+        id: supabase
+        if: env.HAS_VERCEL == 'true'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel
+          node -e 'require("node:fs").writeFileSync(".vercel/project.json", JSON.stringify({orgId: process.env.VERCEL_ORG_ID, projectId: process.env.VERCEL_PROJECT_ID}))'
+          npx --yes vercel@latest pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require("node:fs");
+          const source = fs.readFileSync(".vercel/.env.preview.local", "utf8");
+          const values = Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
+            const match = /^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)=(.*)$/.exec(line);
+            if (!match) return [];
+            let value = match[2].trim();
+            if (value.startsWith('"')) value = JSON.parse(value);
+            return [[match[1], value]];
+          }));
+          const url = values.NEXT_PUBLIC_SUPABASE_URL;
+          const key = values.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+          if (!url || !key) throw new Error("The Vercel Preview environment needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
+          console.log(`supabase_url=${url}`);
+          console.log(`supabase_key=${key}`);
+          NODE
+      - name: Build the project generator
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Generate and deploy the stack preview
+        id: deploy
+        if: steps.supabase.outputs.supabase_url != '' && env.HAS_RAILWAY == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+          SUPABASE_URL: ${{ steps.supabase.outputs.supabase_url }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ steps.supabase.outputs.supabase_key }}
+        run: |
+          set -euo pipefail
+          api='${{ matrix.api }}'
+          target="$RUNNER_TEMP/stack-preview/clubedge-vite-${api}-pr-${PR_NUMBER}"
+          mkdir -p "$(dirname "$target")"
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$target" \
+            --template-dir "$GITHUB_WORKSPACE" --framework vite --api "$api" \
+            --deploy railway --auth supabase --no-git --no-install --yes
+
+          cd "$target"
+          node <<'NODE'
+          const { writeFileSync } = require("node:fs");
+          const keys = ["DATABASE_URL", "DATABASE_URL_DIRECT", "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
+          const values = Object.fromEntries(keys.map((key) => [key, process.env[key] || ""]));
+          values.VITE_SUPABASE_URL = values.SUPABASE_URL;
+          values.VITE_SUPABASE_PUBLISHABLE_KEY = values.SUPABASE_PUBLISHABLE_KEY;
+          writeFileSync(".env.production", Object.entries(values).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join("\n") + "\n");
+          NODE
+
+          railway() { npx --yes @railway/cli@5 "$@"; }
+          railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
+          railway link --project "$RAILWAY_PROJECT_ID" --environment "$RAILWAY_ENVIRONMENT" --json
+          node "$RUNNER_TEMP/cli/bin/create.mjs" deploy --yes
+
+          base=$(node -e 'console.log(require("./package.json").name.replace(/^@[^/]+\//, "").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, ""))')
+          domain=$(railway domain list --service "${base}-vite" --environment "$RAILWAY_ENVIRONMENT" \
+            | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1 || true)
+          if [ -z "$domain" ]; then
+            domain=$(railway domain --service "${base}-vite" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
+              | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
+          fi
+          echo "url=https://${domain}" >> "$GITHUB_OUTPUT"
+      - name: Save the preview URL
+        if: steps.deploy.outputs.url != ''
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        run: printf '%s\n' "$PREVIEW_URL" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
+      - uses: actions/upload-artifact@v4
+        if: steps.deploy.outputs.url != ''
+        with:
+          name: stack-preview-${{ matrix.api }}
+          path: ${{ runner.temp }}/stack-preview-${{ matrix.api }}.txt
+
+  comment:
+    if: >-
+      always() && github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [deploy]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: stack-preview-*
+          path: ${{ runner.temp }}/stack-previews
+          merge-multiple: true
+      - name: Comment the additional previews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          marker="<!-- clubedge-stack-previews -->"
+          body="$marker
+          **Additional stack previews** for ${HEAD_SHA:0:7}
+          Each URL serves the React + Vite frontend; its API runs as a separate Railway service and the frontend proxies `/api` to it."
+          if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
+          elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript): no URL was published; check its job in the Stack previews workflow."
+          fi
+          if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
+            body="$body
+          - React + Vite + FastAPI (Python) on Railway: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt")"
+          elif [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
+            body="$body
+          - React + Vite + FastAPI (Python): no URL was published; check its job in the Stack previews workflow."
+          fi
+          if [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ] && [ ! -s "$RUNNER_TEMP/stack-previews/stack-preview-fastapi.txt" ]; then
+            body="$body
+          - No additional stack preview was published. Check the Stack previews workflow and the Railway, Neon, and Vercel settings described in SETUP.md."
+          fi
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+          fi
+
+  cleanup:
+    if: >-
+      github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' && vars.RAILWAY_PROJECT_ID != '' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [hono, fastapi]
+    env:
+      NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-${{ matrix.api }}
+      RAILWAY_ENVIRONMENT: pr-${{ github.event.number }}-vite-${{ matrix.api }}
+    steps:
+      - uses: neondatabase/delete-branch-action@v3
+        continue-on-error: true
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Delete the stack's Railway environment
+        continue-on-error: true
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_PROJECT_ID: ${{ vars.RAILWAY_PROJECT_ID }}
+        run: npx --yes @railway/cli@5 environment delete "$RAILWAY_ENVIRONMENT" --yes

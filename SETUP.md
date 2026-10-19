@@ -519,6 +519,10 @@ It runs once the repository has the Neon settings below, in Settings, then Secre
 - the secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`, as for the deploy workflow. The preview is a Vercel preview deployment with the project's Preview variables, except `DATABASE_URL` and `DATABASE_URL_DIRECT`, which point at the branch. <!-- clubedge:only deploy=vercel -->
 - the secret `RAILWAY_API_TOKEN`, an account or workspace token (a project token can't create environments), and the variables `RAILWAY_PROJECT_ID` and `RAILWAY_SERVICE`. Each pull request gets a Railway environment, `pr-<number>`, copied from production with its own domain and the branch as its database; it is deleted with the branch. <!-- clubedge:only deploy=railway -->
 
+<!-- clubedge:only starter-repository -->
+The Starter repository also runs `.github/workflows/stack-previews.yml`, which deploys additional React + Vite previews with Hono and FastAPI APIs to separate Railway environments. It reuses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` from the Vercel Preview environment, plus the existing `NEON_PROJECT_ID`, `RAILWAY_PROJECT_ID`, `NEON_API_KEY`, `RAILWAY_API_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, and `VERCEL_TOKEN` settings. Each stack gets its own Neon branch and Railway environment; both are deleted when the pull request closes. The preview comment labels the Hono and FastAPI URLs separately. These settings apply only to the Starter repository and are not copied into generated projects.
+<!-- clubedge:only starter-repository -->
+
 From your machine, `pnpm clubedge deploy --preview` does the same for the current Git branch. <!-- clubedge:only deploy=vercel|railway -->
 
 <!-- clubedge:end -->

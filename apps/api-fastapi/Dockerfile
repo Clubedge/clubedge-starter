@@ -22,6 +22,11 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY ${APP_DIR}/src ./src
 RUN uv sync --locked --no-dev
 
+# Railway runs migrations before switching API deployments. Bundle the shared Node migrator in
+# this Python image too, so the generated Railway configuration can use the same release command.
+COPY scripts/migrate.mjs scripts/build-migrator.mjs ./scripts/
+RUN node scripts/build-migrator.mjs /tmp/.migrator && cp -R /tmp/.migrator/. /app/
+
 RUN useradd --system --uid 1001 app
 USER app
 ENV HOST=0.0.0.0 PORT=3001 PATH="/app/.venv/bin:$PATH"
