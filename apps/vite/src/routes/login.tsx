@@ -117,7 +117,7 @@ export function LoginPage() {
             id="password"
             type="password"
             autoComplete={signup ? "new-password" : "current-password"}
-            minLength={8}
+            minLength={signup ? 8 : undefined}
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}

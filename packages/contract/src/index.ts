@@ -21,18 +21,21 @@ export function createApiClient(
     accessToken?: () => Promise<string | undefined>;
   } = {},
 ) {
-  const fetcher = options.accessToken
-    ? async (input: RequestInfo | URL, init?: RequestInit) => {
-        const headers = new Headers(init?.headers);
-        const token = await options.accessToken!();
-        if (token) headers.set("Authorization", `Bearer ${token}`);
-        return (options.fetch ?? fetch)(input, { ...init, headers });
-      }
-    : options.fetch;
-  return createClient<paths>({
+  const client = createClient<paths>({
     baseUrl: options.baseUrl ?? "",
-    ...(fetcher ? { fetch: fetcher } : {}),
+    ...(options.fetch ? { fetch: options.fetch } : {}),
   });
+  if (options.accessToken) {
+    const getAccessToken = options.accessToken;
+    client.use({
+      async onRequest({ request }) {
+        const token = await getAccessToken();
+        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+        return request;
+      },
+    });
+  }
+  return client;
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;

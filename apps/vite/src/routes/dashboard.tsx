@@ -82,7 +82,7 @@ export async function loadDashboard(): Promise<DashboardData> {
     api.GET("/api/session").catch(() => null),
     api.GET("/api/ready").catch(() => null),
   ]);
-  if (authEnabled && session && !session.data?.user) {
+  if (authEnabled && session?.response.ok && !session.data?.user) {
     throw redirect({ href: "/login?next=%2Fdashboard" });
   }
   return {

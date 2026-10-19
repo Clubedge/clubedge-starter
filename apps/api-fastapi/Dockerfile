@@ -17,7 +17,7 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 
 # Dependencies first, so their layer stays cached until pyproject.toml (or uv.lock) changes.
-COPY ${APP_DIR}/pyproject.toml ${APP_DIR}/uv.lock* ./
+COPY ${APP_DIR}/pyproject.toml ${APP_DIR}/uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 COPY ${APP_DIR}/src ./src
 RUN uv sync --locked --no-dev
