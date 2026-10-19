@@ -59,6 +59,9 @@ try {
     if (entry !== ".git") await rm(join(publisher, entry), { recursive: true, force: true });
   }
   await cp(project, publisher, { recursive: true, force: true });
+  // The GITHUB_TOKEN cannot publish workflow files without the elevated `workflows` permission.
+  // Preview services only need the generated application source, so omit the project's CI/deploy workflows.
+  await rm(join(publisher, ".github", "workflows"), { recursive: true, force: true });
   publish(["add", "-A"]);
   publish(["config", "user.name", "github-actions[bot]"]);
   publish(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
