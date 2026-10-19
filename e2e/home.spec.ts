@@ -11,6 +11,11 @@ test("starter landing page loads with setup guidance", async ({ page }) => {
 
 test("dashboard renders without providers configured", async ({ page }) => {
   await page.goto("/dashboard");
+  if (process.env.E2E_AUTH_ENABLED === "true") {
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    return;
+  }
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(
     page.getByRole("heading", { name: "A better place to start building." }),

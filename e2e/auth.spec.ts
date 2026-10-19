@@ -5,6 +5,11 @@ import { expect, test } from "@playwright/test";
 
 test("dashboard offers sign-in while authentication is not configured", async ({ page }) => {
   await page.goto("/dashboard");
+  if (process.env.E2E_AUTH_ENABLED === "true") {
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    return;
+  }
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
 });

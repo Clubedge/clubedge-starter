@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.skip(!process.env.FIREBASE_AUTH_EMULATOR_HOST, "requires the Firebase Auth Emulator");
+
 test("verifies email and signs in through Firebase Auth Emulator", async ({ page }) => {
   const projectId = process.env.FIREBASE_PROJECT_ID ?? "demo-clubedge";
   const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
@@ -8,7 +10,7 @@ test("verifies email and signs in through Firebase Auth Emulator", async ({ page
 
   await page.goto("/login?mode=signup");
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(
     page.getByText("Check your email to confirm your account, then sign in."),
@@ -16,9 +18,7 @@ test("verifies email and signs in through Firebase Auth Emulator", async ({ page
 
   let code: string | undefined;
   for (let attempt = 0; attempt < 20 && !code; attempt += 1) {
-    const response = await fetch(
-      `http://${emulator}/emulator/v1/projects/${projectId}/oobCodes`,
-    );
+    const response = await fetch(`http://${emulator}/emulator/v1/projects/${projectId}/oobCodes`);
     const payload = (await response.json()) as {
       oobCodes?: Array<{ email?: string; requestType?: string; oobCode?: string }>;
     };
@@ -32,7 +32,7 @@ test("verifies email and signs in through Firebase Auth Emulator", async ({ page
   await page.goto(`/login?mode=verifyEmail&oobCode=${encodeURIComponent(code!)}`);
   await expect(page.getByText("Email confirmed. You can now sign in.")).toBeVisible();
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();

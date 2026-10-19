@@ -8,7 +8,11 @@ from fastapi import Request
 from clubedge_api.app import User
 
 
-async def get_current_user(request: Request, *_: str | None) -> User | None:
+async def get_current_user(
+    request: Request,
+    supabase_url: str | None = None,
+    supabase_publishable_key: str | None = None,
+) -> User | None:
     auth_url = os.environ.get("BETTER_AUTH_URL")
     cookie = request.headers.get("cookie")
     if not auth_url or not cookie:

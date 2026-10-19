@@ -347,7 +347,11 @@ jobs:
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
           - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
           - { name: vite-hono-better-auth, framework: vite, modules: --auth better-auth --api hono }
-          - { name: vite-fastapi-better-auth, framework: vite, modules: --auth better-auth --api fastapi }
+          - {
+              name: vite-fastapi-better-auth,
+              framework: vite,
+              modules: --auth better-auth --api fastapi,
+            }
           - { name: vite-hono-firebase, framework: vite, modules: --auth firebase --api hono }
           - { name: vite-fastapi-firebase, framework: vite, modules: --auth firebase --api fastapi }
           - { name: vite-hono-appwrite, framework: vite, modules: --auth appwrite --api hono }
@@ -400,9 +404,10 @@ jobs:
       - name: Browser checks
         working-directory: ${{ runner.temp }}/generated-app
         env:
+          E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth') }}
           FIREBASE_PROJECT_ID: demo-clubedge
           FIREBASE_API_KEY: fake-api-key
-          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          FIREBASE_AUTH_EMULATOR_HOST: ${{ contains(matrix.modules, '--auth firebase') && '127.0.0.1:9099' || '' }}
           VITE_FIREBASE_PROJECT_ID: demo-clubedge
           VITE_FIREBASE_API_KEY: fake-api-key
           VITE_FIREBASE_AUTH_DOMAIN: localhost

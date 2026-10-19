@@ -11,7 +11,7 @@ export async function getCurrentUser(request: Request): Promise<User | null> {
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return null;
-    const account = await response.json() as {
+    const account = (await response.json()) as {
       $id?: unknown;
       email?: unknown;
       name?: unknown;
@@ -21,7 +21,8 @@ export async function getCurrentUser(request: Request): Promise<User | null> {
       typeof account.$id !== "string" ||
       typeof account.email !== "string" ||
       account.emailVerification !== true
-    ) return null;
+    )
+      return null;
     return {
       id: account.$id,
       email: account.email,
