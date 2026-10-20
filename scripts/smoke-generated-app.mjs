@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 
 const baseUrl = process.env.APP_BASE_URL ?? "http://127.0.0.1:3000";
 const timeout = Date.now() + 60_000;
@@ -44,8 +46,18 @@ if (hasAuth) {
   assert.equal(login.status, 200, "the sign-up page should render");
   const loginHtml = await login.text();
   if (loginHtml.includes('id="root"')) {
-    // Vite renders the route in the browser; confirm the SPA shell and entrypoint instead.
+    // Vite serves the SPA shell for every path, so verify that the client router renders /login.
     assert.match(loginHtml, /<script[^>]+type="module"[^>]+src=/);
+    const require = createRequire(resolve(process.cwd(), "package.json"));
+    const { chromium } = require("@playwright/test");
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      await page.goto(new URL("/login?mode=signup", baseUrl).href);
+      await page.getByRole("heading", { name: "Create your account" }).waitFor();
+    } finally {
+      await browser.close();
+    }
   } else {
     assert.match(loginHtml, /Create your account/, "the sign-up view should be available");
   }
@@ -53,11 +65,27 @@ if (hasAuth) {
   const login = await get("/login");
   if (login.status !== 404) {
     assert.equal(login.status, 200, "projects without auth should have no login page");
-    assert.doesNotMatch(
-      await login.text(),
-      /Create your account|Sign in/,
-      "projects without auth should have no login page",
-    );
+    const loginHtml = await login.text();
+    if (loginHtml.includes('id="root"')) {
+      // A Vite SPA returns its shell even for unknown routes; verify /login reaches its 404 view.
+      assert.match(loginHtml, /<script[^>]+type="module"[^>]+src=/);
+      const require = createRequire(resolve(process.cwd(), "package.json"));
+      const { chromium } = require("@playwright/test");
+      const browser = await chromium.launch();
+      try {
+        const page = await browser.newPage();
+        await page.goto(new URL("/login", baseUrl).href);
+        await page.getByRole("heading", { name: "Page not found" }).waitFor();
+      } finally {
+        await browser.close();
+      }
+    } else {
+      assert.doesNotMatch(
+        loginHtml,
+        /Create your account|Sign in/,
+        "projects without auth should have no login page",
+      );
+    }
   }
 }
 

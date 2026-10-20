@@ -16,28 +16,61 @@ const serviceNames = {
 };
 
 async function render(path, init = {}) {
-  const response = await fetch(`${apiBase}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...init.headers,
-    },
-  });
-  const body = await response.text();
-  if (!response.ok) {
-    const detail = body ? `: ${body}` : "";
+  const maxRateLimitWaitMs = 30_000;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${apiBase}${path}`, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    });
+    const body = await response.text();
+    if (response.ok) return body ? JSON.parse(body) : undefined;
+
     const reset = response.headers.get("ratelimit-reset");
+    const resetSeconds = reset === null ? Number.NaN : Number(reset);
+    const waitMs = resetSeconds * 1000 - Date.now() + 1_000;
+    if (
+      response.status === 429 &&
+      attempt === 0 &&
+      Number.isFinite(waitMs) &&
+      waitMs > 0 &&
+      waitMs <= maxRateLimitWaitMs
+    ) {
+      console.warn(
+        `Render API rate-limited ${init.method ?? "GET"} ${path}; retrying once shortly.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    const detail = body ? `: ${body}` : "";
     const resetAt =
-      response.status === 429 && reset
-        ? ` Rate limit resets at ${new Date(Number(reset) * 1000).toISOString()}.`
+      response.status === 429 && Number.isFinite(resetSeconds)
+        ? ` Rate limit resets at ${new Date(resetSeconds * 1000).toISOString()}.`
         : "";
     throw new Error(
       `Render API ${init.method ?? "GET"} ${path} returned ${response.status}${detail}.${resetAt}`,
     );
   }
-  return body ? JSON.parse(body) : undefined;
+  throw new Error(`Render API ${init.method ?? "GET"} ${path} retry limit exceeded.`);
+}
+
+async function serviceEnvVars(serviceId) {
+  const result = [];
+  let cursor;
+  do {
+    const params = new URLSearchParams({ limit: "100" });
+    if (cursor) params.set("cursor", cursor);
+    const page = await render(`/services/${encodeURIComponent(serviceId)}/env-vars?${params}`);
+    const entries = page ?? [];
+    result.push(...entries);
+    cursor = entries.length === 100 ? entries.at(-1)?.cursor : undefined;
+  } while (cursor);
+  return result;
 }
 
 async function ownerId() {
@@ -61,7 +94,9 @@ async function servicesNamed(owner, name) {
 async function deleteServices(owner) {
   for (const name of Object.values(serviceNames)) {
     for (const service of await servicesNamed(owner, name)) {
-      await render(`/services/${encodeURIComponent(service.id)}`, { method: "DELETE" });
+      await render(`/services/${encodeURIComponent(service.id)}`, {
+        method: "DELETE",
+      });
       console.log(`Deleted Render service ${name}.`);
     }
   }
@@ -77,7 +112,7 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
   const existing = (await servicesNamed(owner, name))[0];
   const desiredEnvVars = envVars(variables);
   if (existing) {
-    const currentEnvVars = await render(`/services/${encodeURIComponent(existing.id)}/env-vars`);
+    const currentEnvVars = await serviceEnvVars(existing.id);
     const current = (currentEnvVars ?? [])
       .map((entry) => entry.envVar ?? entry)
       .map(({ key, value }) => ({ key, value: String(value) }))
@@ -133,7 +168,10 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
       envSpecificDetails: { dockerfilePath, dockerContext: "." },
     },
   };
-  const result = await render("/services", { method: "POST", body: JSON.stringify(payload) });
+  const result = await render("/services", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   const service = result.service ?? result;
   if (!service.id) throw new Error(`Render created ${name} without returning a service ID.`);
   const url = service.serviceDetails?.url;
@@ -147,7 +185,9 @@ async function waitForHealth(url, name) {
   let lastStatus = "no response";
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(10_000) });
+      const response = await fetch(`${url}/api/health`, {
+        signal: AbortSignal.timeout(10_000),
+      });
       lastStatus = `HTTP ${response.status}`;
       if (response.ok) {
         const health = await response.json();
