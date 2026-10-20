@@ -761,6 +761,9 @@ jobs:
             echo "SUPABASE_URL=$API_URL"
             echo "SUPABASE_PUBLISHABLE_KEY=$key"
             echo "DATABASE_URL=$DB_URL"
+            # `supabase/config.toml` moves Inbucket's SMTP listener to 55425 alongside
+            # the other Supabase ports; the generated .env.local still has the default 54325.
+            echo "SMTP_URL=smtp://127.0.0.1:55425"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$key"
             # Lets the settings page delete accounts.
