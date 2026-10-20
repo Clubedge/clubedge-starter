@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/auth-firebase",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Firebase Authentication provider for @clubedge/auth, run from the server with session cookies.",
   "private": true,
   "license": "Apache-2.0",
