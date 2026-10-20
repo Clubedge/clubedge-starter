@@ -214,9 +214,20 @@ async function getOrTriggerDeployment(serviceId, sha, force) {
     method: "POST",
     body: JSON.stringify({ commitId: sha }),
   });
-  const result = deployment.deploy ?? deployment;
-  if (!result.id) throw new Error(`Render did not return a deploy ID for service ${serviceId}.`);
-  return result;
+  const result = deployment?.deploy ?? deployment;
+  if (result?.id) return result;
+
+  // Render returns 202 when another deploy is already running and this deploy is queued.
+  // That response has no deploy ID, so wait for the requested commit to appear in deploy history.
+  const deadline = Date.now() + 20 * 60_000;
+  while (Date.now() < deadline) {
+    const queuedDeployment = await findDeploymentForCommit(serviceId, sha);
+    if (queuedDeployment?.id) return queuedDeployment;
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  throw new Error(
+    `Render queued ${sha} for ${serviceId}, but no deploy ID appeared within 20 minutes.`,
+  );
 }
 
 async function waitForDeploy(serviceId, deploymentId, name) {
