@@ -66,7 +66,10 @@ try {
   publish(["config", "user.name", "github-actions[bot]"]);
   publish(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
   publish(["commit", "-m", `chore: generate ${api} ${auth} preview for PR #${pr}`]);
-  const commit = publish(["rev-parse", "HEAD"]).toString().trim();
+  const commit = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: publisher,
+    encoding: "utf8",
+  }).trim();
   publish(["push", "--force", "origin", `HEAD:refs/heads/${branch}`]);
 
   if (process.env.GITHUB_OUTPUT) {
