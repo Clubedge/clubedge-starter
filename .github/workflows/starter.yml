@@ -344,6 +344,18 @@ jobs:
           # A frontend and a separate API, joined by packages/contract.
           - { name: vite-hono, framework: vite, modules: --auth none --api hono }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
+          - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
+          - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
+          - { name: vite-hono-better-auth, framework: vite, modules: --auth better-auth --api hono }
+          - {
+              name: vite-fastapi-better-auth,
+              framework: vite,
+              modules: --auth better-auth --api fastapi,
+            }
+          - { name: vite-hono-firebase, framework: vite, modules: --auth firebase --api hono }
+          - { name: vite-fastapi-firebase, framework: vite, modules: --auth firebase --api fastapi }
+          - { name: vite-hono-appwrite, framework: vite, modules: --auth appwrite --api hono }
+          - { name: vite-fastapi-appwrite, framework: vite, modules: --auth appwrite --api fastapi }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -377,11 +389,35 @@ jobs:
           pnpm lint
           pnpm typecheck
           pnpm test
+      - name: Start Firebase Auth Emulator
+        if: contains(matrix.modules, '--auth firebase')
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --silent --output /dev/null http://127.0.0.1:9099/ && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/firebase.log"
+          exit 1
       - name: Browser checks
         working-directory: ${{ runner.temp }}/generated-app
+        env:
+          E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth firebase') || (matrix.framework == 'vite' && contains(matrix.modules, '--auth better-auth')) }}
+          FIREBASE_PROJECT_ID: demo-clubedge
+          FIREBASE_API_KEY: fake-api-key
+          FIREBASE_AUTH_EMULATOR_HOST: ${{ contains(matrix.modules, '--auth firebase') && '127.0.0.1:9099' || '' }}
+          VITE_FIREBASE_PROJECT_ID: demo-clubedge
+          VITE_FIREBASE_API_KEY: fake-api-key
+          VITE_FIREBASE_AUTH_DOMAIN: localhost
+          VITE_FIREBASE_AUTH_EMULATOR_URL: http://127.0.0.1:9099
         run: |
           pnpm exec playwright install --with-deps chromium
           pnpm test:e2e
+      - name: Show Firebase emulator log on failure
+        if: failure() && contains(matrix.modules, '--auth firebase')
+        run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
       - name: Build, start, and smoke-test
         working-directory: ${{ runner.temp }}/generated-app
         run: |
@@ -389,7 +425,7 @@ jobs:
           pnpm build
           pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
           trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
-          node "$RUNNER_TEMP/cli/scripts/smoke-generated-app.mjs"
+          node "$GITHUB_WORKSPACE/scripts/smoke-generated-app.mjs"
       # Pages that need no database must keep working when it is not configured, so a mistake
       # in the environment never takes the whole app down at startup.
       - name: Serve pages without a database configured
@@ -424,6 +460,77 @@ jobs:
           path: ${{ runner.temp }}/generated-app/test-results
           if-no-files-found: ignore
 
+  # Exercises Firebase email verification and API token validation against its local Auth Emulator.
+  firebase-flow:
+    name: firebase-flow (${{ matrix.api }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [hono, fastapi]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CLI_REF: ${{ inputs.cli-ref || 'main' }}
+      FIREBASE_PROJECT_ID: demo-clubedge
+      FIREBASE_API_KEY: fake-api-key
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      VITE_FIREBASE_PROJECT_ID: demo-clubedge
+      VITE_FIREBASE_API_KEY: fake-api-key
+      VITE_FIREBASE_AUTH_DOMAIN: 127.0.0.1
+      VITE_FIREBASE_AUTH_EMULATOR_URL: http://127.0.0.1:9099
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v10.3.0
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$CLI_REF" https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Generate the project
+        run: |
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
+            --framework vite --api "${{ matrix.api }}" --auth firebase --infra none --no-git --no-install --yes
+      - name: Install dependencies and prepare the API
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          pnpm install --frozen-lockfile
+          if [ "${{ matrix.api }}" = fastapi ]; then (cd apps/api && uv sync --locked); fi
+          pnpm db:migrate
+      - name: Start Firebase Auth Emulator
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          nohup npx --yes firebase-tools@15 emulators:start --only auth --project demo-clubedge \
+            > "$RUNNER_TEMP/firebase.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --silent --output /dev/null http://127.0.0.1:9099/ && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/firebase.log"
+          exit 1
+      - name: Verify email, sign in, and validate the API session
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e e2e/firebase-auth-flow.spec.ts
+      - name: Show emulator log on failure
+        if: failure()
+        run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
+
   # Signs up, out, and back in through the real forms, with Better Auth on PostgreSQL.
   better-auth-flow:
     runs-on: ubuntu-24.04
@@ -431,7 +538,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        framework: [next, tanstack-start]
+        include:
+          - { framework: next, api: none }
+          - { framework: tanstack-start, api: none }
+          - { framework: vite, api: hono }
+          - { framework: vite, api: fastapi }
     services:
       postgres:
         image: postgres:17
@@ -443,6 +554,7 @@ jobs:
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
+      BETTER_AUTH_URL: http://127.0.0.1:3000
       E2E_AUTH_FLOW: "1"
     steps:
       - uses: actions/checkout@v7
@@ -451,6 +563,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: astral-sh/setup-uv@v10.3.0
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -461,13 +574,14 @@ jobs:
       - name: Generate the project
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
-            --framework ${{ matrix.framework }} --auth better-auth --infra none --no-git --no-install --yes
+            --framework ${{ matrix.framework }} --api ${{ matrix.api }} --auth better-auth --infra none --no-git --no-install --yes
       - name: Install and migrate
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           pnpm install --frozen-lockfile
+          if [ "${{ matrix.api }}" = fastapi ]; then (cd apps/api && uv sync --locked); fi
           pnpm db:migrate
-      - name: Sign up, out, and in (the other browser checks expect no provider)
+      - name: Sign up, sign out, and sign in through the selected stack
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           pnpm exec playwright install --with-deps chromium
@@ -486,7 +600,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-better-auth-flow-${{ matrix.framework }}
+          name: playwright-better-auth-flow-${{ matrix.framework }}-${{ matrix.api }}
           path: ${{ runner.temp }}/generated-app/test-results
           if-no-files-found: ignore
 
@@ -498,6 +612,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       fail-fast: false
+      max-parallel: 3
       matrix:
         include:
           # mail-api is the local inbox the browser tests read emails from; local mode has none,
@@ -564,13 +679,13 @@ jobs:
               infra: supabase,
               framework: next,
               modules: --auth supabase --storage supabase --jobs pg-boss,
-              mail-api: "http://127.0.0.1:54324",
+              mail-api: "http://127.0.0.1:55424",
             }
           - {
               infra: supabase,
               framework: tanstack-start,
               modules: --auth supabase --storage supabase --jobs pg-boss,
-              mail-api: "http://127.0.0.1:54324",
+              mail-api: "http://127.0.0.1:55424",
             }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -597,11 +712,30 @@ jobs:
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
         run: pnpm install --frozen-lockfile
+      - name: Move Supabase services to unused CI ports
+        if: matrix.infra == 'supabase'
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          sed -i \
+            -e 's/^port = 54321$/port = 55421/' \
+            -e 's/^port = 54322$/port = 55422/' \
+            -e 's/^port = 54323$/port = 55423/' \
+            -e 's/^port = 54324$/port = 55424/' \
+            -e 's/^smtp_port = 54325$/smtp_port = 55425/' \
+            supabase/config.toml
       - name: Start the local services
         working-directory: ${{ runner.temp }}/generated-app
         if: matrix.infra != 'neon'
         run: |
           if [ "${{ matrix.infra }}" != local ]; then
+            if [ "${{ matrix.infra }}" = supabase ]; then
+              for attempt in 1 2 3; do
+                if pnpm infra:up; then exit 0; fi
+                pnpm infra:down || true
+                sleep $((attempt * 10))
+              done
+              exit 1
+            fi
             pnpm infra:up
             exit 0
           fi
@@ -626,6 +760,10 @@ jobs:
           {
             echo "SUPABASE_URL=$API_URL"
             echo "SUPABASE_PUBLISHABLE_KEY=$key"
+            echo "DATABASE_URL=$DB_URL"
+            # `supabase/config.toml` moves Inbucket's SMTP listener to 55425 alongside
+            # the other Supabase ports; the generated .env.local still has the default 54325.
+            echo "SMTP_URL=smtp://127.0.0.1:55425"
             echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
             echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$key"
             # Lets the settings page delete accounts.
@@ -660,7 +798,7 @@ jobs:
             echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
             echo "DATABASE_URL_DIRECT=$direct" >> "$GITHUB_ENV"
           elif [ "${{ matrix.infra }}" = supabase ]; then
-            echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres" >> "$GITHUB_ENV"
+            : # DATABASE_URL comes from `supabase status -o env` above.
           elif [ "${{ matrix.infra }}" = local ]; then
             echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres" >> "$GITHUB_ENV"
           else

@@ -1,1 +1,3 @@
-export const authEnabled = true;
+import { authClient } from "@/lib/auth";
+
+export const authEnabled = authClient.configured;

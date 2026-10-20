@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
-import { supabase } from "@/lib/auth";
+import { authClient } from "@/lib/auth";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -14,12 +14,18 @@ export function ResetPasswordPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!supabase) return setError("Configure Supabase Auth before updating your password.");
+    if (!authClient.configured) {
+      return setError("Configure the selected authentication provider first.");
+    }
     setBusy(true);
-    const { error: result } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (result) setError("That reset link could not be verified. Request a new one.");
-    else await navigate({ href: "/login?notice=password-updated" });
+    try {
+      await authClient.resetPassword(password, new URLSearchParams(window.location.search));
+      setBusy(false);
+      await navigate({ href: "/login?notice=password-updated" });
+    } catch {
+      setBusy(false);
+      setError("That reset link could not be verified. Request a new one.");
+    }
   }
 
   return (

@@ -1,6 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
 import { e2eApp } from "./e2e/app";
 
+const providerEnv = Object.fromEntries(
+  [
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_API_KEY",
+    "FIREBASE_AUTH_EMULATOR_HOST",
+    "VITE_FIREBASE_PROJECT_ID",
+    "VITE_FIREBASE_API_KEY",
+    "VITE_FIREBASE_AUTH_DOMAIN",
+    "VITE_FIREBASE_AUTH_EMULATOR_URL",
+  ].flatMap((name) => (process.env[name] ? [[name, process.env[name] as string]] : [])),
+);
+
 // One browser suite for every framework. E2E_APP picks the app (defaults to apps/web).
 export default defineConfig({
   testDir: "./e2e",
@@ -33,6 +47,7 @@ export default defineConfig({
     stdout: "pipe",
     stderr: "pipe",
     env: {
+      ...providerEnv,
       // A placeholder unless set, so pages render without a database.
       DATABASE_URL:
         process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres",

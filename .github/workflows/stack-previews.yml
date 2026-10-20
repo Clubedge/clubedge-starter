@@ -64,6 +64,7 @@ jobs:
           RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
           REPOSITORY: ${{ github.repository }}
           BRANCH: ${{ steps.generated.outputs.branch }}
+          COMMIT_SHA: ${{ steps.generated.outputs.commit }}
           PR_NUMBER: ${{ github.event.number }}
           API_KIND: ${{ matrix.api }}
           AUTH_KIND: ${{ steps.auth.outputs.auth }}

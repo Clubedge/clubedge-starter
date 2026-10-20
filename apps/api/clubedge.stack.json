@@ -17,6 +17,24 @@
         "replace": {
           "src/server/auth.ts": "src/server/variants/auth.supabase.ts"
         }
+      },
+      "firebase": {
+        "files": ["src/server/variants/auth.firebase.ts"],
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.firebase.ts"
+        }
+      },
+      "appwrite": {
+        "files": ["src/server/variants/auth.appwrite.ts"],
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.appwrite.ts"
+        }
+      },
+      "better-auth": {
+        "files": ["src/server/variants/auth.better-auth.ts"],
+        "replace": {
+          "src/server/auth.ts": "src/server/variants/auth.better-auth.ts"
+        }
       }
     },
     "storage": {

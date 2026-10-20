@@ -117,8 +117,9 @@ export function createBetterAuthServer({
     // Deleting an account needs the user's password (checked by deleteAccount below).
     user: { deleteUser: { enabled: true } },
     advanced: { database: { generateId: "uuid" } },
-    // The app rate-limits sign-in and sign-up itself, per client address.
-    rateLimit: { enabled: false },
+    // Keep Better Auth's provider-level throttling enabled for every host, including the
+    // decoupled Vite auth endpoint. Frameworks may add stricter per-client limits as well.
+    rateLimit: { enabled: true },
   });
 }
 
