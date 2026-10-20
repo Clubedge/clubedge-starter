@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/jobs",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Background jobs interface: job definitions, a queue contract, and an in-memory queue.",
   "private": true,
   "license": "Apache-2.0",
