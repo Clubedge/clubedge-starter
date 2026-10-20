@@ -9,6 +9,7 @@ if (!token) throw new Error("RENDER_API_KEY is required.");
 if (!pr || !/^\d+$/.test(pr)) throw new Error("PR_NUMBER must be a pull request number.");
 if (!new Set(["hono", "fastapi"]).has(apiKind))
   throw new Error("API_KIND must be hono or fastapi.");
+const commitSha = process.env.COMMIT_SHA;
 
 const serviceNames = {
   api: `clubedge-starter-vite-${apiKind}-pr-${pr}-api`,
@@ -126,12 +127,12 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
       });
     }
 
-    const updates = { autoDeployTrigger: "commit" };
+    const updates = { autoDeployTrigger: "off" };
     if (existing.repo !== `https://github.com/${process.env.REPOSITORY}`)
       updates.repo = `https://github.com/${process.env.REPOSITORY}`;
     if (existing.branch !== process.env.BRANCH) updates.branch = process.env.BRANCH;
     const serviceNeedsUpdate =
-      existing.autoDeployTrigger !== "commit" || updates.repo || updates.branch;
+      existing.autoDeployTrigger !== "off" || updates.repo || updates.branch;
     if (serviceNeedsUpdate) {
       await render(`/services/${encodeURIComponent(existing.id)}`, {
         method: "PATCH",
@@ -139,17 +140,16 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
       });
     }
 
-    if (envChanged || serviceNeedsUpdate) {
-      await render(`/services/${encodeURIComponent(existing.id)}/deploys`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-    }
+    const deployment = await getOrTriggerDeployment(
+      existing.id,
+      commitSha,
+      envChanged || serviceNeedsUpdate,
+    );
 
     const url = existing.serviceDetails?.url;
     if (!url) throw new Error(`Existing Render service ${name} has no public URL.`);
     console.log(`Reusing Render service ${name}: ${url}`);
-    return { ...existing, url };
+    return { ...existing, url, deploymentId: deployment.id };
   }
 
   const payload = {
@@ -158,7 +158,7 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
     ownerId: owner,
     repo: `https://github.com/${process.env.REPOSITORY}`,
     branch: process.env.BRANCH,
-    autoDeployTrigger: "commit",
+    autoDeployTrigger: "off",
     envVars: envVars(variables),
     serviceDetails: {
       runtime: "docker",
@@ -176,8 +176,74 @@ async function createService(owner, name, dockerfilePath, variables, healthCheck
   if (!service.id) throw new Error(`Render created ${name} without returning a service ID.`);
   const url = service.serviceDetails?.url;
   if (!url) throw new Error(`Render created ${name} without returning its public URL.`);
+  const deployment = await getOrTriggerDeployment(service.id, commitSha, false);
   console.log(`Created Render service ${name}: ${url}`);
-  return { ...service, url };
+  return { ...service, url, deploymentId: deployment.id };
+}
+
+async function findDeploymentForCommit(serviceId, sha) {
+  const params = new URLSearchParams({ limit: "100" });
+  const deployments = await render(`/services/${encodeURIComponent(serviceId)}/deploys?${params}`);
+  return (deployments ?? [])
+    .map((entry) => entry.deploy ?? entry)
+    .find((deployment) => deployment.commit?.id === sha);
+}
+
+async function getOrTriggerDeployment(serviceId, sha, force) {
+  if (!sha || !/^[0-9a-f]{40}$/i.test(sha)) {
+    throw new Error("COMMIT_SHA must be the full generated branch commit SHA.");
+  }
+  const failedStatuses = new Set([
+    "build_failed",
+    "update_failed",
+    "pre_deploy_failed",
+    "canceled",
+    "deactivated",
+  ]);
+  if (!force) {
+    // Service creation and a push to the preview branch can start a deploy asynchronously.
+    // Give Render a few seconds to expose it before scheduling a replacement deployment.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const deployment = await findDeploymentForCommit(serviceId, sha);
+      if (deployment && !failedStatuses.has(deployment.status)) return deployment;
+      if (deployment) break;
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+    }
+  }
+  const deployment = await render(`/services/${encodeURIComponent(serviceId)}/deploys`, {
+    method: "POST",
+    body: JSON.stringify({ commitId: sha }),
+  });
+  const result = deployment.deploy ?? deployment;
+  if (!result.id) throw new Error(`Render did not return a deploy ID for service ${serviceId}.`);
+  return result;
+}
+
+async function waitForDeploy(serviceId, deploymentId, name) {
+  const deadline = Date.now() + 20 * 60_000;
+  const failedStatuses = new Set([
+    "build_failed",
+    "update_failed",
+    "pre_deploy_failed",
+    "canceled",
+    "deactivated",
+  ]);
+  let lastStatus = "not started";
+  while (Date.now() < deadline) {
+    const result = await render(
+      `/services/${encodeURIComponent(serviceId)}/deploys/${encodeURIComponent(deploymentId)}`,
+    );
+    const deployment = result.deploy ?? result;
+    lastStatus = deployment.status ?? "unknown";
+    if (lastStatus === "live") return;
+    if (failedStatuses.has(lastStatus)) {
+      throw new Error(`${name} deploy ${deploymentId} ended with ${lastStatus}.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10_000));
+  }
+  throw new Error(
+    `${name} deploy ${deploymentId} did not go live within 20 minutes (last status: ${lastStatus}).`,
+  );
 }
 
 async function waitForHealth(url, name) {
@@ -215,8 +281,8 @@ const owner = await ownerId();
 if (process.argv[2] === "cleanup") {
   await deleteServices(owner);
 } else if (process.argv[2] === "deploy") {
-  if (!process.env.REPOSITORY || !process.env.BRANCH) {
-    throw new Error("REPOSITORY and BRANCH are required to create Render services.");
+  if (!process.env.REPOSITORY || !process.env.BRANCH || !commitSha) {
+    throw new Error("REPOSITORY, BRANCH, and COMMIT_SHA are required to deploy Render previews.");
   }
   const apiName = serviceNames.api;
   const webName = serviceNames.web;
@@ -250,6 +316,7 @@ if (process.argv[2] === "cleanup") {
     "/api/health",
   );
   const apiUrl = backend.url || apiUrlFallback;
+  await waitForDeploy(backend.id, backend.deploymentId, `The ${apiKind} API`);
   await waitForHealth(apiUrl, `The ${apiKind} API`);
 
   const frontend = await createService(
@@ -270,6 +337,7 @@ if (process.argv[2] === "cleanup") {
     },
     "/api/health",
   );
+  await waitForDeploy(frontend.id, frontend.deploymentId, "The React + Vite frontend");
   await waitForHealth(frontend.url || webUrlFallback, "The React + Vite frontend");
   await output("url", frontend.url || webUrlFallback);
   await output("api_url", apiUrl);

@@ -66,11 +66,12 @@ try {
   publish(["config", "user.name", "github-actions[bot]"]);
   publish(["config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"]);
   publish(["commit", "-m", `chore: generate ${api} ${auth} preview for PR #${pr}`]);
+  const commit = publish(["rev-parse", "HEAD"]).toString().trim();
   publish(["push", "--force", "origin", `HEAD:refs/heads/${branch}`]);
 
   if (process.env.GITHUB_OUTPUT) {
     const fs = await import("node:fs/promises");
-    await fs.appendFile(process.env.GITHUB_OUTPUT, `branch=${branch}\n`);
+    await fs.appendFile(process.env.GITHUB_OUTPUT, `branch=${branch}\ncommit=${commit}\n`);
   }
   console.log(`Published ${api} with ${auth} auth to ${branch}.`);
 } finally {

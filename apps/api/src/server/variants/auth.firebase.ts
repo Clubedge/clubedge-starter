@@ -25,7 +25,7 @@ export async function getCurrentUser(
   try {
     const auth = firebaseAuth();
     if (!auth) return null;
-    const decoded = await auth.verifyIdToken(token);
+    const decoded = await auth.verifyIdToken(token, true);
     if (!decoded.email || !decoded.email_verified) return null;
     return { id: decoded.uid, email: decoded.email, displayName: decoded.name ?? null };
   } catch {
