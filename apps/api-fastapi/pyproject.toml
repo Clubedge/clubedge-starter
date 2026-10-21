@@ -1,6 +1,6 @@
 [project]
 name = "clubedge-api"
-version = "0.24.0"
+version = "0.24.1"
 description = "The project's API, implementing packages/contract/openapi.yaml."
 requires-python = ">=3.12"
 dependencies = [
