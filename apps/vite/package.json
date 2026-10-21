@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/vite",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
