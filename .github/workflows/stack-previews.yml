@@ -14,6 +14,7 @@ jobs:
   deploy:
     if: >-
       github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     name: React + Vite + ${{ matrix.api }}
     runs-on: ubuntu-24.04
@@ -86,6 +87,7 @@ jobs:
   comment:
     if: >-
       always() && github.event.action != 'closed' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     needs: [deploy]
     runs-on: ubuntu-24.04
@@ -132,6 +134,7 @@ jobs:
   cleanup:
     if: >-
       github.event.action == 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     permissions:
