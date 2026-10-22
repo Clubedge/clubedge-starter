@@ -42,6 +42,29 @@ Run `pnpm test:e2e` for changes that affect browser behavior. It requires a loca
 - `clubedge.template.json` tells `create-clubedge-app` how to scaffold this repository. Keep it in step when moving the app, the site config, the environment example, or the Docker image name; `pnpm test` checks it.
 - Follow the existing formatting and TypeScript conventions. Prefer a small dependency footprint and explain new runtime dependencies in the pull request.
 
+## Changing a shared interface
+
+A change to a provider-neutral interface (`AuthProvider`, `StorageProvider`, `Cache`, `EmailProvider`, `PaymentProvider`, `JobQueue`, …) reaches every adapter and every generated project. Work through it in this order:
+
+1. Name every implementation: the interface package's own reference (in-memory queue, memory cache, file-system storage) and each `packages/<module>-<provider>` adapter.
+2. Decide whether the change is breaking. TypeScript reports missing members; a changed behavior belongs in the module's conformance suite, which is its executable definition. Breaking public behavior is announced in the release notes, since packages version with the Starter release.
+3. Update the contract and its conformance suite in the interface package first, so the intended behavior is written down before any adapter moves.
+4. Update every adapter. `pnpm typecheck` fails until each one implements the change, and `pnpm test` holds each to the same behavior through the shared suite.
+5. Let CI prove the rest: the nightly workflow runs the suites that need real services (Supabase, S3-compatible servers, SMTP, stripe-mock), and `starter.yml` builds representative generated projects.
+6. Update documentation and `.env.example` when configuration or behavior changed.
+
+A new provider joins by implementing the interface and passing the existing conformance suite through a small test harness — search for `describeAuth`, `describeStorage`, `describeCache`, `describeRateLimiter`, `describeEmail`, and `describePaymentProvider` to see each pattern.
+
+## What the checks are for
+
+The architecture pays for itself only while these stay true, so CI watches them directly:
+
+- **Contract-test pass rate** — `pnpm test` on pull requests (offline suites) and the nightly workflow (real services). A red suite names the provider and the behavior that drifted.
+- **Generated-build success rate** — the `generated-project` and `deploy-config` jobs in `starter.yml`, which scaffold, install, build, and smoke-test the combinations users receive.
+- **Configuration coverage** — the matrices in `starter.yml`; a new supported combination means a new matrix entry, not a promise.
+- **Regression rate** — changes to shared packages are reviewed against the suites above; a fix that only moves the failure between providers does not count as fixed.
+- **Dependency health** — `pnpm audit --audit-level high` in CI and Dependabot updates.
+
 ## Pull request checklist
 
 - [ ] The change addresses an issue or clearly explains its motivation.

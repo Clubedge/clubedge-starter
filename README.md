@@ -111,6 +111,38 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 
 A module you leave out takes its packages, provider SDK, environment variables, documentation, and lockfile entries with it.
 
+### Support levels
+
+Providers earn their level from CI evidence, not promises: pull requests run unit and contract
+tests, the nightly workflow runs every conformance suite against its real service, and
+`starter.yml` generates projects for the combinations users receive.
+
+| Level        | Meaning                    | Requires                                                                                            |
+| ------------ | -------------------------- | --------------------------------------------------------------------------------------------------- |
+| Stable       | Recommended for production | Conformance tests against the real provider, generated-project builds, critical end-to-end flows    |
+| Beta         | Usable, with known limits  | Core tests and generated-project validation; a conformance suite or secret-backed run still landing |
+| Experimental | Under active development   | Documented limits and basic validation only                                                         |
+
+| Provider               | Level  | Evidence                                                                                                                |
+| ---------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Auth `supabase`        | Stable | Conformance suite against the local stack (nightly), real sign-up flows in `starter.yml`                                |
+| Auth `better-auth`     | Stable | Conformance suite, generated-project flows across frameworks and APIs                                                   |
+| Auth `firebase`        | Stable | Conformance suite against the Auth Emulator on every pull request, generated-project flows                              |
+| Auth `appwrite`        | Beta   | Live conformance tests, gated on an Appwrite server; no generated-project flow yet                                      |
+| Storage `s3`           | Stable | Conformance suite against S3-compatible services (nightly), local mode end to end                                       |
+| Storage `supabase`     | Beta   | Conformance suite against the local stack (nightly)                                                                     |
+| Cache `redis`          | Stable | Cache and rate-limiter conformance suites against a real Redis (pull requests and nightly)                              |
+| Email `smtp`           | Stable | Conformance suite with delivery read back from an inbox (nightly), flows that read email                                |
+| Email `resend`         | Beta   | Conformance suite against the real API, gated on a repository secret                                                    |
+| Payments `stripe`      | Stable | Webhook verification conformance on every pull request, normalization against stripe-mock (nightly), subscription flows |
+| Jobs `pg-boss`         | Stable | Conformance suite against PostgreSQL (pull requests and nightly)                                                        |
+| Jobs `bullmq`          | Stable | Conformance suite against a real Redis (pull requests and nightly)                                                      |
+| Jobs `inngest`         | Beta   | Generated-project flows through its Dev Server; no conformance suite yet                                                |
+| Observability `otel`   | Beta   | Generated-project builds, deploys, and spans wired; no behavioral contract to test yet                                  |
+| Observability `sentry` | Beta   | Generated-project builds, deploys, and spans wired; no behavioral contract to test yet                                  |
+
+A provider moves up when the missing evidence lands, and back down when it stops passing.
+
 <!-- clubedge:end -->
 
 ## Quick start
