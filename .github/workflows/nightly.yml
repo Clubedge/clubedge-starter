@@ -85,4 +85,9 @@ jobs:
             echo "SUPABASE_SECRET_KEY=${SECRET_KEY:-${SERVICE_ROLE_KEY:-}}"
           } >> "$GITHUB_ENV"
       - name: Run every suite against its service
-        run: pnpm test
+        run: |
+          pnpm exec vitest run --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest-results.json"
+          pnpm exec turbo run test
+      - name: Publish the conformance report
+        if: always()
+        run: node scripts/conformance-report.mjs "$RUNNER_TEMP/vitest-results.json" >> "$GITHUB_STEP_SUMMARY"
