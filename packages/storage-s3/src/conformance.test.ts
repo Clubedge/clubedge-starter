@@ -19,7 +19,9 @@ function ensureBucket() {
       region,
       ...(endpoint ? { endpoint } : {}),
       forcePathStyle: Boolean(endpoint),
-      ...(accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : {}),
+      ...(accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {}),
     });
     try {
       await client.send(new CreateBucketCommand({ Bucket: bucket! }));
