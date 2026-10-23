@@ -617,7 +617,7 @@ API_URL=http://127.0.0.1:3001 pnpm exec vitest run packages/contract/src/remote.
 In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `docker compose up --build` runs both.
 
 Run `node migrate.mjs` in the API's image before a new version starts. <!-- clubedge:only api=hono -->
-The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `package.json` scripts call uv, ruff, mypy, and pytest, so `pnpm dev`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` run it like the other apps. The database schema and migrations stay in `packages/db`: run `pnpm db:migrate` against the production database before a new version starts. <!-- clubedge:only api=fastapi -->
+The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `package.json` scripts call uv, ruff, mypy, and pytest, so `pnpm dev`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` run it like the other apps. The database schema and migrations stay in `packages/db`, and the API's image bundles their Node migrator: run `node migrate.mjs` in it before a new version starts. <!-- clubedge:only api=fastapi -->
 
 <!-- clubedge:end -->
 

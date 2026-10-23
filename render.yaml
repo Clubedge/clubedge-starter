@@ -32,6 +32,29 @@ services:
       - key: BETTER_AUTH_SECRET
         generateValue: true
       # clubedge:end
+      # clubedge:if auth=supabase
+      # Optional: lets users delete their account from the settings page.
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if auth=firebase
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if auth=appwrite
+      - key: APPWRITE_ENDPOINT
+        sync: false
+      - key: APPWRITE_PROJECT_ID
+        sync: false
+      - key: APPWRITE_API_KEY
+        sync: false
+      # clubedge:end
       # clubedge:if email=smtp
       - key: SMTP_URL
         sync: false
@@ -70,5 +93,21 @@ services:
       # clubedge:end
       # clubedge:if storage=supabase
       - key: SUPABASE_STORAGE_BUCKET
+        sync: false
+      # clubedge:end
+      # clubedge:if jobs=inngest
+      - key: INNGEST_EVENT_KEY
+        sync: false
+      - key: INNGEST_SIGNING_KEY
+        sync: false
+      # clubedge:end
+      # clubedge:if observability=otel
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        sync: false
+      - key: OTEL_EXPORTER_OTLP_HEADERS
+        sync: false
+      # clubedge:end
+      # clubedge:if observability=sentry
+      - key: SENTRY_DSN
         sync: false
       # clubedge:end

@@ -5,9 +5,10 @@ import { describeAuthProvider } from "@clubedge/auth/conformance";
 import { createAppwriteAuth } from "./index";
 
 // Against a real Appwrite: the Starter's CI runs it on an Appwrite Cloud test project with
-// APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, and APPWRITE_API_KEY (scopes sessions.write,
-// users.read, users.write). Appwrite emails the recovery link to the real address, so the test
-// asks for a recovery token with the key instead: with users.write, Appwrite returns its secret.
+// APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, and APPWRITE_API_KEY: the app's scopes, sessions.write
+// and users.write, plus users.read, which only this test's cleanup needs to find its users.
+// Appwrite emails the recovery link to the real address, so the test asks for a recovery token
+// with the key instead: with users.write, Appwrite returns its secret.
 const endpoint = process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_PROJECT_ID;
 const apiKey = process.env.APPWRITE_API_KEY;

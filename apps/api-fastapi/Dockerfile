@@ -1,8 +1,8 @@
 # Production image for the API. Build it from the repository root.
 # Generated projects keep the API in apps/api; the starter repository builds it with
 #   docker build -f apps/api-fastapi/Dockerfile --build-arg APP_DIR=apps/api-fastapi .
-# The database schema and its migrations live in packages/db: run `pnpm db:migrate` against
-# the production database before a new version starts.
+# The database schema and its migrations live in packages/db; the image bundles their Node
+# migrator (node /app/migrate.mjs), so run it before a new version starts.
 ARG APP_DIR=apps/api
 
 # Build the shared migrator in a Node workspace that has esbuild and the database packages.
