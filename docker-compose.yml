@@ -1,6 +1,21 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      # clubedge:if framework=vite
+      # Vite compiles its VITE_* settings into the build, and .env files stay out of the image:
+      # Compose reads these from the shell or a .env file next to this one (or pass
+      # --env-file apps/web/.env.local).
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-} # clubedge:only auth=supabase
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-} # clubedge:only auth=supabase
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-} # clubedge:only auth=firebase
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-} # clubedge:only auth=firebase
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-} # clubedge:only auth=firebase
+        VITE_APPWRITE_ENDPOINT: ${VITE_APPWRITE_ENDPOINT:-} # clubedge:only auth=appwrite
+        VITE_APPWRITE_PROJECT_ID: ${VITE_APPWRITE_PROJECT_ID:-} # clubedge:only auth=appwrite
+      # clubedge:end
     ports:
       - "3000:3000"
     env_file:

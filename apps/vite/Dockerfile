@@ -43,7 +43,9 @@ FROM node:22-alpine AS runner
 ARG APP_DIR
 ENV PORT=3000
 WORKDIR /srv/${APP_DIR}
-COPY --from=builder /app/${APP_DIR}/dist ./dist
-COPY --from=builder /app/${APP_DIR}/server.mjs ./server.mjs
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 app
+COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/dist ./dist
+COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/server.mjs ./server.mjs
+USER app
 EXPOSE 3000
 CMD ["node", "server.mjs"]
