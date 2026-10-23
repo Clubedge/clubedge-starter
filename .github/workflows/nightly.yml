@@ -72,6 +72,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The FastAPI app's pytest and contract check run with the same uv setup as ci.yml.
+      - uses: astral-sh/setup-uv@v10.3.0
+        if: ${{ hashFiles('apps/*/pyproject.toml') != '' }}
       - run: pnpm install --frozen-lockfile
       - name: Start the local Supabase stack
         run: |
