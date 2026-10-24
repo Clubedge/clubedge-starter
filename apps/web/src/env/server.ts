@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseClientIpSettings, type ClientIpSettings } from "@clubedge/core";
 
 /** An optional variable that may also be present but empty, as in a copied .env.example. */
 export const optional = <T extends z.ZodType>(schema: T) => schema.optional().or(z.literal(""));
@@ -34,4 +35,15 @@ let cached: ServerEnv | undefined;
 export function getServerEnv(): ServerEnv {
   cached ??= parseEnv(serverSchema, "Server");
   return cached;
+}
+
+let clientIpSettings: ClientIpSettings | undefined;
+
+/**
+ * Where rate limits find the client's address: CLIENT_IP_HEADER and TRUSTED_PROXY_HOPS (SETUP.md,
+ * "Client addresses"). Validates only those two, and throws on a value that cannot be right.
+ */
+export function getClientIpSettings(): ClientIpSettings {
+  clientIpSettings ??= parseClientIpSettings(process.env);
+  return clientIpSettings;
 }

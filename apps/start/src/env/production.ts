@@ -1,6 +1,7 @@
 // The variables a production deploy needs, for the modules this project uses. Hosts that only run
 // the app (Vercel, Netlify) check them before the build with `pnpm check:env`, so a missing key
 // stops the deploy instead of shipping an app whose features fail at runtime.
+import { parseClientIpSettings } from "@clubedge/core";
 import { isNeonPooledUrl } from "@clubedge/db/urls";
 
 type Env = Record<string, string | undefined>;
@@ -109,6 +110,12 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
     else if (isNeonPooledUrl(direct)) {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
+  }
+  // Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
+  try {
+    parseClientIpSettings(env);
+  } catch (error) {
+    invalid.push((error as Error).message);
   }
   // clubedge:if jobs=inngest
   // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.

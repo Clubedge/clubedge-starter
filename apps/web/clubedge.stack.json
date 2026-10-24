@@ -112,7 +112,6 @@
         "files": [
           "src/app/dashboard/_components/jobs-actions.ts",
           "src/app/dashboard/_components/jobs-card.tsx",
-          "src/instrumentation.ts",
           "src/jobs",
           "src/server/jobs.ts"
         ]
@@ -138,7 +137,6 @@
         "files": [
           "src/app/api/client-errors",
           "src/components/error-reporting.tsx",
-          "src/instrumentation.ts",
           "src/server/observability.ts"
         ]
       },

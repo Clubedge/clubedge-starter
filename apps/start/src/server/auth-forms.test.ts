@@ -17,7 +17,12 @@ vi.mock("./auth", () => ({
 }));
 vi.mock("./cache", () => ({ createRateLimiter: () => ({ limit }) }));
 vi.mock("./users", () => ({ ensureUserProfile }));
-vi.mock("@/env/server", () => ({ getAppUrl: () => "https://app.example" }));
+vi.mock("@/env/server", () => ({
+  getAppUrl: () => "https://app.example",
+  getClientIpSettings: () => ({ trustedHops: 0 }),
+}));
+// The connection's address, as the server reports it.
+vi.mock("@tanstack/react-start/server", () => ({ getRequestIP: () => "203.0.113.9" }));
 
 const { handleAuthCallback, handleFormEndpointVisit, handleSignIn, handleSignOut, handleSignUp } =
   await import("./auth-forms");
@@ -28,7 +33,8 @@ function formPost(path: string, fields: Record<string, string>) {
   return new Request(`https://app.example${path}`, {
     method: "POST",
     body: new URLSearchParams(fields),
-    headers: { "x-forwarded-for": "203.0.113.9" },
+    // The client's own claim, which no trusted proxy vouches for.
+    headers: { "x-forwarded-for": "198.51.100.66" },
   });
 }
 
