@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from clubedge_api.app import create_app
 from clubedge_api.routes.client_errors import ClientError, parse_client_error_report
+from clubedge_api.settings import ClientIpSettings
 from clubedge_api.telemetry import Attributes, BrowserErrorReporting, log_attributes
 from tests.fakes import client, dependencies
 
@@ -81,7 +82,8 @@ def test_refuses_what_is_not_a_json_error_report_under_16_kib() -> None:
 
 
 def test_limits_each_address_to_30_reports_a_minute() -> None:
-    api = client()
+    # As behind the frontend's server, which sends the client's address in X-Forwarded-For.
+    api = client(client_ip_settings=ClientIpSettings(trusted_hops=1))
     url = "/api/client-errors"
     sender = {"x-forwarded-for": "198.51.100.7"}
     for _ in range(30):

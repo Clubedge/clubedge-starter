@@ -624,6 +624,31 @@ Production needs these variables:
 - `SENTRY_DSN`, and `SENTRY_ENVIRONMENT` to tell environments apart. <!-- clubedge:only observability=sentry -->
 - The `STORAGE_*` variables for your S3-compatible bucket. <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET`. <!-- clubedge:only storage=supabase -->
+- `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS`, for where the app runs: see [Client addresses](#client-addresses).
+
+### Client addresses
+
+Rate limits count requests per client address, so the server must know which address a request comes from. That depends on what sits in front of it, which two settings describe:
+
+- `CLIENT_IP_HEADER`: a header your host sets to the client's address, replacing any copy the client sends. The address is that header's value.
+- `TRUSTED_PROXY_HOPS`: how many reverse proxies you run in front of the server that append to `X-Forwarded-For`, such as Caddy, nginx, Traefik, or a load balancer. The address is the entry that many places from the end, the one your outermost proxy added; entries before it are whatever the client sent, so they never count.
+
+`CLIENT_IP_HEADER` wins when both are set. Without either, or when a request lacks what they name, the address is the connection's own, which is right for a server that clients reach directly. A value that cannot be right stops the server at startup, and `pnpm check:env` reports it.
+
+Next.js gives the app no connection address, so without either setting the address is the last `X-Forwarded-For` entry, the one the proxy nearest the app added: right on Vercel, which replaces the header with the client's address, and behind one proxy you run. Set your host's setting from the table anyway, since some hosts add more than one entry. <!-- clubedge:only framework=next -->
+The frontend's server finds the address with its own settings and sends it to the API as the only `X-Forwarded-For` entry, dropping any address header the client sent. An API that only the frontend's server reaches, over a private network as in `docker-compose.yml`, sets `TRUSTED_PROXY_HOPS=1`. <!-- clubedge:only api!=none -->
+
+| Where the app runs                    | Setting                                             |
+| ------------------------------------- | --------------------------------------------------- |
+| Railway                               | `CLIENT_IP_HEADER=x-real-ip`                        |
+| Render                                | `CLIENT_IP_HEADER=cf-connecting-ip` (`render.yaml`) |
+| Fly.io                                | `CLIENT_IP_HEADER=fly-client-ip` (`fly.toml`)       |
+| Vercel                                | `CLIENT_IP_HEADER=x-real-ip`                        |
+| Netlify                               | `CLIENT_IP_HEADER=x-nf-client-connection-ip`        |
+| Behind proxies you run (Caddy, nginx) | `TRUSTED_PROXY_HOPS=1`, or the number of proxies    |
+| Reached by clients directly           | Neither                                             |
+
+Vercel and Netlify take runtime variables only from the project's settings, not from `vercel.json` or `netlify.toml`, so set `CLIENT_IP_HEADER` there with the others.
 
 ## Checks
 
@@ -725,7 +750,7 @@ This project is a starting point; review the security and operational choices fo
 - Authorize storage access and validate upload size, content type, and object ownership in the route before using the storage adapter. <!-- clubedge:only storage!=none -->
 - Configure Redis for rate limiting when you deploy more than one instance; the in-memory fallback does not share counts between instances. <!-- clubedge:only cache=redis -->
 - The rate limiter keeps counts in memory, so deploy one instance or switch to a shared store before scaling out. <!-- clubedge:only cache=memory -->
-- Client addresses come from `x-forwarded-for`, so deploy behind a proxy that sets it.
+- Tell the server where each client's address is for your host, with `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS`, so rate limits count each client on its own: see [Client addresses](#client-addresses).
 - Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets.
 - Review database migration and backup procedures, provider access policies, and application-specific error handling.
 

@@ -35,6 +35,7 @@
           "src/routes/settings.tsx",
           "src/server/auth-forms.test.ts",
           "src/server/auth-forms.ts",
+          "src/server/client-ip.ts",
           "src/server/cookies.test.ts",
           "src/server/cookies.ts",
           "src/server/settings-forms.ts",
@@ -151,6 +152,7 @@
           "src/components/error-reporting.tsx",
           "src/nitro/plugins/observability.ts",
           "src/routes/api/client-errors.ts",
+          "src/server/client-ip.ts",
           "src/server/observability.test.ts",
           "src/server/observability.ts"
         ]

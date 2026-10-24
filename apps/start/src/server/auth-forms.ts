@@ -1,11 +1,12 @@
 import "@tanstack/react-start/server-only";
 import { linkToken } from "@clubedge/auth";
 import { z } from "zod";
-import { getClientIp, safeRedirectPath, reportError } from "@clubedge/core";
+import { safeRedirectPath, reportError } from "@clubedge/core";
 import { getAppUrl } from "@/env/server";
 import { loginUrl } from "@/lib/login-url";
 import { getAuth, isAuthConfigured } from "./auth";
 import { createRateLimiter } from "./cache";
+import { clientIp } from "./client-ip";
 import { ensureUserProfile } from "./users";
 
 // Form endpoints for the login page. They answer with 303 redirects, so the forms work with
@@ -44,7 +45,7 @@ function readCredentials(formData: FormData) {
 }
 
 async function isRateLimited(request: Request, action: "sign-in" | "sign-up" | "password-reset") {
-  const ip = getClientIp(request.headers);
+  const ip = clientIp(request);
   try {
     const result = await authRateLimiter.limit(`auth:${action}:${ip}`);
     return !result.success;

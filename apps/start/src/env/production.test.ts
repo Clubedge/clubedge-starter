@@ -68,6 +68,14 @@ describe("production env check", () => {
     expect(checkProductionEnv(env).invalid).toEqual(["APP_URL is not an absolute URL"]);
   });
 
+  it("checks where rate limits find the client's address", () => {
+    const env = { ...complete(), CLIENT_IP_HEADER: "x-real-ip", TRUSTED_PROXY_HOPS: "1" };
+    expect(checkProductionEnv(env).invalid).toEqual([]);
+    expect(checkProductionEnv({ ...env, TRUSTED_PROXY_HOPS: "one" }).invalid).toEqual([
+      'TRUSTED_PROXY_HOPS must be a whole number from 0 to 10, not "one"',
+    ]);
+  });
+
   const hasEmail = requiredVariables({}).some(({ key }) => key === "EMAIL_FROM");
   it.runIf(hasEmail)("rejects the example.com sender from .env.example", () => {
     const env = { ...complete(), EMAIL_FROM: "App <no-reply@example.com>" };

@@ -16,6 +16,7 @@ import { createSmtpEmail } from "@clubedge/email-smtp";
 // clubedge:if email=resend
 import { createResendEmail } from "@clubedge/email-resend";
 // clubedge:end
+import { clientIp } from "./client-ip.mjs";
 import site from "./src/config/site.json" with { type: "json" };
 
 const id = () =>
@@ -226,11 +227,9 @@ async function toWebRequest(request) {
   for (const [name, value] of Object.entries(request.headers)) {
     if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
-  // Better Auth limits requests per client address, which it reads from this header; without a
-  // proxy in front to set it, it is the connection's own address.
-  if (!headers.has("x-forwarded-for") && request.socket?.remoteAddress) {
-    headers.set("x-forwarded-for", request.socket.remoteAddress);
-  }
+  // Better Auth limits requests per client address, which it reads from this header: give it the
+  // address this server finds (client-ip.mjs), never a copy the client sent.
+  headers.set("x-forwarded-for", clientIp(request));
   const method = request.method ?? "GET";
   let body;
   if (method !== "GET" && method !== "HEAD") {

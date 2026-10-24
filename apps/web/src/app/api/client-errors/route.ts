@@ -1,5 +1,6 @@
 import { getClientIp, readTextBody, reportError } from "@clubedge/core";
 import { ClientError, parseClientErrorReport } from "@clubedge/observability";
+import { getClientIpSettings } from "@/env/server";
 import { createRateLimiter } from "@/server/cache";
 import { browserErrorReporting } from "@/server/observability";
 
@@ -10,8 +11,11 @@ const MAX_BODY = 16_384;
 const clientErrorLimiter = createRateLimiter(30, 60);
 
 async function isRateLimited(request: Request) {
+  // Next.js gives route handlers no connection address: without CLIENT_IP_HEADER or
+  // TRUSTED_PROXY_HOPS, every client shares one count (SETUP.md, "Client addresses").
+  const ip = getClientIp(request.headers, getClientIpSettings());
   try {
-    const result = await clientErrorLimiter.limit(`client-errors:${getClientIp(request.headers)}`);
+    const result = await clientErrorLimiter.limit(`client-errors:${ip}`);
     return !result.success;
   } catch (error) {
     reportError(error, { message: "Rate limiter unavailable" });

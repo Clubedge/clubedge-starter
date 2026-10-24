@@ -5,13 +5,15 @@ memory."""
 import logging
 import math
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
 from fastapi import Request
+from starlette.datastructures import Headers
 
 from clubedge_api.http import ApiError, Guard
+from clubedge_api.settings import ClientIpSettings
 
 logger = logging.getLogger(__name__)
 
@@ -93,27 +95,56 @@ def create_memory_limiter(requests: int, window_seconds: int) -> RateLimiter:
     return MemoryRateLimiter(requests, window_seconds)
 
 
-def client_ip(headers: Mapping[str, str]) -> str:
-    """The client's address as the proxy in front of the API reports it, read as the Hono API
-    reads it: the first X-Forwarded-For entry, else X-Real-IP, else "unknown"."""
-    forwarded = headers.get("x-forwarded-for", "").split(",")[0].strip()
-    if forwarded:
-        return forwarded[:64]
-    real_ip = headers.get("x-real-ip", "").strip()
-    if real_ip:
-        return real_ip[:64]
-    return "unknown"
+# Neither CLIENT_IP_HEADER nor TRUSTED_PROXY_HOPS: clients connect to the API directly.
+_DIRECT = ClientIpSettings()
 
 
-def rate_limit(limiter: RateLimiter, *, scope: str, fail_open: bool = True) -> Guard:
+def _entries(headers: Headers, name: str) -> list[str]:
+    """A header's comma-separated entries, across repeated lines in order, as Node.js and fetch
+    join them: some proxies add a line of their own instead of extending the client's."""
+    return ",".join(headers.getlist(name)).split(",")
+
+
+def client_ip(
+    headers: Headers, settings: ClientIpSettings = _DIRECT, socket_address: str | None = None
+) -> str:
+    """The client's address, found as getClientIp in @clubedge/core finds it. With a header in
+    `settings`, that header's value (its first entry, should it hold a list). With trusted hops,
+    the X-Forwarded-For entry that many places from the end: the one the outermost of your
+    proxies added; entries before it are whatever the client sent, so they never count. Without
+    either, or when the request lacks what they name, the connection's own address, else
+    "unknown". Without a connection address and either setting, it trusts the nearest proxy,
+    whose entry is the last."""
+    no_connection = not settings.header and socket_address is None
+    hops = settings.trusted_hops or (1 if no_connection else 0)
+    address = ""
+    if settings.header:
+        address = _entries(headers, settings.header)[0]
+    elif hops > 0:
+        entries = _entries(headers, "x-forwarded-for")
+        if len(entries) >= hops:
+            address = entries[-hops]
+    return (address.strip() or socket_address or "unknown")[:64]
+
+
+def rate_limit(
+    limiter: RateLimiter,
+    *,
+    scope: str,
+    fail_open: bool = True,
+    client_ip_settings: ClientIpSettings = _DIRECT,
+) -> Guard:
     """Answers 429 rate_limited, with Retry-After in seconds, once a client address has used up
     its requests for the window. `scope` names the limit, so routes sharing a limiter backend
     count separately. When the backend (Redis) fails, the request goes through (`fail_open`, the
-    default), so an outage locks nobody out, or is refused with 503 unavailable."""
+    default), so an outage locks nobody out, or is refused with 503 unavailable.
+    `client_ip_settings` says where the client's address comes from (settings.py reads it)."""
 
     async def guard(request: Request) -> None:
+        socket_address = request.client.host if request.client else None
+        address = client_ip(request.headers, client_ip_settings, socket_address)
         try:
-            result = await limiter.limit(f"{scope}:{client_ip(request.headers)}")
+            result = await limiter.limit(f"{scope}:{address}")
         except Exception:
             logger.exception("Rate limiter unavailable")
             if not fail_open:

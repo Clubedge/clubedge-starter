@@ -339,6 +339,9 @@ if (process.argv[2] === "cleanup") {
       APP_PACKAGE: "@clubedge/web",
       API_URL: apiUrl,
       PORT: "10000",
+      // Cloudflare, in front of Render, sets it to the client's address (SETUP.md, "Client
+      // addresses").
+      CLIENT_IP_HEADER: "cf-connecting-ip",
       ...(auth
         ? {
             VITE_SUPABASE_URL: process.env.SUPABASE_URL,

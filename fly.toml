@@ -11,6 +11,11 @@
 [deploy]
   release_command = "node /app/migrate.mjs"
 
+# Fly's proxy puts each client's address in Fly-Client-IP (the last X-Forwarded-For entry is the
+# app's own address), so rate limits read it there; see SETUP.md.
+[env]
+  CLIENT_IP_HEADER = "fly-client-ip"
+
 [http_service]
   internal_port = 3000
   force_https = true

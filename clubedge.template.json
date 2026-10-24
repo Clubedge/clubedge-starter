@@ -76,6 +76,7 @@
     "scripts/stack-preview-supabase.mjs",
     "scripts/clubedge-upgrade-workflow.test.ts",
     "scripts/template-manifest.test.ts",
-    "scripts/vite-api-routes.test.ts"
+    "scripts/vite-api-routes.test.ts",
+    "scripts/vite-client-ip.test.ts"
   ]
 }
