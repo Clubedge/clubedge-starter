@@ -382,6 +382,16 @@ jobs:
               framework: vite,
               modules: --api hono --auth firebase --cache redis --jobs bullmq --payments stripe,
             }
+          - {
+              name: vite-fastapi-modules-a,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --storage s3,
+            }
+          - {
+              name: vite-fastapi-modules-b,
+              framework: vite,
+              modules: --api fastapi --auth supabase --storage supabase,
+            }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
           - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
@@ -423,13 +433,13 @@ jobs:
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
             --framework ${{ matrix.framework }} ${{ matrix.modules }} --no-git --no-install --yes
-      # FastAPI implements no module options beyond auth yet, so the CLI must refuse them rather
-      # than generate a frontend that calls endpoints its API lacks.
+      # FastAPI does not implement every module option yet, so the CLI must refuse the others
+      # rather than generate a frontend that calls endpoints its API lacks.
       - name: Refuse modules FastAPI does not implement
         if: matrix.name == 'vite-fastapi'
         run: |
           set -euo pipefail
-          for option in "--storage s3" "--cache redis" "--email smtp" "--payments stripe" \
+          for option in "--cache redis" "--email smtp" "--payments stripe" \
             "--jobs pg-boss" "--observability otel"; do
             if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
               --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
@@ -796,6 +806,21 @@ jobs:
               modules: --auth better-auth --jobs pg-boss,
               mail-api: "",
             }
+          # The FastAPI API: its files in the Docker S3 service, then in a local folder.
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --storage s3,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: local,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --storage s3,
+              mail-api: "",
+            }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
@@ -807,6 +832,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: astral-sh/setup-uv@v10.3.0
+        if: matrix.api == 'fastapi'
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -820,7 +847,9 @@ jobs:
             --framework ${{ matrix.framework }} --api ${{ matrix.api || 'none' }} --infra ${{ matrix.infra }} ${{ matrix.modules }} --no-git --no-install --yes
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          if [ "${{ matrix.api }}" = fastapi ]; then (cd apps/api && uv sync --locked); fi
       # Better Auth checks that requests come from its own origin, which the browser tests reach
       # as 127.0.0.1; the frontend's server hosts it, and the API asks it for sessions there.
       - name: Serve Better Auth at the browser tests' origin

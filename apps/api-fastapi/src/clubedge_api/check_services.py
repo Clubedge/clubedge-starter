@@ -56,6 +56,44 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
             row = await (await db.execute("select current_database()")).fetchone()
         return f'connected to database "{row[0] if row else ""}" through DATABASE_URL_DIRECT'
 
+    # clubedge:if storage=s3 && infra=local
+    storage_directory = env.get("STORAGE_DIRECTORY", "").strip()
+
+    async def local_folder_storage() -> str:
+        from clubedge_api.storage_local import FileSystemStorage
+
+        storage = FileSystemStorage(storage_directory)
+        key = f"check-services/{os.urandom(8).hex()}.txt"
+        await storage.upload(key, b"ok", "text/plain")
+        text = (await storage.download(key)).decode()
+        await storage.delete(key)
+        if text != "ok":
+            raise CheckError(f'read back "{text}"')
+        return f"wrote, read back, and deleted a file in {storage_directory}"
+
+    # clubedge:end
+    # clubedge:if storage=s3
+    storage_bucket = env.get("STORAGE_BUCKET", "").strip()
+
+    async def file_storage() -> str:
+        from clubedge_api.storage_s3 import S3Storage
+
+        storage = S3Storage(
+            bucket=storage_bucket,
+            region=env.get("STORAGE_REGION", "").strip() or "auto",
+            endpoint=env.get("STORAGE_ENDPOINT", "").strip() or None,
+            access_key_id=env.get("STORAGE_ACCESS_KEY_ID", "").strip() or None,
+            secret_access_key=env.get("STORAGE_SECRET_ACCESS_KEY", "").strip() or None,
+        )
+        key = f"check-services/{os.urandom(8).hex()}.txt"
+        await storage.upload(key, b"ok", "text/plain")
+        text = (await storage.download(key)).decode()
+        await storage.delete(key)
+        if text != "ok":
+            raise CheckError(f'read back "{text}"')
+        return f'uploaded, read back, and deleted an object in "{storage_bucket}"'
+
+    # clubedge:end
     return [
         Check("PostgreSQL", postgres, skip_unless(database_url, "DATABASE_URL is not set")),
         Check(
@@ -63,6 +101,18 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
             postgres_direct,
             skip_unless(direct_url, "DATABASE_URL_DIRECT is not set; migrations use DATABASE_URL"),
         ),
+        # clubedge:if storage=s3 && infra=local
+        Check(
+            "Local folder storage",
+            local_folder_storage,
+            skip_unless(storage_directory, "STORAGE_DIRECTORY is not set"),
+        ),
+        # clubedge:end
+        # clubedge:if storage=s3
+        Check(
+            "File storage", file_storage, skip_unless(storage_bucket, "STORAGE_BUCKET is not set")
+        ),
+        # clubedge:end
     ]
 
 

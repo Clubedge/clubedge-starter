@@ -422,6 +422,12 @@ The API holds the storage adapter: set its variables in `apps/api/.env.local`, a
 The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. It acts as the user whose Supabase access token the request carries (the `Authorization: Bearer` header the frontend sends), and as anonymous without one. <!-- clubedge:only storage=supabase -->
 
 <!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=fastapi -->
+
+The API holds the storage adapter: set its variables in `apps/api/.env.local`, and in a route call `get_storage(request)` from `apps/api/src/clubedge_api/storage.py`, then await its `upload`, `download`, `delete`, `exists`, or `get_signed_url`. `pnpm check:services` uploads, reads back, and deletes a test file. <!-- clubedge:only storage=s3 -->
+The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `get_storage(request)` from `apps/api/src/clubedge_api/storage.py`, then await its `upload`, `download`, `delete`, `exists`, or `get_signed_url`. It acts as the user whose Supabase access token the request carries (the `Authorization: Bearer` header the frontend sends), and as anonymous without one. <!-- clubedge:only storage=supabase -->
+
+<!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
 
 The storage adapter does not authorize users or validate uploads. Before calling it, the route must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.

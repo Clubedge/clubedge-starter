@@ -7,7 +7,9 @@
   "conditional": [
     "Dockerfile",
     "src/clubedge_api/check_services.py",
-    "src/clubedge_api/production_env.py"
+    "src/clubedge_api/production_env.py",
+    "src/clubedge_api/storage.py",
+    "tests/test_storage_s3.py"
   ],
   "deployment": {
     "id": "api",
@@ -49,6 +51,23 @@
       }
     },
     "storage": {
+      "s3|supabase": {
+        "files": ["src/clubedge_api/storage.py", "src/clubedge_api/storage_provider.py"]
+      },
+      "s3": {
+        "files": [
+          "src/clubedge_api/storage_local.py",
+          "src/clubedge_api/storage_s3.py",
+          "tests/test_storage_local.py",
+          "tests/test_storage_s3.py"
+        ]
+      },
+      "supabase": {
+        "files": ["src/clubedge_api/storage_supabase.py", "tests/test_storage_supabase.py"],
+        "replace": {
+          "src/clubedge_api/storage.py": "src/clubedge_api/variants/storage_supabase.py"
+        }
+      },
       "none": {}
     },
     "cache": {
