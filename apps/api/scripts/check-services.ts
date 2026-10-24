@@ -2,6 +2,12 @@
 // It reads the API's .env.local like the API does, so it confirms the API's own settings.
 import { createDb } from "@clubedge/db";
 import { isNeonPooledUrl } from "@clubedge/db/urls";
+// clubedge:if storage=s3
+import { createS3Storage } from "@clubedge/storage-s3";
+// clubedge:end
+// clubedge:if storage=s3 && infra=local
+import { createFileSystemStorage } from "@clubedge/storage/file-system";
+// clubedge:end
 
 type Check = { name: string; skip?: string; run: () => Promise<string> };
 
@@ -56,6 +62,50 @@ async function main() {
         }
       },
     },
+    // clubedge:if storage=s3 && infra=local
+    {
+      name: "Local folder storage",
+      skip: env.STORAGE_DIRECTORY ? undefined : "STORAGE_DIRECTORY is not set",
+      async run() {
+        const storage = createFileSystemStorage({ directory: env.STORAGE_DIRECTORY! });
+        const key = `check-services/${Date.now()}.txt`;
+        await storage.upload({
+          key,
+          body: new TextEncoder().encode("ok"),
+          contentType: "text/plain",
+        });
+        const text = await new Response(await storage.download(key)).text();
+        await storage.delete(key);
+        if (text !== "ok") throw new Error(`read back "${text}"`);
+        return `wrote, read back, and deleted a file in ${env.STORAGE_DIRECTORY}`;
+      },
+    },
+    // clubedge:end
+    // clubedge:if storage=s3
+    {
+      name: "File storage",
+      skip: env.STORAGE_BUCKET ? undefined : "STORAGE_BUCKET is not set",
+      async run() {
+        const storage = createS3Storage({
+          bucket: env.STORAGE_BUCKET,
+          region: env.STORAGE_REGION || "auto",
+          endpoint: env.STORAGE_ENDPOINT || undefined,
+          accessKeyId: env.STORAGE_ACCESS_KEY_ID || undefined,
+          secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY || undefined,
+        });
+        const key = `check-services/${Date.now()}.txt`;
+        await storage.upload({
+          key,
+          body: new TextEncoder().encode("ok"),
+          contentType: "text/plain",
+        });
+        const text = await new Response(await storage.download(key)).text();
+        await storage.delete(key);
+        if (text !== "ok") throw new Error(`read back "${text}"`);
+        return `uploaded, read back, and deleted an object in "${env.STORAGE_BUCKET}"`;
+      },
+    },
+    // clubedge:end
   ];
 
   let failed = false;

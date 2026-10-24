@@ -22,11 +22,12 @@ vi.mock("@supabase/ssr", () => ({
 }));
 
 const adminDeleteUser = vi.fn();
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: vi.fn(() => ({ auth: { admin: { deleteUser: adminDeleteUser } } })),
+const createClient = vi.fn<(...args: unknown[]) => unknown>(() => ({
+  auth: { admin: { deleteUser: adminDeleteUser } },
 }));
+vi.mock("@supabase/supabase-js", () => ({ createClient }));
 
-const { createSupabaseAuth } = await import("./index");
+const { createSupabaseAuth, createSupabaseBearerClient } = await import("./index");
 
 const supabaseUser = { id: "user-1", email: "ada@example.com" };
 
@@ -251,5 +252,26 @@ describe("createSupabaseAuth", () => {
     expect(beforeDelete).toHaveBeenCalledOnce();
     expect(adminDeleteUser).toHaveBeenCalledWith("user-1");
     expect(supabaseAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+});
+
+describe("createSupabaseBearerClient", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sends the bearer token, so row-level security sees its user", () => {
+    createSupabaseBearerClient("https://x.supabase.co", "pk", "token-1");
+    expect(createClient).toHaveBeenCalledWith("https://x.supabase.co", "pk", {
+      auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: "Bearer token-1" } },
+    });
+  });
+
+  it("acts as anonymous without a token", () => {
+    createSupabaseBearerClient("https://x.supabase.co", "pk");
+    expect(createClient).toHaveBeenCalledWith("https://x.supabase.co", "pk", {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
   });
 });

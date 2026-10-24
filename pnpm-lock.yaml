@@ -55,6 +55,15 @@ importers:
       '@clubedge/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@clubedge/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@clubedge/storage-s3':
+        specifier: workspace:*
+        version: link:../../packages/storage-s3
+      '@clubedge/storage-supabase':
+        specifier: workspace:*
+        version: link:../../packages/storage-supabase
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.13)

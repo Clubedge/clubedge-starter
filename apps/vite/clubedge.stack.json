@@ -4,6 +4,7 @@
   "role": "frontend",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": ["src/routes/dashboard.tsx"],
   "deployment": {
     "id": "web",
     "port": 3000,

@@ -9,6 +9,9 @@ import {
   LayoutDashboard,
   Settings2,
   ShieldCheck,
+  // clubedge:if storage!=none
+  Workflow,
+  // clubedge:end
 } from "lucide-react";
 import { getRouteApi, redirect } from "@tanstack/react-router";
 import { type Ready, type User } from "@clubedge/contract";
@@ -45,6 +48,15 @@ const modules = [
     status: "Configure",
     variant: "secondary" as const,
   },
+  // clubedge:if storage!=none
+  {
+    name: "File storage",
+    description: "One storage interface for uploads, downloads, and signed URLs.",
+    icon: Workflow,
+    status: "Ready to configure",
+    variant: "secondary" as const,
+  },
+  // clubedge:end
   {
     name: "Cache and rate limits",
     description: "A key-value cache and fixed-window rate limiting.",

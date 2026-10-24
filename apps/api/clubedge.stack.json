@@ -4,7 +4,7 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
-  "conditional": ["scripts/check-services.ts", "src/env/production.ts"],
+  "conditional": ["scripts/check-services.ts", "src/env/production.ts", "src/server/storage.ts"],
   "deployment": {
     "id": "api",
     "port": 3001,
@@ -39,6 +39,14 @@
       }
     },
     "storage": {
+      "s3|supabase": {
+        "files": ["src/server/storage.ts"]
+      },
+      "supabase": {
+        "replace": {
+          "src/server/storage.ts": "src/server/variants/storage.supabase.ts"
+        }
+      },
       "none": {}
     },
     "cache": {

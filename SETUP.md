@@ -392,6 +392,12 @@ The storage adapter works with AWS S3 and S3-compatible providers such as Cloudf
 The storage adapter uses Supabase Storage through the signed-in user's Supabase session, so bucket policies can rely on that user. Set `SUPABASE_STORAGE_BUCKET` and choose a bucket policy that matches your application's access model.
 
 <!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=hono -->
+
+The API holds the storage adapter: set its variables in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. `pnpm check:services` uploads, reads back, and deletes a test file. <!-- clubedge:only storage=s3 -->
+The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. It acts as the user whose Supabase access token the request carries (the `Authorization: Bearer` header the frontend sends), and as anonymous without one. <!-- clubedge:only storage=supabase -->
+
+<!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
 
 The storage adapter does not authorize users or validate uploads. Before calling it, the route must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
