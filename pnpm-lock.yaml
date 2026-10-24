@@ -47,6 +47,12 @@ importers:
       '@clubedge/auth-supabase':
         specifier: workspace:*
         version: link:../../packages/auth-supabase
+      '@clubedge/cache':
+        specifier: workspace:*
+        version: link:../../packages/cache
+      '@clubedge/cache-redis':
+        specifier: workspace:*
+        version: link:../../packages/cache-redis
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract

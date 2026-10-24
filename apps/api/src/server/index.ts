@@ -3,6 +3,7 @@
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
 import { getCurrentUser } from "./auth";
+import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
 
 const supabase = {
@@ -15,4 +16,5 @@ export const dependencies: ApiDependencies = {
   frontendOrigin: process.env.FRONTEND_URL ?? "http://localhost:3000",
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
+  createRateLimiter,
 };

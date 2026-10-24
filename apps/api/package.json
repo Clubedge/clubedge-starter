@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@clubedge/auth-supabase": "workspace:*",
+    "@clubedge/cache": "workspace:*",
+    "@clubedge/cache-redis": "workspace:*",
     "@clubedge/contract": "workspace:*",
     "@clubedge/core": "workspace:*",
     "@clubedge/db": "workspace:*",

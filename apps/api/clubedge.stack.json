@@ -50,7 +50,14 @@
       "none": {}
     },
     "cache": {
-      "memory": {}
+      "redis": {
+        "files": ["src/server/cache.test.ts"]
+      },
+      "memory": {
+        "replace": {
+          "src/server/cache.ts": "src/server/variants/cache.memory.ts"
+        }
+      }
     },
     "email": {
       "smtp|resend": {

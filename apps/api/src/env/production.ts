@@ -27,6 +27,9 @@ export function requiredVariables(): Requirement[] {
     // clubedge:if auth=firebase
     { key: "FIREBASE_PROJECT_ID", use: "Firebase Authentication" },
     // clubedge:end
+    // clubedge:if cache=redis
+    { key: "REDIS_URL", use: "the rate limits and cache, shared by every instance", url: true },
+    // clubedge:end
     // clubedge:if storage=s3
     { key: "STORAGE_BUCKET", use: "file storage" },
     { key: "STORAGE_ACCESS_KEY_ID", use: "file storage" },

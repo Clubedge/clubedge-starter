@@ -2,6 +2,9 @@
 // It reads the API's .env.local like the API does, so it confirms the API's own settings.
 import { createDb } from "@clubedge/db";
 import { isNeonPooledUrl } from "@clubedge/db/urls";
+// clubedge:if cache=redis
+import { createRedisCache } from "@clubedge/cache-redis";
+// clubedge:end
 // clubedge:if storage=s3
 import { createS3Storage } from "@clubedge/storage-s3";
 // clubedge:end
@@ -68,6 +71,20 @@ async function main() {
         }
       },
     },
+    // clubedge:if cache=redis
+    {
+      name: "Redis",
+      skip: env.REDIS_URL ? undefined : "REDIS_URL is not set; the API uses process memory",
+      async run() {
+        const cache = createRedisCache(env.REDIS_URL!);
+        const value = { checkedAt: Date.now() };
+        await cache.set("check-services", value, 30);
+        const read = await cache.get<typeof value>("check-services");
+        if (read?.checkedAt !== value.checkedAt) throw new Error("read back a different value");
+        return "wrote and read a cached value";
+      },
+    },
+    // clubedge:end
     // clubedge:if storage=s3 && infra=local
     {
       name: "Local folder storage",

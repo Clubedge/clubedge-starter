@@ -348,10 +348,11 @@ jobs:
               framework: vite,
               modules: --auth none --api hono --storage none --cache memory --email none,
             }
+          # Every module the API implements, on its providers' code paths.
           - {
               name: vite-hono-modules-a,
               framework: vite,
-              modules: --api hono --auth better-auth --storage s3,
+              modules: --api hono --auth better-auth --storage s3 --cache redis,
             }
           - {
               name: vite-hono-modules-b,

@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import type { Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError } from "@clubedge/core";
 import { apiError } from "@/http";
+import type { CreateRateLimiter } from "@/rate-limit";
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -10,6 +11,8 @@ export interface ApiDependencies {
   frontendOrigin?: string;
   isReady(): Promise<boolean>;
   getCurrentUser(request: Request): Promise<User | null>;
+  /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
+  createRateLimiter?: CreateRateLimiter;
 }
 
 /** The API, implementing packages/contract/openapi.yaml. */
