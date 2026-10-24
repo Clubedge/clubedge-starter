@@ -691,6 +691,43 @@ The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `pac
 
 <!-- clubedge:end -->
 
+<!-- clubedge:if shell!=none -->
+
+## The mobile app
+
+`apps/shell` packages the web app as an Android and iOS app with [Capacitor](https://capacitorjs.com). The app's pages load from the device: they are the web app built in Vite's `app` mode, which calls the API through your deployed website and keeps the session on the device. Building it needs [Android Studio](https://developer.android.com/studio) 2025.2.1 or newer for Android (it brings the Java 21 that Capacitor 8 builds with), and a Mac with [Xcode](https://developer.apple.com/xcode/) 26 or newer for iOS, whose project uses Swift Package Manager rather than CocoaPods. Capacitor's [environment setup](https://capacitorjs.com/docs/getting-started/environment-setup) has the details.
+
+1. Set your app's id in `apps/shell/capacitor.config.ts`: a reverse-domain name you own, such as `com.yourcompany.app`. It becomes permanent once the Android and iOS projects exist and a store lists the app, so set it before the first build. The app's name comes from `apps/web/src/config/site.json`.
+2. Set `WEB_URL` in `apps/shell/.env.local` to the website's public `https://` address, such as `https://app.example.com`. The build refuses any other: the app sends its session there.
+3. Run `pnpm --filter @clubedge/shell android` (or `ios`). It builds the web app for the app, creates `apps/shell/android` (or `apps/shell/ios`) on the first run, copies the build into it, and opens Android Studio (or Xcode), where you run the app on a device or an emulator. Commit `android/` and `ios/`: from then on they are your app's own, with its icons, permissions, and signing settings.
+
+After changing the web app, `pnpm --filter @clubedge/shell sync` copies a new build into the native projects. Release builds and store listings are made in Android Studio and Xcode, as Capacitor's guides for [Google Play](https://capacitorjs.com/docs/android/deploying-to-google-play) and the [App Store](https://capacitorjs.com/docs/ios/deploying-to-app-store) describe. The project's CI builds a debug APK too; set a `WEB_URL` repository variable so that it calls your website.
+
+How the app differs from the website:
+
+- Its pages load from `https://localhost` on Android and `capacitor://localhost` on iOS. The website's server answers these origins' calls to `/api` with CORS headers; they are its `MOBILE_ORIGINS`, which you only set to change them.
+- It keeps its session in the device's storage, private to the app, and sends it with each call, since the website's cookies never reach it.
+- Better Auth signs the app in with bearer tokens (its bearer plugin), and only the app receives them: the website keeps its HttpOnly cookie. <!-- clubedge:only auth=better-auth -->
+- Supabase keeps the app's session in the device's storage. <!-- clubedge:only auth=supabase -->
+- Firebase Authentication keeps the app's session in the WebView's IndexedDB, and starts without the frame its pop-up and redirect sign-in need, which would never load in an iOS WebView. <!-- clubedge:only auth=firebase -->
+- In your Appwrite project, add a **Web** platform with the hostname `localhost` too: the app's pages use it. Appwrite's SDK keeps the app's session itself. <!-- clubedge:only auth=appwrite -->
+- Emailed links, such as sign-up confirmations and password resets, open the website, never the app. After confirming an address, sign in again in the app.
+- The app has no billing: app stores require their own in-app purchases for digital goods, so subscriptions stay on the website. <!-- clubedge:only payments!=none -->
+- Its build reads `apps/web/.env.local` too, and the settings in `apps/shell/.env.local` win. Give it the deployed website's public settings (`VITE_*`) where development uses others.
+
+To see changes on a device as you make them, the app can load its pages from your computer's dev server instead (live reload). After a first `pnpm --filter @clubedge/shell android` (or `ios`), start the web app in app mode, and run the app on a device or an emulator on the same network:
+
+```sh
+pnpm --filter @clubedge/web dev --mode app
+pnpm --filter @clubedge/shell exec cap run android --live-reload
+```
+
+The app then loads `http://<your computer's address>:3000` (change it with `--host` and `--port`; `ios` for iOS). Add that address to `MOBILE_ORIGINS` in `apps/web/.env.local` first, so Better Auth accepts the app's sign-in. <!-- clubedge:only auth=better-auth -->
+The app then loads `http://<your computer's address>:3000` (change it with `--host` and `--port`; `ios` for iOS). <!-- clubedge:only auth!=better-auth -->
+Ctrl+C stops it. The installed app keeps loading its pages from your computer until you install a normal build again.
+
+<!-- clubedge:end -->
+
 ## Before deploying
 
 This project is a starting point; review the security and operational choices for your application before production use:
@@ -711,5 +748,6 @@ This project is a starting point; review the security and operational choices fo
 - **Auth redirects fail:** add the exact local or deployed `/auth/callback` URL to Supabase Auth's allowed redirect URLs. <!-- clubedge:only auth=supabase -->
 - **Database connection fails:** check the URL, network access, and whether your provider expects a transaction pooler. Keep `prepare: false` for the current Supabase pooler setup.
 - **Redis cannot connect:** check that the URL uses `redis://` or `rediss://`, credentials are current, and outbound TCP access is allowed. <!-- clubedge:only cache=redis -->
+- **The mobile app cannot reach the API:** check that `WEB_URL` in `apps/shell/.env.local` is the deployed website's address and that the website's `MOBILE_ORIGINS` lists the app's origins, then run `pnpm --filter @clubedge/shell sync` again. <!-- clubedge:only shell!=none -->
 - **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`.
 - **A package file appears missing after an offline install:** retry with a normal registry-backed `pnpm install`; an incomplete local package cache can satisfy offline resolution while leaving package contents incomplete.

@@ -50,6 +50,7 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - TanStack Start with React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=tanstack-start -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a Hono API in TypeScript in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=hono -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a FastAPI API in Python in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=fastapi -->
+- An Android and iOS app in `apps/shell`, made from the web app with Capacitor: it calls the API through the website and keeps its session on the device. See [The mobile app](SETUP.md#the-mobile-app). <!-- clubedge:only shell!=none -->
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Zod environment validation, security headers, structured errors, and `/api/health`.
@@ -319,6 +320,16 @@ Local services:
 - `pnpm infra:reset`: delete the local database and files in `.data/` (stop `pnpm dev` first). <!-- clubedge:only infra=local -->
 - `pnpm clubedge neon`: the Neon database's status and expiry; `pnpm clubedge neon claim` keeps it, `pnpm clubedge neon create` makes a new one. <!-- clubedge:only infra=neon -->
 
+<!-- clubedge:if shell!=none -->
+
+The mobile app ([setup](SETUP.md#the-mobile-app)):
+
+- `pnpm --filter @clubedge/shell android`: build the app for Android and open it in Android Studio. The first run creates `apps/shell/android`.
+- `pnpm --filter @clubedge/shell ios`: the same for iOS and Xcode, on a Mac. The first run creates `apps/shell/ios`.
+- `pnpm --filter @clubedge/shell sync`: copy a new build of the web app into the native projects.
+
+<!-- clubedge:end -->
+
 Check the project:
 
 - `pnpm clubedge status`: the project's Starter release, modules, and Git state, whether a newer Starter release exists, and the command to run next.
@@ -360,6 +371,7 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 ## Repository structure
 
 - `apps/web/`: the web app, with routes, UI, and the composition root in `src/server/`
+- `apps/shell/`: the mobile app, which packages the web app for Android and iOS with Capacitor, and its native projects once created <!-- clubedge:only shell!=none -->
 - `e2e/`: Playwright browser checks
 - `packages/core/`: errors, `Result` type, HTTP helpers, and the error reporting and tracing hooks (no dependencies)
 - `packages/db/`: Drizzle schema, client factory, migrations, and seed script
@@ -385,6 +397,7 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/observability/`: `ObservabilityProvider` interface and an in-memory provider for tests <!-- clubedge:only observability!=none -->
 - `packages/observability-otel/`: OpenTelemetry provider (OTLP/HTTP traces and error logs) <!-- clubedge:only observability=otel -->
 - `packages/observability-sentry/`: Sentry provider <!-- clubedge:only observability=sentry -->
+- `packages/mobile/`: the mobile app's native helpers (device storage and the app's version), which the web app loads only in its build for the app <!-- clubedge:only shell!=none -->
 - `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
 - `.github/`: CI workflow, issue forms, and pull request template
 - `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides
