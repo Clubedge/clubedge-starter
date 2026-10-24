@@ -44,6 +44,6 @@ COPY --from=migrator-builder /tmp/.migrator/ ./
 
 RUN useradd --system --uid 1001 app
 USER app
-ENV HOST=0.0.0.0 PORT=3001 PATH="/app/.venv/bin:$PATH"
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=3001 PATH="/app/.venv/bin:$PATH"
 EXPOSE 3001
 CMD ["python", "-m", "clubedge_api"]

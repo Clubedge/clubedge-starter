@@ -385,7 +385,7 @@ jobs:
           - {
               name: vite-fastapi-modules-a,
               framework: vite,
-              modules: --api fastapi --auth better-auth --storage s3,
+              modules: --api fastapi --auth better-auth --storage s3 --email smtp,
             }
           - {
               name: vite-fastapi-modules-b,
@@ -400,6 +400,11 @@ jobs:
               name: vite-hono-resend,
               framework: vite,
               modules: --auth better-auth --api hono --email resend,
+            }
+          - {
+              name: vite-fastapi-resend,
+              framework: vite,
+              modules: --auth better-auth --api fastapi --email resend,
             }
           - {
               name: vite-fastapi-better-auth,
@@ -439,7 +444,7 @@ jobs:
         if: matrix.name == 'vite-fastapi'
         run: |
           set -euo pipefail
-          for option in "--cache redis" "--email smtp" "--payments stripe" \
+          for option in "--cache redis" "--payments stripe" \
             "--jobs pg-boss" "--observability otel"; do
             if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
               --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
@@ -806,19 +811,20 @@ jobs:
               modules: --auth better-auth --jobs pg-boss,
               mail-api: "",
             }
-          # The FastAPI API: its files in the Docker S3 service, then in a local folder.
+          # The FastAPI API: its files in the Docker S3 service, then in a local folder; its email
+          # goes to Mailpit, or to the log in local mode.
           - {
               infra: docker,
               framework: vite,
               api: fastapi,
-              modules: --auth better-auth --storage s3,
+              modules: --auth better-auth --storage s3 --email smtp,
               mail-api: "http://127.0.0.1:8025",
             }
           - {
               infra: local,
               framework: vite,
               api: fastapi,
-              modules: --auth better-auth --storage s3,
+              modules: --auth better-auth --storage s3 --email smtp,
               mail-api: "",
             }
     env:

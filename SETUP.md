@@ -262,7 +262,8 @@ The rate limiter and cache keep their state in process memory, which suits a sin
 ## Email
 
 The app sends email through the `EmailProvider` in `apps/web/src/server/email.ts`. Server code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api=none -->
-The API sends email through the `EmailProvider` in `apps/api/src/server/email.ts`: its code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api!=none -->
+The API sends email through the `EmailProvider` in `apps/api/src/server/email.ts`: its code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api=hono -->
+The API sends email through the `EmailProvider` in `apps/api/src/clubedge_api/email.py`: its code imports `email` from `clubedge_api.email` and awaits `email.send({"to": ..., "subject": ..., "text": ..., "html": ...})`. <!-- clubedge:only api=fastapi -->
 Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which sends its emails with the same provider, so set the email variables in both `apps/web/.env.local` and `apps/api/.env.local`. <!-- clubedge:only api!=none && auth=better-auth -->
 
 <!-- clubedge:end -->

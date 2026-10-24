@@ -74,6 +74,22 @@
       "memory": {}
     },
     "email": {
+      "smtp|resend": {
+        "files": [
+          "src/clubedge_api/email.py",
+          "src/clubedge_api/email_provider.py",
+          "tests/test_email.py"
+        ]
+      },
+      "smtp": {
+        "files": ["src/clubedge_api/email_smtp.py", "tests/test_email_smtp.py"]
+      },
+      "resend": {
+        "files": ["src/clubedge_api/email_resend.py", "tests/test_email_resend.py"],
+        "replace": {
+          "src/clubedge_api/email.py": "src/clubedge_api/variants/email_resend.py"
+        }
+      },
       "none": {}
     },
     "payments": {

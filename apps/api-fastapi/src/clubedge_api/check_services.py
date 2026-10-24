@@ -94,6 +94,38 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
         return f'uploaded, read back, and deleted an object in "{storage_bucket}"'
 
     # clubedge:end
+    # clubedge:if email=smtp
+    smtp_url = env.get("SMTP_URL", "").strip()
+
+    async def smtp_email() -> str:
+        from clubedge_api.email_smtp import SmtpEmail
+
+        try:
+            email = SmtpEmail(smtp_url, env.get("EMAIL_FROM", "").strip() or "no-reply@example.com")
+        except ValueError as error:
+            raise CheckError(str(error)) from error
+        # Connects and authenticates without sending anything.
+        await email.verify()
+        return f"connected to {email.server.host}:{email.server.port}"
+
+    # clubedge:end
+    # clubedge:if email=resend
+    resend_api_key = env.get("RESEND_API_KEY", "").strip()
+
+    async def resend_email() -> str:
+        from clubedge_api.email_resend import ResendEmail
+
+        try:
+            email = ResendEmail(
+                resend_api_key, env.get("EMAIL_FROM", "").strip() or "no-reply@example.com"
+            )
+        except ValueError as error:
+            raise CheckError(str(error)) from error
+        # Checks the API key without sending anything.
+        await email.verify()
+        return "API key accepted"
+
+    # clubedge:end
     return [
         Check("PostgreSQL", postgres, skip_unless(database_url, "DATABASE_URL is not set")),
         Check(
@@ -111,6 +143,22 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
         # clubedge:if storage=s3
         Check(
             "File storage", file_storage, skip_unless(storage_bucket, "STORAGE_BUCKET is not set")
+        ),
+        # clubedge:end
+        # clubedge:if email=smtp
+        Check(
+            "Email (SMTP)",
+            smtp_email,
+            skip_unless(smtp_url, "SMTP_URL is not set; development prints emails to the log"),
+        ),
+        # clubedge:end
+        # clubedge:if email=resend
+        Check(
+            "Email (Resend)",
+            resend_email,
+            skip_unless(
+                resend_api_key, "RESEND_API_KEY is not set; development prints emails to the log"
+            ),
         ),
         # clubedge:end
     ]

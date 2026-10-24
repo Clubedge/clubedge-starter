@@ -39,3 +39,9 @@ def get_settings() -> Settings:
         supabase_url=os.environ.get("SUPABASE_URL") or None,
         supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY") or None,
     )
+
+
+def is_production() -> bool:
+    """Whether this is a production deploy: NODE_ENV=production, which the API's image sets, as
+    the Hono API's does."""
+    return os.environ.get("NODE_ENV") == "production"
