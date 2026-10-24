@@ -44,6 +44,10 @@ export function requiredVariables(): Requirement[] {
     // clubedge:if email=smtp|resend
     { key: "EMAIL_FROM", use: "the sender of every email" },
     // clubedge:end
+    // clubedge:if jobs=inngest
+    { key: "INNGEST_EVENT_KEY", use: "background jobs (Inngest's event key)" },
+    { key: "INNGEST_SIGNING_KEY", use: "background jobs (Inngest's signing key)" },
+    // clubedge:end
   ];
 }
 
@@ -88,6 +92,12 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
   }
+  // clubedge:if jobs=inngest
+  // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
+  if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {
+    invalid.push("INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it");
+  }
+  // clubedge:end
   // clubedge:if auth=firebase
   // The emulator only runs on a developer's machine.
   if (env.FIREBASE_AUTH_EMULATOR_HOST?.trim()) {

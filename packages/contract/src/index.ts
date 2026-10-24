@@ -11,6 +11,10 @@ export type User = components["schemas"]["User"];
 export type ApiError = components["schemas"]["Error"];
 export type BrowserErrorReporting = components["schemas"]["BrowserErrorReporting"];
 export type ClientErrorReport = components["schemas"]["ClientErrorReport"];
+export type JobsStatus = components["schemas"]["JobsStatus"];
+export type JobRun = components["schemas"]["JobRun"];
+export type SampleJobQueued = components["schemas"]["SampleJobQueued"];
+export type DueJobsRun = components["schemas"]["DueJobsRun"];
 
 /**
  * A typed client for the API. Paths start with /api, so the default base URL (the page's own

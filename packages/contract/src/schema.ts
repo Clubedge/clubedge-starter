@@ -73,6 +73,76 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/jobs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** How jobs run, and the current user's recent sample jobs. Never cached. */
+    get: operations["getJobsStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/jobs/sample": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Queues the sample job for the current user; repeats within seconds are ignored. */
+    post: operations["runSampleJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/jobs/run": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Runs the jobs that are due, for a scheduler where no worker runs. Only providers that run jobs in the API (pg-boss, BullMQ) have it. */
+    get: operations["runDueJobs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/inngest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Inngest's protocol (opaque here); only the Inngest provider has it. */
+    get: operations["inspectInngest"];
+    /** Inngest's protocol (opaque here); only the Inngest provider has it. */
+    put: operations["syncInngest"];
+    /** Inngest's protocol (opaque here): Inngest calls it to run a job, signed with the signing key. Only the Inngest provider has it. */
+    post: operations["runInngestJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -129,6 +199,32 @@ export interface components {
       stack?: string;
       /** @description The page's path, without its query string. */
       path: string;
+    };
+    JobsStatus: {
+      /**
+       * @description Where jobs run: the API's own worker, a scheduler calling /api/jobs/run, or a jobs service (Inngest) calling the API.
+       * @enum {string}
+       */
+      runner: "worker" | "scheduler" | "service";
+      jobs: components["schemas"]["JobRun"][] | null;
+    };
+    JobRun: {
+      id: string;
+      name: string;
+      /** @enum {string} */
+      state: "queued" | "active" | "retrying" | "completed" | "failed" | "cancelled";
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      completedAt: string | null;
+    };
+    SampleJobQueued: {
+      /** @description The queued job's id, or null when a repeat was ignored. */
+      id: string | null;
+    };
+    DueJobsRun: {
+      completed: number;
+      failed: number;
     };
   };
   responses: {
@@ -310,6 +406,146 @@ export interface operations {
       413: components["responses"]["PayloadTooLarge"];
       415: components["responses"]["UnsupportedMediaType"];
       429: components["responses"]["TooManyRequests"];
+    };
+  };
+  getJobsStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The runner, and the sample jobs queued by the signed-in user (or by anyone signed out), newest first; jobs is null when the queue could not be read. */
+      200: {
+        headers: {
+          /** @description no-store, so each page load lists the jobs as they are. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JobsStatus"];
+        };
+      };
+    };
+  };
+  runSampleJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Queued, or ignored as a repeat (id null). */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SampleJobQueued"];
+        };
+      };
+      415: components["responses"]["UnsupportedMediaType"];
+      /** @description The queue could not be reached (code unavailable). */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  runDueJobs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The jobs that finished, and the attempts that failed, retries included. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DueJobsRun"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description CRON_SECRET is not set, so no scheduler may run jobs (code not_found). */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  inspectInngest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Inngest reads the app's jobs. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  syncInngest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Registers the app's jobs with Inngest. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  runInngestJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The job's result. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
     };
   };
 }

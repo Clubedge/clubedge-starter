@@ -95,6 +95,105 @@ paths:
           $ref: "#/components/responses/UnsupportedMediaType"
         "429":
           $ref: "#/components/responses/TooManyRequests"
+  /api/jobs:
+    get:
+      operationId: getJobsStatus
+      summary: How jobs run, and the current user's recent sample jobs. Never cached.
+      x-clubedge-module: jobs
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: >-
+            The runner, and the sample jobs queued by the signed-in user (or by anyone signed
+            out), newest first; jobs is null when the queue could not be read.
+          headers:
+            Cache-Control:
+              description: no-store, so each page load lists the jobs as they are.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobsStatus"
+  /api/jobs/sample:
+    post:
+      operationId: runSampleJob
+      summary: Queues the sample job for the current user; repeats within seconds are ignored.
+      x-clubedge-module: jobs
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "202":
+          description: Queued, or ignored as a repeat (id null).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleJobQueued"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "503":
+          description: The queue could not be reached (code unavailable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/jobs/run:
+    get:
+      operationId: runDueJobs
+      summary: >-
+        Runs the jobs that are due, for a scheduler where no worker runs. Only providers that
+        run jobs in the API (pg-boss, BullMQ) have it.
+      x-clubedge-module: jobs
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: The jobs that finished, and the attempts that failed, retries included.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DueJobsRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: CRON_SECRET is not set, so no scheduler may run jobs (code not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/inngest:
+    get:
+      operationId: inspectInngest
+      summary: Inngest's protocol (opaque here); only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: Inngest reads the app's jobs. The SDK defines the answer.
+    put:
+      operationId: syncInngest
+      summary: Inngest's protocol (opaque here); only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: Registers the app's jobs with Inngest. The SDK defines the answer.
+    post:
+      operationId: runInngestJob
+      summary: >-
+        Inngest's protocol (opaque here): Inngest calls it to run a job, signed with the signing
+        key. Only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: The job's result. The SDK defines the answer.
 components:
   # Answers that module operations share, each with its Error code.
   responses:
@@ -141,6 +240,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cronSecret:
+      type: http
+      scheme: bearer
+      description: The API's CRON_SECRET.
   schemas:
     Health:
       type: object
@@ -239,3 +342,53 @@ components:
         path:
           type: string
           description: The page's path, without its query string.
+    JobsStatus:
+      type: object
+      required: [runner, jobs]
+      properties:
+        runner:
+          type: string
+          description: >-
+            Where jobs run: the API's own worker, a scheduler calling /api/jobs/run, or a jobs
+            service (Inngest) calling the API.
+          enum: [worker, scheduler, service]
+        jobs:
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/JobRun"
+            - type: "null"
+    JobRun:
+      type: object
+      required: [id, name, state, createdAt, completedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+          enum: [queued, active, retrying, completed, failed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+    SampleJobQueued:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: [string, "null"]
+          description: The queued job's id, or null when a repeat was ignored.
+    DueJobsRun:
+      type: object
+      required: [completed, failed]
+      properties:
+        completed:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0

@@ -26,6 +26,12 @@ const apiRoutes = new Map([
   ["GET /api/session", "/api/session"],
   ["GET /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
   ["POST /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
+  ["GET /api/jobs", "/api/jobs"], // clubedge:only jobs!=none
+  ["POST /api/jobs/sample", "/api/jobs/sample"], // clubedge:only jobs!=none
+  ["GET /api/jobs/run", "/api/jobs/run"], // clubedge:only jobs=pg-boss|bullmq
+  ["GET /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["PUT /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["POST /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
 ]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",

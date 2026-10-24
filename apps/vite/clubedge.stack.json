@@ -108,6 +108,12 @@
       "resend": {},
       "none": {}
     },
+    "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": ["src/components/jobs"]
+      },
+      "none": {}
+    },
     "observability": {
       "otel|sentry": {
         "files": ["src/components/error-reporting.tsx"]

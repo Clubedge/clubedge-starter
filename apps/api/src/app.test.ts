@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe } from "vitest";
 import { describeApiConformance, moduleOperations } from "@clubedge/contract/conformance";
 import { createApp } from "@/app";
+// clubedge:if jobs!=none
+import { createMemoryJobs } from "@clubedge/jobs";
+import { sampleJob } from "@/jobs/sample";
+// clubedge:end
 
 /**
  * The modules this API has, as a generated project records them in its package.json. The
@@ -17,6 +21,10 @@ function apiModules(): Record<string, string> {
 }
 
 const modules = apiModules();
+// clubedge:if jobs!=none
+// A queue in memory, standing in for the jobs provider.
+const queue = createMemoryJobs([sampleJob]);
+// clubedge:end
 
 // The shared contract suite, in process: the same checks any API stack passes over HTTP.
 describe("the API without a database", () => {
@@ -24,6 +32,7 @@ describe("the API without a database", () => {
     serviceId: "my-product",
     isReady: async () => false,
     getCurrentUser: async () => null,
+    jobs: { runner: () => "worker", queue: () => queue }, // clubedge:only jobs!=none
   });
   describeApiConformance("hono", () => ({ request: (path, init) => app.request(path, init) }), {
     service: "my-product",
@@ -37,6 +46,7 @@ describe("the API with a database", () => {
     serviceId: "my-product",
     isReady: async () => true,
     getCurrentUser: async () => null,
+    jobs: { runner: () => "worker", queue: () => queue }, // clubedge:only jobs!=none
   });
   describeApiConformance(
     "hono (ready)",

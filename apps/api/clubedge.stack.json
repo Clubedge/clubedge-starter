@@ -6,9 +6,11 @@
   "dockerfile": "Dockerfile",
   "conditional": [
     "scripts/check-services.ts",
+    "src/app.test.ts",
     "src/app.ts",
     "src/env/production.ts",
     "src/index.ts",
+    "src/jobs/index.ts",
     "src/server/index.ts",
     "src/server/storage.ts"
   ],
@@ -81,6 +83,27 @@
       "none": {}
     },
     "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": ["src/jobs", "src/routes/jobs.test.ts", "src/routes/jobs.ts", "src/server/jobs.ts"]
+      },
+      "pg-boss|bullmq": {
+        "files": [
+          "src/routes/jobs-run.test.ts",
+          "src/routes/jobs-run.ts",
+          "src/server/jobs.test.ts"
+        ]
+      },
+      "bullmq": {
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.bullmq.ts"
+        }
+      },
+      "inngest": {
+        "files": ["src/routes/inngest.test.ts", "src/routes/inngest.ts"],
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.inngest.ts"
+        }
+      },
       "none": {}
     },
     "observability": {

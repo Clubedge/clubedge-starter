@@ -5,6 +5,7 @@ import type { ApiDependencies } from "@/app";
 import { getCurrentUser } from "./auth";
 import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
+import { backgroundJobs } from "./jobs"; // clubedge:only jobs!=none
 import { browserErrorReporting } from "./observability"; // clubedge:only observability!=none
 
 const supabase = {
@@ -19,4 +20,5 @@ export const dependencies: ApiDependencies = {
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,
   browserErrorReporting, // clubedge:only observability!=none
+  jobs: backgroundJobs, // clubedge:only jobs!=none
 };

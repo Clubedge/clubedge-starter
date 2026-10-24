@@ -352,12 +352,17 @@ jobs:
           - {
               name: vite-hono-modules-a,
               framework: vite,
-              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel,
+              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel --jobs pg-boss,
             }
           - {
               name: vite-hono-modules-b,
               framework: vite,
-              modules: --api hono --auth supabase --storage supabase --observability sentry,
+              modules: --api hono --auth supabase --storage supabase --observability sentry --jobs inngest,
+            }
+          - {
+              name: vite-hono-bullmq,
+              framework: vite,
+              modules: --api hono --auth firebase --cache redis --jobs bullmq,
             }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
@@ -742,8 +747,37 @@ jobs:
               modules: --auth better-auth --observability sentry,
               mail-api: "",
             }
+          # Each jobs provider, run by the API: a worker for pg-boss and BullMQ, and Inngest's Dev
+          # Server calling the API through the frontend.
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs bullmq,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs inngest,
+              mail-api: "",
+            }
           # The API's files in a local folder (STORAGE_DIRECTORY) instead of S3.
-          - { infra: local, framework: vite, api: hono, modules: --auth better-auth, mail-api: "" }
+          - {
+              infra: local,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
@@ -915,6 +949,7 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+          FRONTEND_URL: http://127.0.0.1:3000
         run: |
           nohup pnpm dev > "$RUNNER_TEMP/app.log" 2>&1 &
           for _ in $(seq 90); do curl --silent --fail --output /dev/null http://127.0.0.1:3000/api/health && break; sleep 2; done

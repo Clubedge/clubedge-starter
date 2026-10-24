@@ -9,6 +9,15 @@ import type { BrowserErrorReporting } from "@clubedge/observability";
 import { clientErrorRoutes } from "@/routes/client-errors";
 import { requestTracing } from "@/tracing";
 // clubedge:end
+// clubedge:if jobs!=none
+import { jobsRoutes, type BackgroundJobs } from "@/routes/jobs";
+// clubedge:end
+// clubedge:if jobs=pg-boss|bullmq
+import { jobsRunRoutes } from "@/routes/jobs-run";
+// clubedge:end
+// clubedge:if jobs=inngest
+import { inngestRoutes } from "@/routes/inngest";
+// clubedge:end
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -21,6 +30,10 @@ export interface ApiDependencies {
   // clubedge:if observability!=none
   /** How the browser reports its errors (src/server/observability); not at all when absent. */
   browserErrorReporting?(): BrowserErrorReporting;
+  // clubedge:end
+  // clubedge:if jobs!=none
+  /** Background jobs (src/server/jobs); their routes answer 404 when absent. */
+  jobs?: BackgroundJobs;
   // clubedge:end
 }
 
@@ -58,6 +71,13 @@ export function createApp(dependencies: ApiDependencies) {
 
   // clubedge:if observability!=none
   app.route("/", clientErrorRoutes(dependencies));
+  // clubedge:end
+  // clubedge:if jobs!=none
+  if (dependencies.jobs) {
+    app.route("/", jobsRoutes(dependencies.jobs, dependencies));
+    app.route("/", jobsRunRoutes(dependencies.jobs)); // clubedge:only jobs=pg-boss|bullmq
+    app.route("/", inngestRoutes(dependencies.jobs)); // clubedge:only jobs=inngest
+  }
   // clubedge:end
 
   app.notFound((c) => apiError(c, 404, "not_found", "No such API endpoint."));

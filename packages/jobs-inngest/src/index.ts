@@ -28,6 +28,11 @@ export interface InngestJobsConfig {
    * the app talks to Inngest Cloud with the keys above.
    */
   dev?: boolean | string;
+  /**
+   * The public origin Inngest reaches the app at, such as https://app.example.com, when a proxy
+   * in front of the app changes the host or protocol it sees. Default: the request's own URL.
+   */
+  serveOrigin?: string;
   /** Receives each failed job attempt with the job's name. */
   onError?: (error: unknown, context?: { job: string; attempt: number }) => void;
   /** For tests: the fetch used for Inngest's REST API. */
@@ -96,6 +101,7 @@ export function createInngestJobs({
   eventKey,
   signingKey,
   dev,
+  serveOrigin,
   onError = (error, context) =>
     console.error(context ? `Background job "${context.job}" failed:` : "Background jobs:", error),
   fetch: fetcher = fetch,
@@ -164,7 +170,7 @@ export function createInngestJobs({
     );
   });
 
-  const handler = serve({ client, functions });
+  const handler = serve({ client, functions, ...(serveOrigin ? { serveOrigin } : {}) });
   const pending = new Map<
     string,
     { job: string; data: Record<string, unknown>; createdAt: Date }

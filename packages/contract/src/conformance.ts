@@ -42,6 +42,14 @@ export const moduleOperations: Record<string, Operation[]> = {
     { method: "GET", path: "/api/client-errors" },
     { method: "POST", path: "/api/client-errors" },
   ],
+  jobs: [
+    { method: "GET", path: "/api/jobs" },
+    { method: "POST", path: "/api/jobs/sample" },
+    { method: "GET", path: "/api/jobs/run" },
+    { method: "GET", path: "/api/inngest" },
+    { method: "PUT", path: "/api/inngest" },
+    { method: "POST", path: "/api/inngest" },
+  ],
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -162,6 +170,52 @@ export function describeApiConformance(
         const response = await harness.request("/api/client-errors", postJson({ kind: "error" }));
         expect(response.status).toBe(400);
         expect(await json(response)).toMatchObject({ error: { code: "invalid_report" } });
+      });
+    });
+
+    describe.runIf(has(options, "jobs"))("jobs", () => {
+      // Without a reachable queue the jobs are null, which is a valid answer too.
+      it("says how jobs run and lists recent ones, never cached", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/jobs");
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control") ?? "").toContain("no-store");
+        const body = await json(response);
+        expect(body).toMatchObject({
+          runner: expect.stringMatching(/^(worker|scheduler|service)$/),
+        });
+        if (!isRecord(body)) throw new Error("jobs status is not an object");
+        if (body.jobs !== null) {
+          expect(Array.isArray(body.jobs), "jobs is an array or null").toBe(true);
+          for (const job of body.jobs as unknown[]) {
+            expect(job).toMatchObject({
+              id: expect.any(String),
+              name: expect.any(String),
+              state: expect.stringMatching(/^(queued|active|retrying|completed|failed|cancelled)$/),
+              createdAt: expect.any(String),
+            });
+          }
+        }
+      });
+
+      it("queues the sample job only from JSON", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/jobs/sample", {
+          method: "POST",
+          headers: { "content-type": "text/plain" },
+          body: "{}",
+        });
+        expect(response.status).toBe(415);
+      });
+
+      // 404 where CRON_SECRET is unset, or where the provider (Inngest) runs jobs itself.
+      it("runs due jobs only for the scheduler holding CRON_SECRET", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/jobs/run", {
+          headers: { authorization: "Bearer not-the-cron-secret" },
+        });
+        expect([401, 404]).toContain(response.status);
+        expect(await json(response)).toMatchObject({ error: { code: expect.any(String) } });
       });
     });
   });

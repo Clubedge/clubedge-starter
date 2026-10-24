@@ -48,6 +48,14 @@ describe("production env check", () => {
     expect(checkProductionEnv(env).invalid).toEqual(["FRONTEND_URL is not an absolute URL"]);
   });
 
+  const hasInngest = requiredVariables().some(({ key }) => key === "INNGEST_SIGNING_KEY");
+  it.runIf(hasInngest)("refuses the Inngest Dev Server in production", () => {
+    expect(checkProductionEnv({ ...complete(), INNGEST_DEV: "1" }).invalid).toEqual([
+      "INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it",
+    ]);
+    expect(checkProductionEnv({ ...complete(), INNGEST_DEV: "0" }).invalid).toEqual([]);
+  });
+
   const hasFirebase = requiredVariables().some(({ key }) => key === "FIREBASE_PROJECT_ID");
   it.runIf(hasFirebase)("refuses the Firebase Auth Emulator in production", () => {
     const env = { ...complete(), FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099" };
