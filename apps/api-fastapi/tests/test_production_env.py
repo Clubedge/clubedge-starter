@@ -42,6 +42,14 @@ def test_rejects_a_url_that_is_not_absolute() -> None:
     assert result.invalid == ["FRONTEND_URL is not an absolute URL"]
 
 
+def test_checks_where_rate_limits_find_the_client_address() -> None:
+    assert check_production_env(complete(TRUSTED_PROXY_HOPS="1")).ok
+    result = check_production_env(complete(TRUSTED_PROXY_HOPS="1", CLIENT_IP_HEADER="x real ip"))
+    assert result.invalid == [
+        'CLIENT_IP_HEADER must be a header name, such as x-real-ip, not "x real ip"'
+    ]
+
+
 def test_checks_the_optional_direct_database_url() -> None:
     def direct(url: str) -> ProductionEnvCheck:
         return check_production_env(complete(DATABASE_URL_DIRECT=url))

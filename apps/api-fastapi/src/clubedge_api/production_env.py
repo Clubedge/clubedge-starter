@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
 from clubedge_api.db import is_neon_pooled_url
+from clubedge_api.settings import parse_client_ip_settings
 
 
 @dataclass(frozen=True)
@@ -118,6 +119,11 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             invalid.append(
                 "DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"
             )
+    # Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
+    try:
+        parse_client_ip_settings(values)
+    except ValueError as error:
+        invalid.append(str(error))
     # clubedge:if jobs=inngest
     # The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
     inngest_dev = values.get("INNGEST_DEV", "")
