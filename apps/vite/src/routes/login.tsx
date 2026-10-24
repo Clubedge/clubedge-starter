@@ -5,6 +5,7 @@ import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
 import { siteConfig } from "@/config/site";
 import { authClient } from "@/lib/auth";
+import { publicOrigin } from "@/lib/public-origin";
 
 function safeNext(value: string | null): string {
   if (!value) return "/dashboard";
@@ -75,10 +76,11 @@ export function LoginPage() {
     setBusy(true);
     try {
       if (signup) {
+        // The confirmation link opens the website, wherever this page was loaded from.
         const result = await authClient.signUp(
           email,
           password,
-          `${window.location.origin}/login?next=${encodeURIComponent(next)}`,
+          `${publicOrigin}/login?next=${encodeURIComponent(next)}`,
         );
         if (result.needsConfirmation) {
           setMessage(checkEmailNotice);

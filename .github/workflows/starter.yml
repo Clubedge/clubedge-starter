@@ -440,6 +440,12 @@ jobs:
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
           - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
           - { name: vite-hono-better-auth, framework: vite, modules: --auth better-auth --api hono }
+          # The mobile app: the same web app built for Android, with bearer sessions.
+          - {
+              name: vite-hono-capacitor,
+              framework: vite,
+              modules: --auth better-auth --api hono --shell capacitor,
+            }
           - {
               name: vite-hono-resend,
               framework: vite,
@@ -563,6 +569,42 @@ jobs:
           pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
           trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
           node "$GITHUB_WORKSPACE/scripts/smoke-generated-app.mjs"
+      # The mobile app: the web app's build for it, copied into the Android project Capacitor
+      # creates, and a debug APK. Capacitor 8 builds with Java 21; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        if: contains(matrix.modules, '--shell')
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build the mobile app for Android
+        if: contains(matrix.modules, '--shell')
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          WEB_URL: https://example.com
+        run: |
+          set -euo pipefail
+          pnpm --filter @clubedge/shell run sync android
+          # Capacitor is in the app's build, and never in the website's; the demo is in neither.
+          grep -rqF "plugin is not implemented on" apps/web/dist-app/assets
+          if grep -rqF "plugin is not implemented on" apps/web/dist/assets; then
+            echo "The website's build includes Capacitor."
+            exit 1
+          fi
+          if grep -rqF "demo.invalid" apps/web/dist/assets apps/web/dist-app/assets; then
+            echo "A build without --demo includes the demo."
+            exit 1
+          fi
+          (cd apps/shell/android && ./gradlew assembleDebug)
+          # The demo's build: its own data, and no server.
+          pnpm --filter @clubedge/shell run sync android --demo
+          grep -rqF "demo.invalid" apps/web/dist-app/assets
+      - name: Upload the debug APK
+        if: contains(matrix.modules, '--shell')
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-debug-${{ matrix.name }}
+          path: ${{ runner.temp }}/generated-app/apps/shell/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
       # Pages that need no database must keep working when it is not configured, so a mistake
       # in the environment never takes the whole app down at startup.
       - name: Serve pages without a database configured

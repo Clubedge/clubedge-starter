@@ -1,4 +1,4 @@
-"""Validate a Better Auth session cookie against the auth service."""
+"""Validate a Better Auth session, from its cookie or bearer token, against the auth service."""
 
 import asyncio
 import hashlib
@@ -20,14 +20,17 @@ async def get_current_user(
     supabase_publishable_key: str | None = None,
 ) -> User | None:
     auth_url = os.environ.get("BETTER_AUTH_URL")
-    cookie = request.headers.get("cookie")
-    if not auth_url or not cookie:
+    # The session's cookie, or its token as a bearer token from a client without the cookie, such
+    # as a mobile app, which Better Auth's bearer plugin takes.
+    credentials = ("cookie", "authorization")
+    headers = {name: request.headers[name] for name in credentials if request.headers.get(name)}
+    if not auth_url or not headers:
         return None
     try:
         async with httpx.AsyncClient(timeout=5) as client:
             response = await client.get(
                 f"{auth_url.rstrip('/')}/api/auth/get-session",
-                headers={"cookie": cookie},
+                headers=headers,
             )
         if response.status_code != 200:
             return None

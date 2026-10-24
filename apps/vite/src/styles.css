@@ -1,5 +1,48 @@
 @import "@clubedge/ui/globals.css";
 @source "./";
+/* clubedge:if shell!=none */
+/* The mobile app's own screens, in packages/mobile. */
+@source "../../../packages/mobile/src";
+/* clubedge:end */
+
+/*
+ * Safe areas: index.html lets pages draw under a phone's status bar, notch, and home indicator
+ * (viewport-fit=cover), as the mobile app's pages do, and these rules keep content clear of them.
+ * Where a screen has no such areas they measure 0, so the website looks the same.
+ */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* The status bar shows the page's background, rather than content scrolling beneath it. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: env(safe-area-inset-top);
+  background: var(--background);
+}
+
+/* Sticky headers stop below the status bar, and drawers keep clear of both ends of the screen. */
+.sticky.top-0 {
+  top: env(safe-area-inset-top);
+}
+
+[data-slot="sheet-content"] {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Full-height pages fill the space between the safe areas, so they do not scroll by their size. */
+.min-h-svh {
+  min-height: calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+
+.min-h-dvh {
+  min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
 
 /*
  * The dashboard uses the docs' palette: Fumadocs' neutral colors, with the Clubedge blue as primary.

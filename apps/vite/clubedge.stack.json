@@ -7,9 +7,18 @@
   "conditional": [
     "auth.server.mjs",
     "server.mjs",
+    "src/components/billing/billing-card.tsx",
     "src/components/route-error.tsx",
+    "src/lib/api.ts",
     "src/main.tsx",
-    "src/routes/dashboard.tsx"
+    "src/routes/dashboard.tsx",
+    "src/styles.css",
+    "src/variants/api.better-auth.ts",
+    "src/variants/api.supabase.ts",
+    "src/variants/auth.better-auth.ts",
+    "src/variants/auth.firebase.ts",
+    "src/variants/auth.supabase.ts",
+    "vite.config.ts"
   ],
   "deployment": {
     "id": "web",

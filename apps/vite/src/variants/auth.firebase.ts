@@ -6,6 +6,8 @@ import {
   connectAuthEmulator,
   createUserWithEmailAndPassword,
   getAuth,
+  indexedDBLocalPersistence, // clubedge:only shell!=none
+  initializeAuth, // clubedge:only shell!=none
   reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -41,6 +43,14 @@ const app = configured
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
     }))
   : undefined;
+// clubedge:if shell!=none
+// In the mobile app, getAuth's default setup loads a frame from Firebase's auth domain for sign-in
+// pop-ups, which never finishes loading in an iOS WebView. initializeAuth leaves it out and keeps
+// the session in IndexedDB; getAuth below then returns this instance.
+if (app && import.meta.env.MODE === "app") {
+  initializeAuth(app, { persistence: indexedDBLocalPersistence });
+}
+// clubedge:end
 const auth = app ? getAuth(app) : undefined;
 if (auth && import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL) {
   connectAuthEmulator(auth, import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL, {

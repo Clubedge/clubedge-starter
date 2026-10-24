@@ -23,10 +23,14 @@ if (process.env.BETTER_AUTH_SECRET && process.env.DATABASE_URL && existsSync(aut
   );
 }
 
+// Arguments go on to Vite, such as --mode.
 children.push(
   spawn(
     process.execPath,
-    [fileURLToPath(new URL("./node_modules/vite/bin/vite.js", import.meta.url))],
+    [
+      fileURLToPath(new URL("./node_modules/vite/bin/vite.js", import.meta.url)),
+      ...process.argv.slice(2),
+    ],
     { cwd: appDirectory, stdio: "inherit" },
   ),
 );

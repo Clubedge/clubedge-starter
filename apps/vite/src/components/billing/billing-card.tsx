@@ -24,6 +24,11 @@ const unavailable = "Billing is unavailable right now. Try again in a moment.";
  * provider's hosted page, and the browser goes there.
  */
 export function BillingCard() {
+  // clubedge:if shell!=none
+  // App store rules keep payments out of the mobile app: billing stays on the website. The mode
+  // is fixed per build, so the hooks below run on every render, or on none.
+  if (import.meta.env.MODE === "app") return null;
+  // clubedge:end
   const [billing, setBilling] = useState<Billing | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [pending, setPending] = useState(false);

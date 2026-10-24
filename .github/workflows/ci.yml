@@ -207,3 +207,41 @@ jobs:
           # Compared in CI only: the contract is not uploaded to oasdiff.com.
           review: false
   # clubedge:end
+
+  # clubedge:if shell!=none
+  # The mobile app: the web app's build for it, copied into the Android project (which Capacitor
+  # creates when the project has none yet), and a debug APK to try on a device.
+  android:
+    # The Starter's repository is the template projects come from, not one. # clubedge:only starter-repository
+    if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # Capacitor 8 builds with Java 21; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: pnpm install --frozen-lockfile
+      - name: Build the debug APK
+        env:
+          # The website the app calls: set a WEB_URL repository variable for an APK that works.
+          WEB_URL: ${{ vars.WEB_URL || 'https://example.com' }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @clubedge/shell run sync android
+          cd apps/shell/android
+          # A project committed from Windows has lost the executable bit.
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-debug
+          path: apps/shell/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+  # clubedge:end

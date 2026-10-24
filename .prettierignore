@@ -1,2 +1,7 @@
 pnpm-lock.yaml
 **/routeTree.gen.ts
+# clubedge:if shell!=none
+# The mobile app's native projects, which Capacitor, Android Studio, and Xcode write
+apps/shell/android/
+apps/shell/ios/
+# clubedge:end

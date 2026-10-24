@@ -1,0 +1,7 @@
+{
+  "id": "capacitor",
+  "name": "Capacitor",
+  "role": "shell",
+  "envExample": ".env.example",
+  "conditional": [".env.example"]
+}

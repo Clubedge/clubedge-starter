@@ -1,0 +1,24 @@
+{
+  "name": "@clubedge/capacitor",
+  "version": "0.26.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "android": "node --env-file-if-exists=.env.local scripts/build.mjs android --open",
+    "ios": "node --env-file-if-exists=.env.local scripts/build.mjs ios --open",
+    "sync": "node --env-file-if-exists=.env.local scripts/build.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "typescript": "^5.9.2"
+  }
+}

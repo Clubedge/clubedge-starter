@@ -4,6 +4,7 @@ import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
 import { authClient } from "@/lib/auth";
+import { publicOrigin } from "@/lib/public-origin";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -19,7 +20,8 @@ export function ForgotPasswordPage() {
     }
     setBusy(true);
     try {
-      await authClient.requestPasswordReset(email, `${window.location.origin}/reset-password`);
+      // The emailed link opens the website, wherever this page was loaded from.
+      await authClient.requestPasswordReset(email, `${publicOrigin}/reset-password`);
       setBusy(false);
       await navigate({ href: "/login?notice=reset-sent" });
     } catch {

@@ -1,5 +1,6 @@
 import { Account, AppwriteException, Client, ID } from "appwrite";
 import { AccountError, type AuthClient } from "@/lib/auth-client";
+import { publicOrigin } from "@/lib/public-origin";
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT;
 const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID;
@@ -31,7 +32,7 @@ export const authClient: AuthClient = {
     if (!user.emailVerification) {
       try {
         await account.createVerification({
-          url: verificationUrl(`${window.location.origin}/login?next=%2Fdashboard`),
+          url: verificationUrl(`${publicOrigin}/login?next=%2Fdashboard`),
         });
       } catch {
         // Keep the verification-required result: the UI can invite the user to retry later.

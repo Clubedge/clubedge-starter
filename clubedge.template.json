@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "name": "clubedge-starter",
   "packageManager": "pnpm",
   "siteConfig": "apps/web/src/config/site.json",
@@ -33,6 +33,20 @@
       "packages": {
         "@clubedge/contract": "packages/contract"
       }
+    },
+    "shell": {
+      "name": "Mobile shell",
+      "question": "Package the web app as a mobile app?",
+      "path": "apps/shell",
+      "package": "@clubedge/shell",
+      "env": {
+        "example": "apps/shell/.env.example",
+        "target": "apps/shell/.env.local"
+      },
+      "roles": ["shell"],
+      "packages": {
+        "@clubedge/mobile": "packages/mobile"
+      }
     }
   },
   "modules": [
@@ -54,27 +68,35 @@
     ".github/workflows/ci.yml",
     ".github/workflows/deploy.yml",
     ".github/workflows/preview.yml",
+    ".gitignore",
+    ".prettierignore",
     "AGENTS.md",
     "README.md",
     "apps/vite/src/routes/index.tsx",
     "SETUP.md",
     "docker-compose.dev.yml",
     "docker-compose.yml",
+    "eslint.config.mjs",
     "render.yaml",
     "supabase/config.toml"
   ],
   "exclude": [
     ".github/assets",
     ".github/dependabot.yml",
+    ".github/workflows/demo-app.yml",
     ".github/workflows/starter.yml",
+    ".github/workflows/starter-ios.yml",
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
+    "apps/api/src/server/variants/auth.better-auth.test.ts",
+    "apps/vite/src/lib/demo.test.ts",
     "apps/api-fastapi/tests/test_auth_variants.py",
     "clubedge.template.json",
     "scripts/stack-preview-render.mjs",
     "scripts/stack-preview-generate.mjs",
     "scripts/stack-preview-supabase.mjs",
     "scripts/clubedge-upgrade-workflow.test.ts",
+    "scripts/mobile-app.test.ts",
     "scripts/template-manifest.test.ts",
     "scripts/vite-api-routes.test.ts",
     "scripts/vite-client-ip.test.ts"
