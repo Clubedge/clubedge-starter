@@ -74,6 +74,7 @@
     "scripts/stack-preview-render.mjs",
     "scripts/stack-preview-generate.mjs",
     "scripts/stack-preview-supabase.mjs",
+    "scripts/clubedge-upgrade-workflow.test.ts",
     "scripts/template-manifest.test.ts",
     "scripts/vite-api-routes.test.ts"
   ]

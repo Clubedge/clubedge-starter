@@ -37,14 +37,50 @@ jobs:
         id: upgrade
         shell: bash
         run: |
-          before=$(node -p "require('./package.json').clubedge?.starterRef ?? ''")
+          # A field of `clubedge` in package.json, read with fs: while a package.json has conflict
+          # markers, require() fails for every file in the project, and pnpm cannot read it. After
+          # an upgrade that left them, the Starter's version saved in .clubedge/incoming has the
+          # new values; pass it as the fallback.
+          starter_field() {
+            node -e '
+              const fs = require("node:fs");
+              const [field, fallback] = process.argv.slice(1);
+              const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
+              let manifest;
+              try {
+                manifest = read("package.json");
+              } catch (error) {
+                if (!fallback) {
+                  console.error(`package.json could not be read (${error.message}). Fix it on the default branch, then run this workflow again.`);
+                  process.exit(1);
+                }
+                try {
+                  manifest = read(fallback);
+                } catch {
+                  console.error(`Neither package.json nor ${fallback} could be read after the upgrade.`);
+                  process.exit(1);
+                }
+              }
+              console.log(manifest.clubedge?.[field] ?? "");
+            ' "$@"
+          }
+
+          before=$(starter_field starterRef)
           if [ -z "$before" ]; then
             echo "package.json records no Starter release: this project was not created by create-clubedge-app."
             exit 1
           fi
-          # The newest CLI upgrades to the Starter release it is pinned to.
-          pnpm dlx @clubedge/create-clubedge-app@latest upgrade --no-install 2>&1 | tee "$RUNNER_TEMP/upgrade.log"
-          after=$(node -p "require('./package.json').clubedge.starterRef")
+          # The newest CLI upgrades to the Starter release it is pinned to. With
+          # --detailed-exit-code it exits with 2 when the upgrade left conflicts to resolve, which
+          # the pull request lists; any other failure stops here.
+          status=0
+          pnpm dlx @clubedge/create-clubedge-app@latest upgrade --no-install --detailed-exit-code 2>&1 | tee "$RUNNER_TEMP/upgrade.log" || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            echo "The upgrade failed (exit code $status); nothing was pushed."
+            exit "$status"
+          fi
+          after=$(starter_field starterRef .clubedge/incoming/package.json)
+          repository=$(starter_field starterRepository .clubedge/incoming/package.json)
           if [ "$after" = "$before" ] && [ -z "$(git status --porcelain)" ]; then
             echo "Already on the newest Starter release, $before."
             exit 0
@@ -54,12 +90,21 @@ jobs:
             echo "$branch already exists: its pull request is open, or was closed on purpose."
             exit 0
           fi
-          # The lockfile follows the upgraded package.json files; a conflict there can stop it.
-          install="updated"
-          pnpm install --no-frozen-lockfile >"$RUNNER_TEMP/install.log" 2>&1 || install="failed"
+          conflicts=""
+          if [ "$status" -eq 2 ]; then conflicts=$(git grep -l --untracked '^<<<<<<< yours' -- . || true); fi
+          # The lockfile follows the upgraded package.json files. pnpm cannot read one with
+          # conflict markers, so the install waits until they are resolved.
+          if printf '%s\n' "$conflicts" | grep -qE '(^|/)package\.json$'; then
+            install="skipped"
+          else
+            install="updated"
+            pnpm install --no-frozen-lockfile >"$RUNNER_TEMP/install.log" 2>&1 || install="failed"
+          fi
+          printf '%s\n' "$conflicts" | sed '/^$/d' >"$RUNNER_TEMP/conflicts.txt"
           {
             echo "before=$before"
             echo "after=$after"
+            echo "repository=${repository:-Clubedge/clubedge-starter}"
             echo "branch=$branch"
             echo "install=$install"
             if [ -d .clubedge/incoming ]; then echo "incoming=true"; fi
@@ -79,21 +124,17 @@ jobs:
           OWN_TOKEN: ${{ secrets.CLUBEDGE_UPGRADE_TOKEN != '' }}
           BEFORE: ${{ steps.upgrade.outputs.before }}
           AFTER: ${{ steps.upgrade.outputs.after }}
+          REPOSITORY: ${{ steps.upgrade.outputs.repository }}
           BRANCH: ${{ steps.upgrade.outputs.branch }}
           INSTALL: ${{ steps.upgrade.outputs.install }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --create "$BRANCH"
-          git add --all
-          git commit --quiet --message "chore: upgrade to Clubedge Starter $AFTER"
-          git push --quiet --set-upstream origin "$BRANCH"
-
-          repository=$(node -p "require('./package.json').clubedge.starterRepository ?? 'Clubedge/clubedge-starter'")
-          conflicts=$(git grep -l '^<<<<<<< yours' -- . || true)
+          # The pull request's text is written before anything is pushed: it reads nothing from
+          # the upgraded files, whose package.json may have conflict markers.
+          conflicts=$(cat "$RUNNER_TEMP/conflicts.txt")
           {
-            echo "Upgrades this project from Clubedge Starter \`$BEFORE\` to [\`$AFTER\`](https://github.com/$repository/releases/tag/$AFTER), with \`pnpm clubedge upgrade\`. Your own edits are merged in; files you never changed take the new version."
+            echo "Upgrades this project from Clubedge Starter \`$BEFORE\` to [\`$AFTER\`](https://github.com/$REPOSITORY/releases/tag/$AFTER), with \`pnpm clubedge upgrade\`. Your own edits are merged in; files you never changed take the new version."
             echo
             if [ -n "$conflicts" ]; then
               echo "### Conflicts to resolve"
@@ -105,15 +146,20 @@ jobs:
               echo "The Starter's whole new version of each is in the **starter-versions** artifact of [the run]($RUN_URL), to compare with yours."
               echo
             fi
-            if [ "$INSTALL" = "failed" ]; then
+            if [ "$INSTALL" = "skipped" ]; then
               echo "### pnpm install"
               echo
-              echo "\`pnpm install\` did not complete on the upgraded project, usually because of a conflict in a \`package.json\`. Resolve it, then run \`pnpm install\` and commit \`pnpm-lock.yaml\`."
+              echo "\`pnpm install\` did not run: pnpm cannot read a \`package.json\` with conflict markers, so \`pnpm-lock.yaml\` and \`pnpm clubedge\` wait for them. Resolve the conflicts in the \`package.json\` files above, then run \`pnpm install\` and commit \`pnpm-lock.yaml\`."
+              echo
+            elif [ "$INSTALL" = "failed" ]; then
+              echo "### pnpm install"
+              echo
+              echo "\`pnpm install\` did not complete on the upgraded project, so \`pnpm-lock.yaml\` is not updated. Run \`pnpm install\` to see why, then commit \`pnpm-lock.yaml\`."
               echo
             fi
             echo "### Before merging"
             echo
-            echo "- Read the [release notes](https://github.com/$repository/releases/tag/$AFTER) for anything to do by hand."
+            echo "- Read the [release notes](https://github.com/$REPOSITORY/releases/tag/$AFTER) for anything to do by hand."
             echo "- Run \`pnpm db:migrate\` for new migrations, and your tests."
             echo
             echo "<details><summary>Upgrade output</summary>"
@@ -126,8 +172,21 @@ jobs:
             echo
             echo "Opened by the Starter upgrade workflow (\`.github/workflows/clubedge-upgrade.yml\`)."
           } >"$RUNNER_TEMP/body.md"
-          gh pr create --base "${{ github.event.repository.default_branch }}" --head "$BRANCH" \
-            --title "chore: upgrade to Clubedge Starter $AFTER" --body-file "$RUNNER_TEMP/body.md"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$BRANCH"
+          git add --all
+          git commit --quiet --message "chore: upgrade to Clubedge Starter $AFTER"
+          git push --quiet --set-upstream origin "$BRANCH"
+          # A pushed branch without its pull request would make every later run skip this release,
+          # so it is deleted for the next run to try again.
+          if ! gh pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
+            --title "chore: upgrade to Clubedge Starter $AFTER" --body-file "$RUNNER_TEMP/body.md"; then
+            echo "::error::The pull request could not be opened, so $BRANCH is deleted and the next run tries again."
+            git push --quiet origin --delete "$BRANCH" || echo "::warning::Delete $BRANCH by hand, or later runs skip $AFTER."
+            exit 1
+          fi
           # Pull requests opened with the default token start no workflows: start CI on the branch.
           if [ "$OWN_TOKEN" != "true" ] && [ -f .github/workflows/ci.yml ]; then
             gh workflow run ci.yml --ref "$BRANCH" || echo "Start CI on $BRANCH by hand."
