@@ -9,7 +9,6 @@ from clubedge_api import background_jobs  # clubedge:only jobs!=none
 from clubedge_api.app import create_app
 from clubedge_api.server import dependencies
 
-
 app = create_app(dependencies())
 # create_app's own lifespan (flushing telemetry, for one) wraps this one, so what runs beside the
 # requests stops before that.
