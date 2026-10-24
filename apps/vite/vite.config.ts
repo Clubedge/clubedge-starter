@@ -34,7 +34,20 @@ export default defineConfig(({ mode }) => {
     // where localhost resolves to IPv6 only.
     server: { host: true, port: 3000, strictPort: true, proxy },
     preview: { host: true, port: 3000, strictPort: true, proxy },
-    resolve: { tsconfigPaths: true },
+    resolve: {
+      tsconfigPaths: true,
+      // clubedge:if shell!=none
+      // The mobile app's demo (its build script's --demo) signs in and reads its data from fakes
+      // in packages/mobile, in place of the auth provider and the API, so it needs no server.
+      ...(mode === "app" &&
+        process.env.VITE_DEMO === "true" && {
+          alias: {
+            "@/lib/auth": "@clubedge/mobile/demo/auth",
+            "@/lib/api": "@clubedge/mobile/demo/api",
+          },
+        }),
+      // clubedge:end
+    },
     plugins: [tailwindcss(), viteReact(), siteMetadata()],
   };
 });

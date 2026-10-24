@@ -1,11 +1,12 @@
 // Builds the web app for the mobile app and copies it into the Android and iOS projects:
 //
-//   node scripts/build.mjs [android] [ios] [--open]
+//   node scripts/build.mjs [android] [ios] [--open] [--demo]
 //
 // The app's pages load from the device, and call the API through the website at WEB_URL. A
 // platform named here gets its native project first when it has none (cap add); commit android/
 // and ios/ with the rest of the app. Without one, the projects that exist are updated. --open
-// then opens them in Android Studio or Xcode.
+// then opens them in Android Studio or Xcode. --demo builds the demo instead: sample data kept
+// on the device, and no server, so no WEB_URL.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -54,7 +55,10 @@ function run(script, args, options) {
 }
 
 function build(args) {
-  const named = args.filter((arg) => arg !== "--open");
+  const options = args.filter((arg) => arg.startsWith("--"));
+  const unknownOption = options.find((option) => !["--open", "--demo"].includes(option));
+  if (unknownOption) fail(`Unknown option "${unknownOption}": use --open or --demo.`);
+  const named = args.filter((arg) => !options.includes(arg));
   const unknown = named.find((arg) => !platforms.includes(arg));
   if (unknown) fail(`Unknown platform "${unknown}": choose android or ios.`);
   const exists = (platform) => existsSync(join(shellDirectory, platform));
@@ -62,11 +66,15 @@ function build(args) {
   if (targets.length === 0) {
     fail("The app has no native project yet: run pnpm android or pnpm ios to create one.");
   }
-  let origin;
-  try {
-    origin = webOrigin(process.env.WEB_URL);
-  } catch (error) {
-    fail(error.message);
+  // A demo answers from memory on the device; the app calls the website otherwise.
+  const demo = options.includes("--demo");
+  const environment = { VITE_DEMO: String(demo) };
+  if (!demo) {
+    try {
+      environment.VITE_PUBLIC_ORIGIN = webOrigin(process.env.WEB_URL);
+    } catch (error) {
+      fail(error.message);
+    }
   }
 
   // Vite's "app" mode turns on the app's own code: calls to the website, and sessions kept on the
@@ -74,14 +82,14 @@ function build(args) {
   run(
     join(webDirectory, "node_modules/vite/bin/vite.js"),
     ["build", "--mode", "app", "--outDir", "dist-app"],
-    { cwd: webDirectory, env: { ...process.env, VITE_PUBLIC_ORIGIN: origin } },
+    { cwd: webDirectory, env: { ...process.env, ...environment } },
   );
   const capacitor = join(shellDirectory, "node_modules/@capacitor/cli/bin/capacitor");
   for (const platform of targets) {
     // cap add creates the native project and copies the build into it; cap sync updates both.
     run(capacitor, [exists(platform) ? "sync" : "add", platform], { cwd: shellDirectory });
   }
-  if (args.includes("--open")) {
+  if (options.includes("--open")) {
     for (const platform of targets) run(capacitor, ["open", platform], { cwd: shellDirectory });
   }
 }

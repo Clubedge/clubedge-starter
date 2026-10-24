@@ -17,7 +17,8 @@
     "src/variants/api.supabase.ts",
     "src/variants/auth.better-auth.ts",
     "src/variants/auth.firebase.ts",
-    "src/variants/auth.supabase.ts"
+    "src/variants/auth.supabase.ts",
+    "vite.config.ts"
   ],
   "deployment": {
     "id": "web",

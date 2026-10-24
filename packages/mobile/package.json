@@ -1,14 +1,17 @@
 {
   "name": "@clubedge/mobile",
   "version": "0.26.1",
-  "description": "The mobile app's native helpers, through Capacitor, and its own screens, such as the update notice.",
+  "description": "The mobile app's native helpers, through Capacitor, and its own screens: the update notice and the demo.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./update-notice": "./src/update-notice.tsx"
+    "./update-notice": "./src/update-notice.tsx",
+    "./demo/api": "./src/demo/api.ts",
+    "./demo/auth": "./src/demo/auth.ts",
+    "./demo/banner": "./src/demo/banner.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
