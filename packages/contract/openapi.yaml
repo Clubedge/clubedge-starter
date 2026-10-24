@@ -2,6 +2,10 @@
 # language, and proves it by passing the conformance suite (src/conformance.ts); every frontend
 # calls it through the client generated from this file (src/schema.ts, `pnpm generate`).
 # Change the API here first, then in each stack.
+#
+# An operation that belongs to a module (payments, jobs, ...) names it with
+# `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
+# answers 404 not_found as for any unknown path; the conformance suite checks both cases.
 openapi: 3.1.0
 info:
   title: Clubedge API
@@ -50,6 +54,32 @@ paths:
               schema:
                 $ref: "#/components/schemas/Session"
 components:
+  # Answers that module operations share, each with its Error code.
+  responses:
+    Unauthorized:
+      description: Not signed in (code unauthorized).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotConfigured:
+      description: The module's provider is not configured on this server (code not_configured).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: Too many requests from this client (code rate_limited).
+      headers:
+        Retry-After:
+          description: Seconds until the client may try again.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   securitySchemes:
     bearerAuth:
       type: http

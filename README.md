@@ -61,7 +61,7 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite -->
 - Password reset by email, and email verification that can be required before sign-in. <!-- clubedge:only auth=better-auth && email!=none -->
 - Password reset by email, sent by Supabase. <!-- clubedge:only auth=supabase -->
-- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none -->
+- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework!=vite -->
 - Email over SMTP, for any provider or a local inbox; development prints emails to the server log until SMTP is configured. <!-- clubedge:only email=smtp -->
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - S3-compatible storage adapter for AWS S3, Cloudflare R2, and MinIO. <!-- clubedge:only storage=s3 -->

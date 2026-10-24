@@ -108,6 +108,38 @@ describe("stack packs", () => {
     },
   );
 
+  it("lets every frontend work with every API", () => {
+    // The CLI offers the options that every selected stack listing a module implements. A
+    // frontend lists only the modules it takes part in, and offers "none" with them, so it still
+    // pairs with an API that has none of that module yet.
+    const implemented = (stack: (typeof stackDescriptors)[number], id: string) =>
+      stack.modules?.[id]
+        ? Object.keys(stack.modules[id]).flatMap((key) => key.split("|"))
+        : undefined;
+    const withRole = (role: string) => stackDescriptors.filter((stack) => stack.role === role);
+    for (const [id, module] of Object.entries<{ scope?: string; options: object }>(
+      moduleDescriptors,
+    )) {
+      if (module.scope === "project") continue;
+      for (const frontend of withRole("frontend")) {
+        const offered = implemented(frontend, id);
+        if (offered && "none" in module.options) {
+          expect(offered, `${frontend.id}: ${id}`).toContain("none");
+        }
+        for (const api of withRole("api")) {
+          const choices = [offered, implemented(api, id)].filter((list) => list !== undefined);
+          expect(choices, `${frontend.id} with ${api.id}: neither implements ${id}`).not.toEqual(
+            [],
+          );
+          const common = Object.keys(module.options).filter((option) =>
+            choices.every((list) => list.includes(option)),
+          );
+          expect(common, `${frontend.id} with ${api.id}: ${id}`).not.toEqual([]);
+        }
+      }
+    }
+  });
+
   it("gives every stack its own id", () => {
     const ids = stackDescriptors.map((stack) => stack.id);
     expect(new Set(ids).size).toBe(ids.length);

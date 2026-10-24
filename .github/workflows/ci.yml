@@ -97,9 +97,19 @@ jobs:
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v7
+      # clubedge:if api=none
       - name: Build the production image
         # A public URL of its own, to check that it reaches the build.
         run: docker build --build-arg NEXT_PUBLIC_APP_URL=https://app.ci.invalid --tag app:ci .
+      # clubedge:end
+      # clubedge:if api!=none
+      # The frontend's image, and the API's, which owns the database and carries the migrator.
+      - name: Build the production images
+        run: |
+          set -euo pipefail
+          docker build --tag app:ci .
+          docker build --file apps/api/Dockerfile --tag api:ci .
+      # clubedge:end
       # clubedge:if framework=next
       - name: Check that the public URL is compiled into the build
         # Next.js inlines NEXT_PUBLIC_* at build time, server code included; without the build
@@ -110,9 +120,11 @@ jobs:
         run: |
           set -euo pipefail
           for run in 1 2; do
-            docker run --rm --network host               --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app               app:ci node /app/migrate.mjs
+            docker run --rm --network host               --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app               app:ci node /app/migrate.mjs # clubedge:only api=none
+            docker run --rm --network host --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app api:ci node /app/migrate.mjs # clubedge:only api!=none
           done
           PGPASSWORD=postgres psql --host 127.0.0.1 --username postgres --dbname app             --command "select count(*) from public.users"
+      # clubedge:if api=none
       - name: Start the image and check health
         run: |
           set -euo pipefail
@@ -128,3 +140,23 @@ jobs:
           done
           echo "The container did not become healthy."
           exit 1
+      # clubedge:end
+      # clubedge:if api!=none
+      # On the host's network, like the migrations: the API on port 3001, and the frontend on
+      # 3000, which forwards /api to it. A healthy answer through the frontend proves both.
+      - name: Start the images and check health through the frontend
+        run: |
+          set -euo pipefail
+          docker run --detach --name api --network host \
+            --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app api:ci
+          docker run --detach --name app --network host --env API_URL=http://127.0.0.1:3001 app:ci
+          trap 'docker logs api; docker logs app; docker rm --force api app' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The containers did not become healthy."
+          exit 1
+      # clubedge:end

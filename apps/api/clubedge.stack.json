@@ -4,6 +4,7 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": ["scripts/check-services.ts", "src/env/production.ts"],
   "deployment": {
     "id": "api",
     "port": 3001,

@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiError, Health, Ready, Session, User } from "@clubedge/contract";
+import type { Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError } from "@clubedge/core";
+import { apiError } from "@/http";
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -10,9 +11,6 @@ export interface ApiDependencies {
   isReady(): Promise<boolean>;
   getCurrentUser(request: Request): Promise<User | null>;
 }
-
-const notFound: ApiError = { error: { code: "not_found", message: "No such API endpoint." } };
-const internal: ApiError = { error: { code: "internal_error", message: "Something went wrong." } };
 
 /** The API, implementing packages/contract/openapi.yaml. */
 export function createApp(dependencies: ApiDependencies) {
@@ -45,10 +43,10 @@ export function createApp(dependencies: ApiDependencies) {
     c.json<Session>({ user: await dependencies.getCurrentUser(c.req.raw) }),
   );
 
-  app.notFound((c) => c.json(notFound, 404));
+  app.notFound((c) => apiError(c, 404, "not_found", "No such API endpoint."));
   app.onError((error, c) => {
     reportError(error);
-    return c.json(internal, 500);
+    return apiError(c, 500, "internal_error", "Something went wrong.");
   });
   return app;
 }

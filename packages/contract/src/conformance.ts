@@ -20,7 +20,24 @@ export interface ApiConformanceOptions {
   service?: string;
   /** Whether the API's database is reachable, so /api/ready must say so; either when absent. */
   ready?: boolean;
+  /**
+   * The option selected per module, as a generated project records it (package.json
+   * `clubedge.modules`). The operations of a module that is missing or "none" must answer 404.
+   */
+  modules?: Record<string, string>;
 }
+
+/** An operation of the contract, as its method and path. */
+export interface Operation {
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  path: string;
+}
+
+/**
+ * The operations each module adds to the contract: those openapi.yaml tags with
+ * `x-clubedge-module` (src/schema.test.ts keeps the two in step).
+ */
+export const moduleOperations: Record<string, Operation[]> = {};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -30,6 +47,20 @@ async function json(response: Response) {
     /^application\/json/,
   );
   return (await response.json()) as unknown;
+}
+
+/** A JSON not_found error, which is how an API answers a path it does not have. */
+export async function expectNotFound(response: Response) {
+  expect(response.status).toBe(404);
+  expect(await json(response)).toEqual({
+    error: { code: "not_found", message: expect.any(String) },
+  });
+}
+
+/** A request any route would accept as far as its content type goes, so only the path decides. */
+function requestFor({ method, path }: Operation): [string, RequestInit] {
+  if (method === "GET") return [path, { method }];
+  return [path, { method, headers: { "content-type": "application/json" }, body: "{}" }];
 }
 
 export function describeApiConformance(
@@ -73,11 +104,19 @@ export function describeApiConformance(
 
     it("answers unknown API paths with a JSON not_found error", async () => {
       const harness = await setup();
-      const response = await harness.request("/api/no-such-endpoint");
-      expect(response.status).toBe(404);
-      expect(await json(response)).toEqual({
-        error: { code: "not_found", message: expect.any(String) },
-      });
+      await expectNotFound(await harness.request("/api/no-such-endpoint"));
     });
+
+    // A module the project doesn't have leaves no endpoint behind.
+    for (const [module, operations] of Object.entries(moduleOperations)) {
+      if ((options.modules?.[module] ?? "none") !== "none") continue;
+      it.each(operations)(
+        `answers $method $path with not_found without ${module}`,
+        async (operation) => {
+          const harness = await setup();
+          await expectNotFound(await harness.request(...requestFor(operation)));
+        },
+      );
+    }
   });
 }

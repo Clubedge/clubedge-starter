@@ -87,7 +87,37 @@ export interface components {
       };
     };
   };
-  responses: never;
+  responses: {
+    /** @description Not signed in (code unauthorized). */
+    Unauthorized: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The module's provider is not configured on this server (code not_configured). */
+    NotConfigured: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description Too many requests from this client (code rate_limited). */
+    TooManyRequests: {
+      headers: {
+        /** @description Seconds until the client may try again. */
+        "Retry-After"?: number;
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+  };
   parameters: never;
   requestBodies: never;
   headers: never;

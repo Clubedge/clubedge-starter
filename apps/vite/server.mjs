@@ -18,8 +18,8 @@ if (
 ) {
   throw new Error("API_URL must be an HTTP(S) origin without credentials, a path, or query.");
 }
-// Only these contract endpoints are proxied. The upstream host comes from API_URL;
-// request input can select a fixed path, but can never supply the request URL.
+// Only these contract endpoints are proxied. The upstream host comes from API_URL; request
+// input can select a fixed path and add a query string, but can never supply the request URL.
 const apiRoutes = new Map([
   ["GET /api/health", "/api/health"],
   ["GET /api/ready", "/api/ready"],
@@ -57,9 +57,11 @@ function proxy(request, response) {
   }
 
   let upstreamPath;
+  let search = "";
   try {
-    const requestPath = new URL(request.url ?? "/", "http://frontend.invalid").pathname;
-    upstreamPath = apiRoutes.get(`${request.method} ${requestPath}`);
+    const requestUrl = new URL(request.url ?? "/", "http://frontend.invalid");
+    upstreamPath = apiRoutes.get(`${request.method} ${requestUrl.pathname}`);
+    search = requestUrl.search;
   } catch {
     response.writeHead(400);
     response.end("Bad request.");
@@ -87,7 +89,7 @@ function proxy(request, response) {
       hostname: apiTarget.hostname,
       port: apiTarget.port || undefined,
       method: request.method,
-      path: upstreamPath,
+      path: `${upstreamPath}${search}`,
       headers,
     },
     (upstreamResponse) => {
