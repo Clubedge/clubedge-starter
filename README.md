@@ -36,6 +36,8 @@ Clubedge Starter is built the other way around. Every service is an optional mod
 
 Every combination in the CI matrix is generated as a real project and runs its full pipeline: install, lint, typecheck, unit tests, browser tests against real local services, a production build, and a smoke test.
 
+To try the mobile app on an Android phone, download [clubedge-demo.apk](https://github.com/Clubedge/clubedge-starter/releases/latest/download/clubedge-demo.apk) from the latest release and open it, allowing installs from unknown sources when Android asks. It is the app's demo build, with sample data that stays on the phone and no server behind it. iPhones install apps only from the App Store or TestFlight, so there is no file for them.
+
 <!-- In generated projects, the block below supplies the title that create-clubedge-app replaces with the project's name; its comment keeps it hidden here. -->
 <!-- clubedge:end -->
 <!-- clubedge:if framework=next|tanstack-start
@@ -50,7 +52,7 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - TanStack Start with React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=tanstack-start -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a Hono API in TypeScript in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=hono -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a FastAPI API in Python in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=fastapi -->
-- An Android and iOS app in `apps/shell`, made from the web app with Capacitor: it calls the API through the website and keeps its session on the device. See [The mobile app](SETUP.md#the-mobile-app). <!-- clubedge:only shell!=none -->
+- An Android and iOS app in `apps/shell`, made from the web app with Capacitor: it calls the API through the website, keeps its session on the device, and asks for an update when the API serves newer versions. A demo build has sample data and needs no server. See [The mobile app](SETUP.md#the-mobile-app). <!-- clubedge:only shell!=none -->
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Zod environment validation, security headers, structured errors, and `/api/health`.
@@ -327,6 +329,7 @@ The mobile app ([setup](SETUP.md#the-mobile-app)):
 - `pnpm --filter @clubedge/shell android`: build the app for Android and open it in Android Studio. The first run creates `apps/shell/android`.
 - `pnpm --filter @clubedge/shell ios`: the same for iOS and Xcode, on a Mac. The first run creates `apps/shell/ios`.
 - `pnpm --filter @clubedge/shell sync`: copy a new build of the web app into the native projects.
+- Add `--demo` to any of these for the demo: sample data on the device, and no server.
 
 <!-- clubedge:end -->
 

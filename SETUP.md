@@ -775,6 +775,27 @@ The app then loads `http://<your computer's address>:3000` (change it with `--ho
 The app then loads `http://<your computer's address>:3000` (change it with `--host` and `--port`; `ios` for iOS). <!-- clubedge:only auth!=better-auth -->
 Ctrl+C stops it. The installed app keeps loading its pages from your computer until you install a normal build again.
 
+### Updates
+
+Each time it starts, the app compares its version with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)):
+
+- Below `APP_MINIMUM_VERSION`, it shows **Update required**, a screen that keeps the app closed, with an **Update** button that opens `APP_UPDATE_URL` in the phone's browser.
+- Below `APP_LATEST_VERSION` only, a notice above the page offers the same button, and **Not now** hides it until the app starts again.
+- When the API cannot be reached, or does not know `/api/app-version` yet, nothing shows and the app works as usual.
+
+The app's version is its `versionName` in `apps/shell/android/app/build.gradle`, and its version (`MARKETING_VERSION`) in Xcode. Give it as `MAJOR.MINOR.PATCH`, such as `1.4.0`, and raise it with each release; `1.0` counts as `1.0.0`, and a version in another form never sees a notice.
+
+### The demo
+
+`pnpm --filter @clubedge/shell android --demo` (or `ios --demo`) builds a demo of the app, for trying it or for store screenshots: it needs no server and no `WEB_URL`. In its build, sign-in and the API answer from memory on the device, with fakes from `packages/mobile/src/demo`:
+
+- Any email and password sign in a demo user; sign-up and password reset say they are off.
+- The settings work until the app closes, and deleting the account signs out.
+- Other calls answer as an API with nothing set up would, and routes the demo leaves out answer 404, as for a module the project does not have.
+- A banner says it is a demo, with sample data that stays on the device.
+
+Builds without `--demo` contain none of it. The demo replaces the app's build in the native project, so run `pnpm --filter @clubedge/shell sync` before building a release.
+
 <!-- clubedge:end -->
 
 ## Before deploying
