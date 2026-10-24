@@ -55,6 +55,24 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/client-errors": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** How the browser reports its errors, read at runtime so builds never bake it in. */
+    get: operations["getBrowserErrorReporting"];
+    put?: never;
+    /** Reports an error from the browser like a server error. 30 a minute per address. */
+    post: operations["reportBrowserError"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -86,6 +104,32 @@ export interface components {
         message: string;
       };
     };
+    BrowserErrorReporting:
+      | {
+          /** @enum {string} */
+          provider: "endpoint";
+        }
+      | {
+          /** @enum {string} */
+          provider: "sentry";
+          dsn: string;
+          environment?: string;
+          release?: string;
+        }
+      | {
+          /** @enum {string} */
+          provider: "none";
+        };
+    /** @description An uncaught error, an unhandled rejection, or a render error a boundary caught. */
+    ClientErrorReport: {
+      /** @enum {string} */
+      kind: "error" | "unhandledrejection" | "render";
+      name: string;
+      message: string;
+      stack?: string;
+      /** @description The page's path, without its query string. */
+      path: string;
+    };
   };
   responses: {
     /** @description Not signed in (code unauthorized). */
@@ -111,6 +155,24 @@ export interface components {
       headers: {
         /** @description Seconds until the client may try again. */
         "Retry-After"?: number;
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The request body is over the operation's limit (code payload_too_large). */
+    PayloadTooLarge: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The body is not JSON (code unsupported_media_type). Mutating operations take only JSON, which another site cannot make a browser send without the API's CORS approval. */
+    UnsupportedMediaType: {
+      headers: {
         [name: string]: unknown;
       };
       content: {
@@ -192,6 +254,62 @@ export interface operations {
           "application/json": components["schemas"]["Session"];
         };
       };
+    };
+  };
+  getBrowserErrorReporting: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Post errors back here, send them to Sentry, or do not report them. */
+      200: {
+        headers: {
+          /** @description no-store, so a new setting applies on the next page load. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BrowserErrorReporting"];
+        };
+      };
+    };
+  };
+  reportBrowserError: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClientErrorReport"];
+      };
+    };
+    responses: {
+      /** @description Reported. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not an error report (code invalid_report). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      429: components["responses"]["TooManyRequests"];
     };
   };
 }

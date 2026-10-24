@@ -37,7 +37,12 @@ export interface Operation {
  * The operations each module adds to the contract: those openapi.yaml tags with
  * `x-clubedge-module` (src/schema.test.ts keeps the two in step).
  */
-export const moduleOperations: Record<string, Operation[]> = {};
+export const moduleOperations: Record<string, Operation[]> = {
+  observability: [
+    { method: "GET", path: "/api/client-errors" },
+    { method: "POST", path: "/api/client-errors" },
+  ],
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -56,6 +61,17 @@ export async function expectNotFound(response: Response) {
     error: { code: "not_found", message: expect.any(String) },
   });
 }
+
+/** A POST of `body` as JSON. */
+const postJson = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+/** Whether the project has `module`, so its operations must work. */
+const has = (options: ApiConformanceOptions, module: string) =>
+  (options.modules?.[module] ?? "none") !== "none";
 
 /** A request any route would accept as far as its content type goes, so only the path decides. */
 function requestFor({ method, path }: Operation): [string, RequestInit] {
@@ -109,7 +125,7 @@ export function describeApiConformance(
 
     // A module the project doesn't have leaves no endpoint behind.
     for (const [module, operations] of Object.entries(moduleOperations)) {
-      if ((options.modules?.[module] ?? "none") !== "none") continue;
+      if (has(options, module)) continue;
       it.each(operations)(
         `answers $method $path with not_found without ${module}`,
         async (operation) => {
@@ -118,5 +134,35 @@ export function describeApiConformance(
         },
       );
     }
+
+    // The modules the project has, as far as they work without their provider's service.
+    describe.runIf(has(options, "observability"))("observability", () => {
+      it("tells the browser how to report its errors, never cached", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/client-errors");
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control") ?? "").toContain("no-store");
+        const body = await json(response);
+        expect(body).toMatchObject({ provider: expect.stringMatching(/^(endpoint|sentry|none)$/) });
+        if (isRecord(body) && body.provider === "sentry") {
+          expect(body.dsn).toEqual(expect.any(String));
+        }
+      });
+
+      // Reported like any browser error, so the provider receives one named "Contract check".
+      it("takes an error report from the browser", async () => {
+        const harness = await setup();
+        const report = { kind: "error", name: "Error", message: "Contract check", path: "/" };
+        const response = await harness.request("/api/client-errors", postJson(report));
+        expect(response.status).toBe(204);
+      });
+
+      it("refuses a body that is not an error report", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/client-errors", postJson({ kind: "error" }));
+        expect(response.status).toBe(400);
+        expect(await json(response)).toMatchObject({ error: { code: "invalid_report" } });
+      });
+    });
   });
 }

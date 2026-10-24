@@ -19,6 +19,7 @@
     "@clubedge/email": "workspace:*",
     "@clubedge/email-resend": "workspace:*",
     "@clubedge/email-smtp": "workspace:*",
+    "@clubedge/observability-sentry": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
     "appwrite": "^29.1.0",

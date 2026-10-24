@@ -4,7 +4,13 @@
   "role": "frontend",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
-  "conditional": ["auth.server.mjs", "src/routes/dashboard.tsx"],
+  "conditional": [
+    "auth.server.mjs",
+    "server.mjs",
+    "src/components/route-error.tsx",
+    "src/main.tsx",
+    "src/routes/dashboard.tsx"
+  ],
   "deployment": {
     "id": "web",
     "port": 3000,
@@ -100,6 +106,17 @@
     "email": {
       "smtp": {},
       "resend": {},
+      "none": {}
+    },
+    "observability": {
+      "otel|sentry": {
+        "files": ["src/components/error-reporting.tsx"]
+      },
+      "sentry": {
+        "replace": {
+          "src/components/error-reporting.tsx": "src/components/variants/error-reporting.sentry.tsx"
+        }
+      },
       "none": {}
     },
     "deploy": {

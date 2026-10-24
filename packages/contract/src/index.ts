@@ -9,6 +9,8 @@ export type Ready = components["schemas"]["Ready"];
 export type Session = components["schemas"]["Session"];
 export type User = components["schemas"]["User"];
 export type ApiError = components["schemas"]["Error"];
+export type BrowserErrorReporting = components["schemas"]["BrowserErrorReporting"];
+export type ClientErrorReport = components["schemas"]["ClientErrorReport"];
 
 /**
  * A typed client for the API. Paths start with /api, so the default base URL (the page's own

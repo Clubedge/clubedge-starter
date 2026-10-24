@@ -352,12 +352,12 @@ jobs:
           - {
               name: vite-hono-modules-a,
               framework: vite,
-              modules: --api hono --auth better-auth --storage s3 --cache redis,
+              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel,
             }
           - {
               name: vite-hono-modules-b,
               framework: vite,
-              modules: --api hono --auth supabase --storage supabase,
+              modules: --api hono --auth supabase --storage supabase --observability sentry,
             }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
@@ -732,8 +732,15 @@ jobs:
               infra: docker,
               framework: vite,
               api: hono,
-              modules: --auth better-auth --email smtp,
+              modules: --auth better-auth --email smtp --observability otel,
               mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --observability sentry,
+              mail-api: "",
             }
           # The API's files in a local folder (STORAGE_DIRECTORY) instead of S3.
           - { infra: local, framework: vite, api: hono, modules: --auth better-auth, mail-api: "" }

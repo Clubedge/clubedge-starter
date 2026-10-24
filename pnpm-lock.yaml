@@ -71,6 +71,15 @@ importers:
       '@clubedge/email-smtp':
         specifier: workspace:*
         version: link:../../packages/email-smtp
+      '@clubedge/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@clubedge/observability-otel':
+        specifier: workspace:*
+        version: link:../../packages/observability-otel
+      '@clubedge/observability-sentry':
+        specifier: workspace:*
+        version: link:../../packages/observability-sentry
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -262,6 +271,9 @@ importers:
       '@clubedge/email-smtp':
         specifier: workspace:*
         version: link:../../packages/email-smtp
+      '@clubedge/observability-sentry':
+        specifier: workspace:*
+        version: link:../../packages/observability-sentry
       '@clubedge/ui':
         specifier: workspace:*
         version: link:../../packages/ui

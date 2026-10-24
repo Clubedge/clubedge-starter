@@ -357,6 +357,7 @@ Server errors and traces go to the tool you chose. Errors that escape a page, ro
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. <!-- clubedge:only framework=tanstack-start -->
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` in `apps/api/.env.local` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. The API sends traces to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the API's service id. <!-- clubedge:only framework=vite -->
 
 To see traces during development, run [Jaeger](https://www.jaegertracing.io), set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, and open http://localhost:16686:
 
@@ -369,17 +370,20 @@ docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:latest
 
 Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
 Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=tanstack-start -->
+Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN; the frontend reads it from the API at runtime. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=vite -->
 
-To see your own code in browser stack traces, give the build `SENTRY_AUTH_TOKEN` (an auth token with the `project:releases` scope), `SENTRY_ORG`, and `SENTRY_PROJECT`. The build then makes source maps for the browser bundle, uploads them to Sentry, and deletes them, so they are never served. Without the token the build makes no source maps. Set the three variables where the build runs: in CI, or as build-time variables on your platform.
+To see your own code in browser stack traces, give the build `SENTRY_AUTH_TOKEN` (an auth token with the `project:releases` scope), `SENTRY_ORG`, and `SENTRY_PROJECT`. The build then makes source maps for the browser bundle, uploads them to Sentry, and deletes them, so they are never served. Without the token the build makes no source maps. Set the three variables where the build runs: in CI, or as build-time variables on your platform. <!-- clubedge:only framework!=vite -->
+The React + Vite build does not upload source maps to Sentry yet, so browser stack traces point into the minified bundle. <!-- clubedge:only framework=vite -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if observability!=none -->
 
 Uncaught errors in the browser are reported too, with the page's path and no query string. With OpenTelemetry, the browser sends them to `/api/client-errors`, which reports them like server errors and accepts 30 reports a minute per address. With Sentry, Sentry's browser SDK sends them directly; it is downloaded only when `SENTRY_DSN` is set. In both cases the browser reads its settings from `/api/client-errors` at runtime, so builds never bake them in.
 
-On Vercel and Netlify, a function can stop right after it responds, so spans still waiting in a batch at that moment can be lost.
+On Vercel and Netlify, a function can stop right after it responds, so spans still waiting in a batch at that moment can be lost. <!-- clubedge:only framework!=vite -->
 
-Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/web/src/server/observability.ts`; error reports and spans across the app stay the same.
+Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/web/src/server/observability.ts`; error reports and spans across the app stay the same. <!-- clubedge:only api=none -->
+Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/api/src/server/observability.ts`; error reports and spans across the API stay the same. The API stops taking requests on `SIGTERM` and sends what is still buffered before it exits. <!-- clubedge:only api=hono -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->

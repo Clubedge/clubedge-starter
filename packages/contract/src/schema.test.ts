@@ -9,8 +9,13 @@ describe("the generated client types", () => {
     const spec = new URL("../openapi.yaml", import.meta.url);
     const generated = astToString(await openapiTS(spec));
     const committed = readFileSync(fileURLToPath(new URL("./schema.ts", import.meta.url)), "utf8");
-    // Prettier formats the committed file; compare the code, not its layout.
-    const code = (text: string) => text.replace(/\/\*\*[\s\S]*?\*\//g, "").replace(/[\s;,]+/g, "");
+    // Prettier formats the committed file; compare the code, not its layout (such as the
+    // leading | it gives a union that spans lines).
+    const code = (text: string) =>
+      text
+        .replace(/\/\*\*[\s\S]*?\*\//g, "")
+        .replace(/[\s;,]+/g, "")
+        .replace(/([:=])\|/g, "$1");
     expect(code(committed)).toBe(code(generated));
   });
 });

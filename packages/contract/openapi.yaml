@@ -53,6 +53,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+  /api/client-errors:
+    get:
+      operationId: getBrowserErrorReporting
+      summary: How the browser reports its errors, read at runtime so builds never bake it in.
+      x-clubedge-module: observability
+      responses:
+        "200":
+          description: Post errors back here, send them to Sentry, or do not report them.
+          headers:
+            Cache-Control:
+              description: no-store, so a new setting applies on the next page load.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrowserErrorReporting"
+    post:
+      operationId: reportBrowserError
+      summary: Reports an error from the browser like a server error. 30 a minute per address.
+      x-clubedge-module: observability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientErrorReport"
+      responses:
+        "204":
+          description: Reported.
+        "400":
+          description: Not an error report (code invalid_report).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 components:
   # Answers that module operations share, each with its Error code.
   responses:
@@ -76,6 +118,20 @@ components:
           schema:
             type: integer
             minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    PayloadTooLarge:
+      description: The request body is over the operation's limit (code payload_too_large).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnsupportedMediaType:
+      description: >-
+        The body is not JSON (code unsupported_media_type). Mutating operations take only JSON,
+        which another site cannot make a browser send without the API's CORS approval.
       content:
         application/json:
           schema:
@@ -137,3 +193,49 @@ components:
               description: Stable and machine-readable, such as not_found.
             message:
               type: string
+    BrowserErrorReporting:
+      oneOf:
+        - type: object
+          description: Post errors to /api/client-errors.
+          required: [provider]
+          properties:
+            provider:
+              type: string
+              enum: [endpoint]
+        - type: object
+          description: Send errors to Sentry with its browser SDK; a DSN is public by design.
+          required: [provider, dsn]
+          properties:
+            provider:
+              type: string
+              enum: [sentry]
+            dsn:
+              type: string
+            environment:
+              type: string
+            release:
+              type: string
+        - type: object
+          description: Do not report browser errors.
+          required: [provider]
+          properties:
+            provider:
+              type: string
+              enum: [none]
+    ClientErrorReport:
+      type: object
+      description: An uncaught error, an unhandled rejection, or a render error a boundary caught.
+      required: [kind, name, message, path]
+      properties:
+        kind:
+          type: string
+          enum: [error, unhandledrejection, render]
+        name:
+          type: string
+        message:
+          type: string
+        stack:
+          type: string
+        path:
+          type: string
+          description: The page's path, without its query string.

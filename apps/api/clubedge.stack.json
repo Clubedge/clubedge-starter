@@ -4,7 +4,14 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
-  "conditional": ["scripts/check-services.ts", "src/env/production.ts", "src/server/storage.ts"],
+  "conditional": [
+    "scripts/check-services.ts",
+    "src/app.ts",
+    "src/env/production.ts",
+    "src/index.ts",
+    "src/server/index.ts",
+    "src/server/storage.ts"
+  ],
   "deployment": {
     "id": "api",
     "port": 3001,
@@ -77,6 +84,20 @@
       "none": {}
     },
     "observability": {
+      "otel|sentry": {
+        "files": [
+          "src/routes/client-errors.test.ts",
+          "src/routes/client-errors.ts",
+          "src/server/observability.test.ts",
+          "src/server/observability.ts",
+          "src/tracing.ts"
+        ]
+      },
+      "sentry": {
+        "replace": {
+          "src/server/observability.ts": "src/server/variants/observability.sentry.ts"
+        }
+      },
       "none": {}
     },
     "deploy": {

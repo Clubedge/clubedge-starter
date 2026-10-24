@@ -24,6 +24,8 @@ const apiRoutes = new Map([
   ["GET /api/health", "/api/health"],
   ["GET /api/ready", "/api/ready"],
   ["GET /api/session", "/api/session"],
+  ["GET /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
+  ["POST /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
 ]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
