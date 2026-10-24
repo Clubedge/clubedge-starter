@@ -9,6 +9,8 @@ const workspace = process.env.GITHUB_WORKSPACE;
 const api = process.env.API_KIND;
 const auth = process.env.AUTH_KIND;
 const pr = process.env.PR_NUMBER;
+// create-clubedge-app's bin/create.mjs, built by the workflow from the CLI's main branch.
+const cli = process.env.CLI;
 
 if (process.env.GITHUB_ACTIONS !== "true" || !workspace) {
   throw new Error("This script must run inside a GitHub Actions checkout.");
@@ -17,6 +19,7 @@ if (!new Set(["hono", "fastapi"]).has(api)) throw new Error("API_KIND must be ho
 if (!pr || !/^\d+$/.test(pr)) throw new Error("PR_NUMBER must be a pull request number.");
 if (!new Set(["none", "supabase"]).has(auth))
   throw new Error("AUTH_KIND must be none or supabase.");
+if (!cli) throw new Error("CLI must be the path to create-clubedge-app's bin/create.mjs.");
 
 const branch = `stack-preview/pr-${pr}-${api}`;
 const destination = await mkdtemp(join(tmpdir(), `clubedge-${api}-`));
@@ -27,9 +30,8 @@ const run = (command, args, options = {}) =>
 let publisherCreated = false;
 
 try {
-  run("pnpm", [
-    "dlx",
-    "@clubedge/create-clubedge-app@0.34.0",
+  run(process.execPath, [
+    cli,
     project,
     "--template-dir",
     workspace,

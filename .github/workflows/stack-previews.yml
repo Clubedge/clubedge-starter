@@ -51,12 +51,22 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
         run: node scripts/stack-preview-supabase.mjs
+      # The CLI's main branch reads this Starter's template schema, as in the Starter workflow;
+      # a released CLI may predate it.
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch main https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
       - name: Generate and publish the selected stack
         id: generated
         env:
           API_KIND: ${{ matrix.api }}
           AUTH_KIND: ${{ steps.auth.outputs.auth }}
           PR_NUMBER: ${{ github.event.number }}
+          CLI: ${{ runner.temp }}/cli/bin/create.mjs
         run: node scripts/stack-preview-generate.mjs
       - name: Deploy the API and Vite frontend to Render
         id: deploy
