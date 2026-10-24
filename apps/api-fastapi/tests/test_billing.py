@@ -28,9 +28,10 @@ class Setup:
     provider: FakeProvider
 
     def post(self, path: str, body: str | bytes, **headers: str) -> httpx.Response:
-        return self.client.post(
+        response: httpx.Response = self.client.post(
             path, content=body, headers={"content-type": "application/json", **headers}
         )
+        return response
 
 
 def setup(*, signed: bool = True, configured: bool = True) -> Setup:

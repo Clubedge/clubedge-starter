@@ -52,7 +52,8 @@ def app_with(
 
 
 def post(app: TestClient, path: str, body: object) -> httpx.Response:
-    return app.post(path, json=body, headers={"authorization": "Bearer ada"})
+    response: httpx.Response = app.post(path, json=body, headers={"authorization": "Bearer ada"})
+    return response
 
 
 def test_shows_the_account_with_the_display_name_the_app_keeps() -> None:
