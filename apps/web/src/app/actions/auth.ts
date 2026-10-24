@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getClientIp, safeRedirectPath, reportError } from "@clubedge/core";
 import { clientEnv } from "@/env/client";
+import { getClientIpSettings } from "@/env/server";
 import { loginUrl } from "@/lib/login-url";
 import { getAuth } from "@/server/auth";
 import { createRateLimiter } from "@/server/cache";
@@ -34,7 +35,9 @@ function readCredentials(formData: FormData) {
 }
 
 async function isRateLimited(action: "sign-in" | "sign-up" | "password-reset") {
-  const ip = getClientIp(await headers());
+  // Next.js gives server actions no connection address: without CLIENT_IP_HEADER or
+  // TRUSTED_PROXY_HOPS, every client shares one count (SETUP.md, "Client addresses").
+  const ip = getClientIp(await headers(), getClientIpSettings());
   try {
     const result = await authRateLimiter.limit(`auth:${action}:${ip}`);
     return !result.success;

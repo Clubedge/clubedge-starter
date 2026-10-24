@@ -25,6 +25,7 @@ from clubedge_api.routes.app_version import app_version_router
 from clubedge_api.routes.inngest import inngest_router  # clubedge:only jobs=inngest
 from clubedge_api.routes.jobs import BackgroundJobs, jobs_router  # clubedge:only jobs!=none
 from clubedge_api.routes.jobs_run import jobs_run_router  # clubedge:only jobs=bullmq
+from clubedge_api.settings import ClientIpSettings
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,8 @@ class ApiDependencies:
     create_rate_limiter: CreateRateLimiter = create_memory_limiter
     # The app versions installed apps check (app_version.py); every one None when absent.
     app_version: Callable[[], AppVersion] | None = None
+    # Where those limits find the client's address: the connection's own unless server.py says.
+    client_ip_settings: ClientIpSettings = ClientIpSettings()
     # clubedge:if auth!=none
     # The account settings (account.py); they answer 503 not_configured when absent.
     account: AccountService | None = None
@@ -134,6 +137,7 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     app.include_router(
         client_errors_router(
             create_rate_limiter=dependencies.create_rate_limiter,
+            client_ip_settings=dependencies.client_ip_settings,
             browser_error_reporting=dependencies.browser_error_reporting,
         )
     )

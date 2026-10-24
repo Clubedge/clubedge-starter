@@ -54,6 +54,7 @@ beforeAll(async () => {
 
   directory = mkdtempSync(join(tmpdir(), "clubedge-frontend-"));
   copyFileSync("apps/vite/server.mjs", join(directory, "server.mjs"));
+  copyFileSync("apps/vite/client-ip.mjs", join(directory, "client-ip.mjs"));
   mkdirSync(join(directory, "dist"));
   writeFileSync(join(directory, "dist/index.html"), "<!doctype html>");
   // Better Auth, with its bearer plugin, as it answers a sign-in.

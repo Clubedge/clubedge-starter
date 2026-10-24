@@ -1,6 +1,7 @@
 // The variables a production deploy of the API needs, for the modules this project uses.
 // `pnpm check:env` checks them in the deploy's environment, so a missing key stops the deploy
 // instead of shipping an API whose features fail at runtime.
+import { parseClientIpSettings } from "@clubedge/core";
 import { isNeonPooledUrl } from "@clubedge/db/urls";
 import { appVersionProblems } from "@/server/app-version";
 
@@ -100,6 +101,12 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   }
   // Optional too: the versions /api/app-version tells the apps installed on phones.
   invalid.push(...appVersionProblems(env));
+  // Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
+  try {
+    parseClientIpSettings(env);
+  } catch (error) {
+    invalid.push((error as Error).message);
+  }
   // clubedge:if jobs=inngest
   // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
   if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {

@@ -20,7 +20,10 @@ export function clientErrorRoutes(dependencies: ApiDependencies) {
     })
     .post(
       "/api/client-errors",
-      rateLimit(limiter, { scope: "client-errors" }),
+      rateLimit(limiter, {
+        scope: "client-errors",
+        clientIpSettings: dependencies.clientIpSettings,
+      }),
       jsonOnly,
       limitBody(MAX_BODY),
       async (c) => {

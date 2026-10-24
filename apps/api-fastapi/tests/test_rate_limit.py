@@ -6,6 +6,7 @@ import pytest
 from fastapi import Depends
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
+from starlette.datastructures import Headers
 
 from clubedge_api.app import create_app
 from clubedge_api.rate_limit import (
@@ -15,12 +16,24 @@ from clubedge_api.rate_limit import (
     create_memory_limiter,
     rate_limit,
 )
+from clubedge_api.settings import ClientIpSettings, parse_client_ip_settings
 from tests.fakes import UnavailableLimiter, dependencies
 
+SOCKET = "192.0.2.10"
+# One proxy in front, which appends the address it saw to whatever the client sent.
+ONE_PROXY = ClientIpSettings(trusted_hops=1)
 
-def limited_client(limiter: RateLimiter, *, fail_open: bool = True) -> TestClient:
+
+def limited_client(
+    limiter: RateLimiter,
+    *,
+    fail_open: bool = True,
+    client_ip_settings: ClientIpSettings = ONE_PROXY,
+) -> TestClient:
     app = create_app(dependencies())
-    guard = rate_limit(limiter, scope="test", fail_open=fail_open)
+    guard = rate_limit(
+        limiter, scope="test", fail_open=fail_open, client_ip_settings=client_ip_settings
+    )
 
     @app.post("/limited", dependencies=[Depends(guard)])
     async def limited() -> JSONResponse:
@@ -61,12 +74,71 @@ def test_refuses_unusable_limits() -> None:
         asyncio.run(MemoryRateLimiter().limit("x" * 257))
 
 
-def test_reads_the_client_address_from_the_proxy_headers() -> None:
-    assert client_ip({"x-forwarded-for": " 203.0.113.7 , 10.0.0.1"}) == "203.0.113.7"
-    assert client_ip({"x-real-ip": "198.51.100.2"}) == "198.51.100.2"
-    assert client_ip({"x-forwarded-for": "", "x-real-ip": "198.51.100.2"}) == "198.51.100.2"
-    assert client_ip({}) == "unknown"
-    assert client_ip({"x-forwarded-for": "x" * 100}) == "x" * 64
+def test_uses_the_connections_address_while_no_proxy_is_trusted() -> None:
+    headers = Headers({"x-forwarded-for": "198.51.100.66", "x-real-ip": "198.51.100.67"})
+    assert client_ip(headers, socket_address=SOCKET) == SOCKET
+
+
+def test_counts_trusted_proxies_from_the_end_past_what_the_client_sent() -> None:
+    # The client sent 198.51.100.66 itself; the proxy in front appended the address it saw.
+    one_proxy = Headers({"x-forwarded-for": "198.51.100.66, 203.0.113.1"})
+    assert client_ip(one_proxy, ONE_PROXY, SOCKET) == "203.0.113.1"
+    # Two proxies: the outer one appended the client's address, the inner one the outer proxy's.
+    two_proxies = Headers({"x-forwarded-for": "198.51.100.66, 203.0.113.1, 10.0.0.2"})
+    assert client_ip(two_proxies, ClientIpSettings(trusted_hops=2), SOCKET) == "203.0.113.1"
+    # A proxy that adds a line of its own instead of extending the client's.
+    lines = Headers(
+        raw=[(b"x-forwarded-for", b"198.51.100.66"), (b"x-forwarded-for", b"203.0.113.1")]
+    )
+    assert client_ip(lines, ONE_PROXY, SOCKET) == "203.0.113.1"
+
+
+def test_falls_back_to_the_connections_address_when_fewer_proxies_added_an_entry() -> None:
+    single = Headers({"x-forwarded-for": "203.0.113.1"})
+    assert client_ip(single, ClientIpSettings(trusted_hops=2), SOCKET) == SOCKET
+    assert client_ip(Headers(), ONE_PROXY, SOCKET) == SOCKET
+    assert client_ip(single, ClientIpSettings(trusted_hops=2)) == "unknown"
+    assert client_ip(Headers()) == "unknown"
+
+
+def test_trusts_the_nearest_proxy_without_a_connection_address() -> None:
+    forwarded = Headers({"x-forwarded-for": "198.51.100.66, 203.0.113.1"})
+    assert client_ip(forwarded) == "203.0.113.1"
+
+
+def test_reads_the_hosts_own_header_first_and_the_connections_address_without_it() -> None:
+    settings = ClientIpSettings(header="fly-client-ip", trusted_hops=1)
+    forwarded = {"x-forwarded-for": "198.51.100.66, 10.0.0.2"}
+    headers = Headers({"fly-client-ip": " 203.0.113.7 ", **forwarded})
+    assert client_ip(headers, settings, SOCKET) == "203.0.113.7"
+    assert client_ip(Headers(forwarded), settings, SOCKET) == SOCKET
+
+
+def test_bounds_the_identifier_length() -> None:
+    assert client_ip(Headers({"x-forwarded-for": "x" * 100}), ONE_PROXY) == "x" * 64
+
+
+def test_reads_the_client_address_settings_unset_or_empty_meaning_neither() -> None:
+    assert parse_client_ip_settings({}) == ClientIpSettings()
+    empty = {"CLIENT_IP_HEADER": "", "TRUSTED_PROXY_HOPS": ""}
+    assert parse_client_ip_settings(empty) == ClientIpSettings()
+    both = {"CLIENT_IP_HEADER": " Fly-Client-IP ", "TRUSTED_PROXY_HOPS": "2"}
+    assert parse_client_ip_settings(both) == ClientIpSettings("fly-client-ip", 2)
+
+
+def test_refuses_client_address_settings_that_cannot_be_right() -> None:
+    with pytest.raises(ValueError, match='header name, such as x-real-ip, not "x real ip"'):
+        parse_client_ip_settings({"CLIENT_IP_HEADER": "x real ip"})
+    for hops in ["-1", "1.5", "one", "11"]:
+        with pytest.raises(ValueError, match="TRUSTED_PROXY_HOPS must be a whole number from 0"):
+            parse_client_ip_settings({"TRUSTED_PROXY_HOPS": hops})
+
+
+def test_ignores_x_forwarded_for_while_no_proxy_is_trusted() -> None:
+    client = limited_client(create_memory_limiter(1, 60), client_ip_settings=ClientIpSettings())
+    assert client.post("/limited", headers={"x-forwarded-for": "203.0.113.7"}).status_code == 200
+    # A new first entry makes no new client: both come from the test client's connection.
+    assert client.post("/limited", headers={"x-forwarded-for": "203.0.113.8"}).status_code == 429
 
 
 def test_answers_429_with_retry_after_once_an_address_used_its_requests() -> None:

@@ -1,8 +1,9 @@
 // Rate limits for routes anyone can call, per client address. The limiters come from
 // src/server/cache (Redis or process memory); tests and routes without one use memory.
-import type { MiddlewareHandler } from "hono";
+import { getConnInfo } from "@hono/node-server/conninfo";
+import type { Context, MiddlewareHandler } from "hono";
 import { createMemoryRateLimiter, type RateLimiter } from "@clubedge/cache";
-import { getClientIp, reportError } from "@clubedge/core";
+import { getClientIp, reportError, type ClientIpSettings } from "@clubedge/core";
 import { apiError } from "@/http";
 
 /** Makes a limiter allowing `requests` per `windowSeconds`, as src/server/cache does. */
@@ -20,6 +21,16 @@ export interface RateLimitOptions {
    * default), so an outage locks nobody out, or refuse it with 503.
    */
   failOpen?: boolean;
+  /**
+   * Where the client's address comes from (CLIENT_IP_HEADER and TRUSTED_PROXY_HOPS, which
+   * src/server reads); without them, the connection's own address.
+   */
+  clientIpSettings?: ClientIpSettings;
+}
+
+/** The connection's own address, from the Node.js server; app.request in tests has none. */
+function socketAddress(c: Context): string | undefined {
+  return c.env?.incoming ? getConnInfo(c).remote.address : undefined;
 }
 
 /**
@@ -28,12 +39,16 @@ export interface RateLimitOptions {
  */
 export function rateLimit(
   limiter: RateLimiter,
-  { scope, failOpen = true }: RateLimitOptions,
+  { scope, failOpen = true, clientIpSettings }: RateLimitOptions,
 ): MiddlewareHandler {
   return async (c, next) => {
+    const ip = getClientIp(c.req.raw.headers, {
+      ...clientIpSettings,
+      socketAddress: socketAddress(c),
+    });
     let result;
     try {
-      result = await limiter.limit(`${scope}:${getClientIp(c.req.raw.headers)}`);
+      result = await limiter.limit(`${scope}:${ip}`);
     } catch (error) {
       reportError(error, { message: "Rate limiter unavailable" });
       if (!failOpen) {

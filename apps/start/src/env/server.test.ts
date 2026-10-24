@@ -29,4 +29,16 @@ describe("server env", () => {
     vi.stubEnv("APP_URL", "https://app.example");
     expect(getAppUrl()).toBe("https://app.example");
   });
+
+  it("reads where rate limits find the client's address, and refuses a wrong value", async () => {
+    vi.stubEnv("CLIENT_IP_HEADER", "X-Real-IP");
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "");
+    expect((await loadFreshModule()).getClientIpSettings()).toEqual({
+      header: "x-real-ip",
+      trustedHops: 0,
+    });
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "two");
+    const { getClientIpSettings } = await loadFreshModule();
+    expect(() => getClientIpSettings()).toThrow("TRUSTED_PROXY_HOPS must be a whole number");
+  });
 });

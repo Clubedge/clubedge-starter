@@ -46,6 +46,7 @@ WORKDIR /srv/${APP_DIR}
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 app
 COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/dist ./dist
 COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/server.mjs ./server.mjs
+COPY --from=builder --chown=app:nodejs /app/${APP_DIR}/client-ip.mjs ./client-ip.mjs
 USER app
 EXPOSE 3000
 CMD ["node", "server.mjs"]

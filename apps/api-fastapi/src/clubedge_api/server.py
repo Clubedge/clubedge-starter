@@ -52,6 +52,7 @@ def dependencies() -> ApiDependencies:
         frontend_origin=settings.frontend_origin,
         create_rate_limiter=create_rate_limiter,
         app_version=app_version,
+        client_ip_settings=settings.client_ip_settings,
         account=AccountSettings(),  # clubedge:only auth!=none
         # clubedge:if observability!=none
         browser_error_reporting=browser_error_reporting,

@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { getClientIp, readTextBody, reportError } from "@clubedge/core";
+import { readTextBody, reportError } from "@clubedge/core";
 import { ClientError, parseClientErrorReport } from "@clubedge/observability";
 import { createRateLimiter } from "@/server/cache";
+import { clientIp } from "@/server/client-ip";
 import { browserErrorReporting } from "@/server/observability";
 
 const MAX_BODY = 16_384;
@@ -9,8 +10,9 @@ const MAX_BODY = 16_384;
 const clientErrorLimiter = createRateLimiter(30, 60);
 
 async function isRateLimited(request: Request) {
+  const ip = clientIp(request);
   try {
-    const result = await clientErrorLimiter.limit(`client-errors:${getClientIp(request.headers)}`);
+    const result = await clientErrorLimiter.limit(`client-errors:${ip}`);
     return !result.success;
   } catch (error) {
     reportError(error, { message: "Rate limiter unavailable" });

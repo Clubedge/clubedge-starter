@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 
 from clubedge_api.app_version import app_version_problems
 from clubedge_api.db import is_neon_pooled_url
+from clubedge_api.settings import parse_client_ip_settings
 
 
 @dataclass(frozen=True)
@@ -121,6 +122,11 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             )
     # Optional too: the versions /api/app-version tells the apps installed on phones.
     invalid.extend(app_version_problems(values))
+    # Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
+    try:
+        parse_client_ip_settings(values)
+    except ValueError as error:
+        invalid.append(str(error))
     # clubedge:if jobs=inngest
     # The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
     inngest_dev = values.get("INNGEST_DEV", "")

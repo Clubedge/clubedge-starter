@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response
 
 from clubedge_api.http import NO_STORE, ApiError, json_only, limit_body, read_json
 from clubedge_api.rate_limit import CreateRateLimiter, rate_limit
+from clubedge_api.settings import ClientIpSettings
 from clubedge_api.telemetry import BrowserErrorReporting
 
 logger = logging.getLogger(__name__)
@@ -72,10 +73,11 @@ class ClientError(Exception):
 def client_errors_router(
     *,
     create_rate_limiter: CreateRateLimiter,
+    client_ip_settings: ClientIpSettings,
     browser_error_reporting: Callable[[], BrowserErrorReporting] | None,
 ) -> APIRouter:
     """The browser's reporting settings, from `browser_error_reporting` (none without it), and
-    the reports it posts, 30 a minute per address."""
+    the reports it posts, 30 a minute per address (found by `client_ip_settings`)."""
     router = APIRouter()
     # Per address, so a broken page in one browser cannot flood the error reports.
     limiter = create_rate_limiter(30, 60)
@@ -89,7 +91,9 @@ def client_errors_router(
     @router.post(
         "/api/client-errors",
         dependencies=[
-            Depends(rate_limit(limiter, scope="client-errors")),
+            Depends(
+                rate_limit(limiter, scope="client-errors", client_ip_settings=client_ip_settings)
+            ),
             Depends(json_only),
             Depends(limit_body(MAX_BODY)),
         ],

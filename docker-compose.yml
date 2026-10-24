@@ -38,5 +38,8 @@ services:
         required: false
     environment:
       HOST: 0.0.0.0
+      # Only the frontend's server reaches the API (it publishes no port), and it sends the
+      # client's address as the one X-Forwarded-For entry, for the API's rate limits.
+      TRUSTED_PROXY_HOPS: "1"
     restart: unless-stopped
   # clubedge:end
