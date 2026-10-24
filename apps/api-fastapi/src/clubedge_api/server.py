@@ -7,7 +7,8 @@ from typing import Any
 from fastapi import Request
 
 from clubedge_api import auth
-from clubedge_api.app import ApiDependencies, User
+from clubedge_api.app import ApiDependencies
+from clubedge_api.contract import User
 from clubedge_api.db import is_database_ready
 from clubedge_api.settings import get_settings
 

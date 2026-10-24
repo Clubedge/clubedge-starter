@@ -10,7 +10,7 @@
     "start": "uv run python -m clubedge_api",
     "lint": "uv run ruff check . && uv run ruff format --check .",
     "typecheck": "uv run mypy",
-    "test": "uv run pytest && clubedge-contract-check -- uv run python -m clubedge_api",
+    "test": "uv run pytest && uv run python -m clubedge_api.contract_check",
     "check:services": "uv run python -m clubedge_api.check_services",
     "check:env": "uv run python -m clubedge_api.check_env"
   },

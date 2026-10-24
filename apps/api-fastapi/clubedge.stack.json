@@ -4,6 +4,11 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": [
+    "Dockerfile",
+    "src/clubedge_api/check_services.py",
+    "src/clubedge_api/production_env.py"
+  ],
   "deployment": {
     "id": "api",
     "port": 3001,

@@ -2,7 +2,7 @@
 
 from fastapi import Request
 
-from clubedge_api.app import User
+from clubedge_api.contract import User
 
 
 async def get_current_user(
