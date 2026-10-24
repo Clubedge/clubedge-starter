@@ -3,6 +3,10 @@
 # calls it through the client generated from this file (src/schema.ts, `pnpm generate`).
 # Change the API here first, then in each stack.
 #
+# Apps installed on phones keep calling the contract they shipped with: add operations and
+# fields, but never remove or rename them, or make an optional request field required. CI's
+# contract job fails a pull request that does (SETUP.md, "Apps installed on phones").
+#
 # An operation that belongs to a module (payments, jobs, ...) names it with
 # `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
 # answers 404 not_found as for any unknown path; the conformance suite checks both cases.
