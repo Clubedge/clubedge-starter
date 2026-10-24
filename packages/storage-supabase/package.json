@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/storage-supabase",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "description": "Supabase Storage adapter for @clubedge/storage.",
   "private": true,
   "license": "Apache-2.0",
