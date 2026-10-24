@@ -168,7 +168,13 @@ jobs:
           - { deploy: netlify, framework: next, auth: better-auth }
           - { deploy: netlify, framework: tanstack-start, auth: better-auth }
           - { deploy: docker, framework: vite, api: hono, auth: supabase }
-          - { deploy: railway, framework: vite, api: hono, auth: supabase }
+          - {
+              deploy: railway,
+              framework: vite,
+              api: hono,
+              auth: supabase,
+              modules: --payments stripe,
+            }
           - { deploy: docker, framework: vite, api: fastapi, auth: supabase }
           - { deploy: railway, framework: vite, api: fastapi, auth: supabase }
     env:
@@ -188,7 +194,7 @@ jobs:
           pnpm build
       - name: Generate the project
         run: |
-          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth ${{ matrix.auth }} ${{ matrix.api && format('--api {0}', matrix.api) || '' }}             --no-git --no-install --yes
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth ${{ matrix.auth }} ${{ matrix.api && format('--api {0}', matrix.api) || '' }} ${{ matrix.modules }}             --no-git --no-install --yes
       - name: Check the platform config
         working-directory: ${{ runner.temp }}/app
         run: |
@@ -276,6 +282,18 @@ jobs:
               ! grep -q 'BETTER_AUTH_SECRET' "$env_schema"
               ;;
           esac
+          # A frontend and its API: the API's module variables go to the API only.
+          if [ -n "${{ matrix.api }}" ] && [[ "${{ matrix.modules }}" == *"--payments stripe"* ]]; then
+            grep -q '^STRIPE_SECRET_KEY=' apps/api/.env.example
+            grep -q '^STRIPE_WEBHOOK_SECRET=' apps/api/.env.example
+            grep -q '^STRIPE_PRICE_PRO=' apps/api/.env.example
+            for frontend in apps/web/.env.example .env.example; do
+              if [ -e "$frontend" ] && grep -n 'STRIPE_' "$frontend"; then
+                echo "$frontend has the API's Stripe variables."
+                exit 1
+              fi
+            done
+          fi
       - name: Lint the deploy workflow
         working-directory: ${{ runner.temp }}/app
         run: |
@@ -352,7 +370,7 @@ jobs:
           - {
               name: vite-hono-modules-a,
               framework: vite,
-              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel --jobs pg-boss,
+              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel --payments stripe --jobs pg-boss,
             }
           - {
               name: vite-hono-modules-b,
@@ -362,7 +380,7 @@ jobs:
           - {
               name: vite-hono-bullmq,
               framework: vite,
-              modules: --api hono --auth firebase --cache redis --jobs bullmq,
+              modules: --api hono --auth firebase --cache redis --jobs bullmq --payments stripe,
             }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
@@ -737,7 +755,7 @@ jobs:
               infra: docker,
               framework: vite,
               api: hono,
-              modules: --auth better-auth --email smtp --observability otel,
+              modules: --auth better-auth --email smtp --observability otel --payments stripe,
               mail-api: "http://127.0.0.1:8025",
             }
           - {

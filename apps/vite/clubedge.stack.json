@@ -114,6 +114,12 @@
       },
       "none": {}
     },
+    "payments": {
+      "stripe": {
+        "files": ["src/components/billing"]
+      },
+      "none": {}
+    },
     "observability": {
       "otel|sentry": {
         "files": ["src/components/error-reporting.tsx"]

@@ -143,6 +143,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/billing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The plans, and the signed-in user's subscription. Never cached. */
+    get: operations["getBilling"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/billing/checkout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Starts checkout for a plan, on the payment provider's hosted page. */
+    post: operations["startCheckout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/billing/portal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Opens the payment provider's billing portal, where the user manages billing. */
+    post: operations["openBillingPortal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/webhooks/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The payment provider's webhook, up to 1 MiB. The body is read raw, because the signature (Stripe-Signature) covers its exact bytes. Each event is applied once. */
+    post: operations["receivePaymentWebhook"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -225,6 +293,50 @@ export interface components {
     DueJobsRun: {
       completed: number;
       failed: number;
+    };
+    Billing: {
+      /** @description Whether checkout and webhooks work, that is, the provider's keys are set. */
+      configured: boolean;
+      plans: components["schemas"]["Plan"][];
+      subscription: components["schemas"]["Subscription"] | null;
+    };
+    Plan: {
+      id: string;
+      name: string;
+      description: string;
+    };
+    /** @description The user's most recently updated subscription. */
+    Subscription: {
+      /** @description One of the plans' ids, or null for a price no plan uses. */
+      planId: string | null;
+      /** @enum {string} */
+      status:
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "unpaid"
+        | "paused"
+        | "incomplete"
+        | "incomplete_expired"
+        | "canceled";
+      /** Format: date-time */
+      currentPeriodEnd: string | null;
+      cancelAtPeriodEnd: boolean;
+      /** @description Whether the subscription grants the paid features (active or trialing). */
+      entitled: boolean;
+    };
+    CheckoutRequest: {
+      planId: string;
+    };
+    BillingRedirect: {
+      /** Format: uri */
+      url: string;
+    };
+    WebhookReceipt: {
+      /** @enum {boolean} */
+      received: true;
+      /** @enum {string} */
+      result: "applied" | "ignored" | "duplicate";
     };
   };
   responses: {
@@ -546,6 +658,147 @@ export interface operations {
         };
         content?: never;
       };
+    };
+  };
+  getBilling: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Billing for the current user; subscription is null when signed out, when the user never subscribed, or while payments are not configured. */
+      200: {
+        headers: {
+          /** @description no-store, so a new subscription shows on the next load. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Billing"];
+        };
+      };
+    };
+  };
+  startCheckout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckoutRequest"];
+      };
+    };
+    responses: {
+      /** @description Send the browser to this URL; it comes back to the frontend's dashboard. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingRedirect"];
+        };
+      };
+      /** @description No such plan (code invalid_plan). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  openBillingPortal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description An empty JSON object; like every mutating operation, it takes only JSON. */
+    requestBody?: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Send the browser to this URL; it comes back to the frontend's dashboard. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingRedirect"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description The user never subscribed, so has no billing account (code no_billing_account). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  receivePaymentWebhook: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Stripe-Signature"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Received; applied, ignored as irrelevant, or a duplicate of an applied event. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookReceipt"];
+        };
+      };
+      /** @description Not signed by the provider (code invalid_signature). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      /** @description Applying the event failed, so the provider retries it (code webhook_failed). */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["NotConfigured"];
     };
   };
 }

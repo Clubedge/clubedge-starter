@@ -32,6 +32,10 @@ const apiRoutes = new Map([
   ["GET /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
   ["PUT /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
   ["POST /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["GET /api/billing", "/api/billing"], // clubedge:only payments=stripe
+  ["POST /api/billing/checkout", "/api/billing/checkout"], // clubedge:only payments=stripe
+  ["POST /api/billing/portal", "/api/billing/portal"], // clubedge:only payments=stripe
+  ["POST /api/webhooks/payments", "/api/webhooks/payments"], // clubedge:only payments=stripe
 ]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",

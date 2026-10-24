@@ -92,6 +92,12 @@ importers:
       '@clubedge/observability-sentry':
         specifier: workspace:*
         version: link:../../packages/observability-sentry
+      '@clubedge/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@clubedge/payments-stripe':
+        specifier: workspace:*
+        version: link:../../packages/payments-stripe
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage

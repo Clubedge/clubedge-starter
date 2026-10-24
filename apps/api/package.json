@@ -29,6 +29,8 @@
     "@clubedge/observability": "workspace:*",
     "@clubedge/observability-otel": "workspace:*",
     "@clubedge/observability-sentry": "workspace:*",
+    "@clubedge/payments": "workspace:*",
+    "@clubedge/payments-stripe": "workspace:*",
     "@clubedge/storage": "workspace:*",
     "@clubedge/storage-s3": "workspace:*",
     "@clubedge/storage-supabase": "workspace:*",

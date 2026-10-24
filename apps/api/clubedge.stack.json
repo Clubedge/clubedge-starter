@@ -45,6 +45,9 @@
         "replace": {
           "src/server/auth.ts": "src/server/variants/auth.better-auth.ts"
         }
+      },
+      "supabase|firebase|appwrite|better-auth": {
+        "files": ["src/server/users.ts"]
       }
     },
     "storage": {
@@ -80,6 +83,14 @@
       "none": {}
     },
     "payments": {
+      "stripe": {
+        "files": [
+          "src/config/plans.ts",
+          "src/routes/billing.test.ts",
+          "src/routes/billing.ts",
+          "src/server/payments.ts"
+        ]
+      },
       "none": {}
     },
     "jobs": {

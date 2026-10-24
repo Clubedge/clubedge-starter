@@ -50,6 +50,12 @@ export const moduleOperations: Record<string, Operation[]> = {
     { method: "PUT", path: "/api/inngest" },
     { method: "POST", path: "/api/inngest" },
   ],
+  payments: [
+    { method: "GET", path: "/api/billing" },
+    { method: "POST", path: "/api/billing/checkout" },
+    { method: "POST", path: "/api/billing/portal" },
+    { method: "POST", path: "/api/webhooks/payments" },
+  ],
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -216,6 +222,50 @@ export function describeApiConformance(
         });
         expect([401, 404]).toContain(response.status);
         expect(await json(response)).toMatchObject({ error: { code: expect.any(String) } });
+      });
+    });
+
+    describe.runIf(has(options, "payments"))("payments", () => {
+      it("lists the plans, with no subscription when signed out, never cached", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/billing");
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control") ?? "").toContain("no-store");
+        const body = await json(response);
+        expect(body).toMatchObject({ configured: expect.any(Boolean), subscription: null });
+        if (!isRecord(body) || !Array.isArray(body.plans)) throw new Error("plans is not a list");
+        for (const plan of body.plans) {
+          expect(plan).toEqual({
+            id: expect.any(String),
+            name: expect.any(String),
+            description: expect.any(String),
+          });
+        }
+      });
+
+      // Signed out: 401, or 503 first while the provider's keys are unset.
+      it.each(["/api/billing/checkout", "/api/billing/portal"])(
+        "refuses POST %s when signed out",
+        async (path) => {
+          const harness = await setup();
+          const response = await harness.request(path, postJson({ planId: "pro" }));
+          expect([401, 503]).toContain(response.status);
+          expect(await json(response)).toMatchObject({
+            error: { code: response.status === 401 ? "unauthorized" : "not_configured" },
+          });
+        },
+      );
+
+      it("refuses a webhook without the provider's signature", async () => {
+        const harness = await setup();
+        const response = await harness.request(
+          "/api/webhooks/payments",
+          postJson({ id: "evt_contract_check", type: "customer.subscription.created" }),
+        );
+        expect([400, 503]).toContain(response.status);
+        expect(await json(response)).toMatchObject({
+          error: { code: response.status === 400 ? "invalid_signature" : "not_configured" },
+        });
       });
     });
   });

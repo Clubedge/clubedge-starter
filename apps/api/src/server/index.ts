@@ -7,6 +7,10 @@ import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
 import { backgroundJobs } from "./jobs"; // clubedge:only jobs!=none
 import { browserErrorReporting } from "./observability"; // clubedge:only observability!=none
+// clubedge:if payments!=none
+import { appUrl, getBilling, isPaymentsConfigured } from "./payments";
+import { getUserProfileId } from "./users";
+// clubedge:end
 
 const supabase = {
   url: process.env.SUPABASE_URL ?? "",
@@ -21,4 +25,5 @@ export const dependencies: ApiDependencies = {
   createRateLimiter,
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none
+  payments: { isPaymentsConfigured, getBilling, getUserProfileId, appUrl }, // clubedge:only payments!=none
 };

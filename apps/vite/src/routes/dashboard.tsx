@@ -36,6 +36,9 @@ import {
   TableRow,
 } from "@clubedge/ui/components/table";
 import { siteConfig } from "@/config/site";
+// clubedge:if payments!=none
+import { BillingCard } from "@/components/billing/billing-card";
+// clubedge:end
 import { AccountButton } from "@/components/dashboard/account-button";
 import { DashboardShell, type DashboardArea } from "@/components/dashboard/dashboard-shell";
 import { JobsCard } from "@/components/jobs/jobs-card"; // clubedge:only jobs!=none
@@ -228,6 +231,10 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         </section>
+
+        {/* clubedge:if payments!=none */}
+        <BillingCard />
+        {/* clubedge:end */}
 
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]" id="modules">
           <Card className="gap-0 py-0">

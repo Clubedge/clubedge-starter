@@ -18,6 +18,9 @@ import { jobsRunRoutes } from "@/routes/jobs-run";
 // clubedge:if jobs=inngest
 import { inngestRoutes } from "@/routes/inngest";
 // clubedge:end
+// clubedge:if payments!=none
+import { billingRoutes, type BillingDependencies } from "@/routes/billing";
+// clubedge:end
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -34,6 +37,10 @@ export interface ApiDependencies {
   // clubedge:if jobs!=none
   /** Background jobs (src/server/jobs); their routes answer 404 when absent. */
   jobs?: BackgroundJobs;
+  // clubedge:end
+  // clubedge:if payments!=none
+  /** Billing with the payment provider (src/server/payments); not configured when absent. */
+  payments?: BillingDependencies;
   // clubedge:end
 }
 
@@ -78,6 +85,9 @@ export function createApp(dependencies: ApiDependencies) {
     app.route("/", jobsRunRoutes(dependencies.jobs)); // clubedge:only jobs=pg-boss|bullmq
     app.route("/", inngestRoutes(dependencies.jobs)); // clubedge:only jobs=inngest
   }
+  // clubedge:end
+  // clubedge:if payments!=none
+  app.route("/", billingRoutes(dependencies));
   // clubedge:end
 
   app.notFound((c) => apiError(c, 404, "not_found", "No such API endpoint."));

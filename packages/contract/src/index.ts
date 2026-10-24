@@ -15,6 +15,11 @@ export type JobsStatus = components["schemas"]["JobsStatus"];
 export type JobRun = components["schemas"]["JobRun"];
 export type SampleJobQueued = components["schemas"]["SampleJobQueued"];
 export type DueJobsRun = components["schemas"]["DueJobsRun"];
+export type Billing = components["schemas"]["Billing"];
+export type Plan = components["schemas"]["Plan"];
+export type Subscription = components["schemas"]["Subscription"];
+export type BillingRedirect = components["schemas"]["BillingRedirect"];
+export type WebhookReceipt = components["schemas"]["WebhookReceipt"];
 
 /**
  * A typed client for the API. Paths start with /api, so the default base URL (the page's own

@@ -48,6 +48,11 @@ export function requiredVariables(): Requirement[] {
     { key: "INNGEST_EVENT_KEY", use: "background jobs (Inngest's event key)" },
     { key: "INNGEST_SIGNING_KEY", use: "background jobs (Inngest's signing key)" },
     // clubedge:end
+    // clubedge:if payments=stripe
+    { key: "STRIPE_SECRET_KEY", use: "payments" },
+    { key: "STRIPE_WEBHOOK_SECRET", use: "payments" },
+    { key: "STRIPE_PRICE_PRO", use: "payments" },
+    // clubedge:end
   ];
 }
 
