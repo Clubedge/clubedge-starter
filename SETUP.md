@@ -689,6 +689,18 @@ In production, run each app's image: `apps/vite/Dockerfile` (the frontend, serve
 Run `node migrate.mjs` in the API's image before a new version starts. <!-- clubedge:only api=hono -->
 The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `package.json` scripts call uv, ruff, mypy, and pytest, so `pnpm dev`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` run it like the other apps. The database schema and migrations stay in `packages/db`, and the API's image bundles their Node migrator: run `node migrate.mjs` in it before a new version starts. <!-- clubedge:only api=fastapi -->
 
+### Apps installed on phones
+
+An app installed on a phone calls the API through the frontend's domain and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
+
+- `APP_MINIMUM_VERSION`, the oldest app version the API still serves: below it, the app shows a blocking update screen.
+- `APP_LATEST_VERSION`, the newest released version: below it, the app may show an optional update notice.
+- `APP_UPDATE_URL`, where to get the update: an `https://` link to the store listing or a download page.
+
+Versions are `MAJOR.MINOR.PATCH`, such as `1.4.0`, and the latest may not be older than the minimum. Other values fail the request rather than reach the apps, and `pnpm check:env` lists them before a deploy.
+
+Installed apps keep calling the contract they shipped with, so change `openapi.yaml` only in ways they survive: add fields and operations, but never remove or rename them, and never make an optional request field required. The CI workflow's `contract` job compares each pull request's contract with its base branch's using [oasdiff](https://github.com/oasdiff/oasdiff), and fails on a change that breaks existing clients. For a deliberate break before any app has shipped, label the pull request `breaking-contract` and run the job again. Once apps have shipped, a break also needs `APP_MINIMUM_VERSION` raised to the first version that handles it, so older apps ask for an update instead of failing.
+
 <!-- clubedge:end -->
 
 <!-- clubedge:if shell!=none -->

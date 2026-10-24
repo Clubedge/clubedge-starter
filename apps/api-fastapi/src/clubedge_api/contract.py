@@ -12,6 +12,17 @@ class User(TypedDict):
     displayName: str | None
 
 
+class AppVersion(TypedDict):
+    """The app versions the API serves, MAJOR.MINOR.PATCH, such as 1.4.0; None while unset."""
+
+    # The oldest version the API still serves: older apps must update before they continue.
+    minimumVersion: str | None
+    # The newest released version: older apps may show an update notice.
+    latestVersion: str | None
+    # Where apps get the update, such as their store listing.
+    updateUrl: str | None
+
+
 class ErrorDetail(TypedDict):
     code: str
     message: str

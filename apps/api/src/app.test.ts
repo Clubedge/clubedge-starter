@@ -34,6 +34,9 @@ const queue = createMemoryJobs([sampleJob]);
 // The optional parts of the contract this API implements, for the modules it has.
 const capabilities = ["account"];
 
+// Neither app below is given versions, so /api/app-version answers null for each.
+const appVersion = { minimumVersion: null, latestVersion: null, updateUrl: null };
+
 // The shared contract suite, in process: the same checks any API stack passes over HTTP.
 describe("the API without a database", () => {
   const app = createApp({
@@ -45,6 +48,7 @@ describe("the API without a database", () => {
   describeApiConformance("hono", () => ({ request: (path, init) => app.request(path, init) }), {
     service: "my-product",
     ready: false,
+    appVersion,
     modules,
     capabilities,
   });
@@ -62,6 +66,7 @@ describe("the API with a database", () => {
     () => ({ request: (path, init) => app.request(path, init) }),
     {
       ready: true,
+      appVersion,
       modules,
       capabilities,
     },

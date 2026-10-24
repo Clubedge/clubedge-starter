@@ -7,6 +7,7 @@
 // server with API_URL set. It runs in Vitest, which is why it is a separate entry
 // (`@clubedge/contract/conformance`) that only tests import.
 import { describe, expect, it } from "vitest";
+import type { components } from "./schema";
 
 export interface ApiHarness {
   /** Sends a request to the API; `path` starts with /api. */
@@ -20,6 +21,11 @@ export interface ApiConformanceOptions {
   service?: string;
   /** Whether the API's database is reachable, so /api/ready must say so; either when absent. */
   ready?: boolean;
+  /**
+   * What /api/app-version must answer, such as every field null from an API without the APP_*
+   * variables; any versions in the contract's format when absent.
+   */
+  appVersion?: components["schemas"]["AppVersion"];
   /**
    * The option selected per module, as a generated project records it (package.json
    * `clubedge.modules`). The operations of a module that is missing or "none" must answer 404.
@@ -159,6 +165,26 @@ export function describeApiConformance(
       const response = await harness.request("/api/session");
       expect(response.status).toBe(200);
       expect(await json(response)).toEqual({ user: null });
+    });
+
+    // Apps installed on phones ask it before anything else, so every API has it, whatever its
+    // modules.
+    it("tells installed apps which versions it serves, never cached", async () => {
+      const harness = await setup();
+      const response = await harness.request("/api/app-version");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control") ?? "").toContain("no-store");
+      const version = expect.toBeOneOf([null, expect.stringMatching(/^\d+\.\d+\.\d+$/)]);
+      expect(await json(response)).toEqual(
+        options.appVersion ?? {
+          minimumVersion: version,
+          latestVersion: version,
+          updateUrl: expect.toSatisfy(
+            (url) => url === null || (typeof url === "string" && URL.canParse(url)),
+            "an absolute URL or null",
+          ),
+        },
+      );
     });
 
     it("answers unknown API paths with a JSON not_found error", async () => {

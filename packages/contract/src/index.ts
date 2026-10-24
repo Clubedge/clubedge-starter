@@ -8,6 +8,7 @@ export type Health = components["schemas"]["Health"];
 export type Ready = components["schemas"]["Ready"];
 export type Session = components["schemas"]["Session"];
 export type User = components["schemas"]["User"];
+export type AppVersion = components["schemas"]["AppVersion"];
 export type Account = components["schemas"]["Account"];
 export type ApiError = components["schemas"]["Error"];
 export type BrowserErrorReporting = components["schemas"]["BrowserErrorReporting"];

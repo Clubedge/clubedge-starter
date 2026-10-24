@@ -2,6 +2,7 @@
 // `pnpm check:env` checks them in the deploy's environment, so a missing key stops the deploy
 // instead of shipping an API whose features fail at runtime.
 import { isNeonPooledUrl } from "@clubedge/db/urls";
+import { appVersionProblems } from "@/server/app-version";
 
 type Env = Record<string, string | undefined>;
 
@@ -97,6 +98,8 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
   }
+  // Optional too: the versions /api/app-version tells the apps installed on phones.
+  invalid.push(...appVersionProblems(env));
   // clubedge:if jobs=inngest
   // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
   if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {
