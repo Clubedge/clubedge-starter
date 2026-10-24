@@ -1,0 +1,120 @@
+# Maintainer workflow for the Starter repository: the demo app for Android, built from each
+# release and attached to it as clubedge-demo.apk, which the website links to through
+# releases/latest/download/clubedge-demo.apk. The demo keeps sample data on the device and needs
+# no server. Generated projects never get this workflow.
+name: Demo app
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release to build the demo for and attach it to, such as v0.27.0
+        required: true
+permissions:
+  contents: write
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      # The signing key, as a base64 PKCS12 keystore. Without it, the APK is debug-signed.
+      DEMO_KEYSTORE: ${{ secrets.DEMO_KEYSTORE }}
+      DEMO_KEYSTORE_PASSWORD: ${{ secrets.DEMO_KEYSTORE_PASSWORD }}
+      DEMO_KEY_ALIAS: ${{ secrets.DEMO_KEY_ALIAS }}
+      DEMO_KEY_PASSWORD: ${{ secrets.DEMO_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # Capacitor 8 builds with Java 21; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch main https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      # The folder's name names the project, and so the app: Clubedge Demo. Every module the demo
+      # does not show is left out, or takes its lightest option.
+      - name: Generate the project
+        run: |
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/clubedge-demo" --template-dir "$GITHUB_WORKSPACE" \
+            --framework vite --api hono --auth better-auth --shell capacitor --storage none \
+            --cache memory --email none --payments none --jobs none --observability none \
+            --infra none --no-git --no-install --yes
+      # The app's id becomes permanent with the Android project, which the build creates.
+      - name: Set the app's id
+        working-directory: ${{ runner.temp }}/clubedge-demo
+        run: |
+          set -euo pipefail
+          sed -i 's|^const appId = .*|const appId = "live.clubedge.demo";|' apps/shell/capacitor.config.ts
+          grep -q 'const appId = "live.clubedge.demo";' apps/shell/capacitor.config.ts
+          grep -q '"name": "Clubedge Demo"' apps/web/src/config/site.json
+      - name: Install
+        working-directory: ${{ runner.temp }}/clubedge-demo
+        run: pnpm install --frozen-lockfile
+      - name: Build the demo and number it after the release
+        working-directory: ${{ runner.temp }}/clubedge-demo
+        run: |
+          set -euo pipefail
+          pnpm --filter @clubedge/shell run sync android --demo
+          version="${TAG#v}"
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "The release tag $TAG is not vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+          code=$((BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3]))
+          sed -i -E "s/versionCode [0-9]+/versionCode $code/; s/versionName \"[^\"]*\"/versionName \"$version\"/" \
+            apps/shell/android/app/build.gradle
+          grep -q "versionCode $code" apps/shell/android/app/build.gradle
+          grep -q "versionName \"$version\"" apps/shell/android/app/build.gradle
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build the APK and sign it with the demo's key
+        if: env.DEMO_KEYSTORE != ''
+        working-directory: ${{ runner.temp }}/clubedge-demo/apps/shell/android
+        run: |
+          set -euo pipefail
+          if [ -z "$DEMO_KEYSTORE_PASSWORD" ] || [ -z "$DEMO_KEY_ALIAS" ] || [ -z "$DEMO_KEY_PASSWORD" ]; then
+            echo "DEMO_KEYSTORE needs DEMO_KEYSTORE_PASSWORD, DEMO_KEY_ALIAS, and DEMO_KEY_PASSWORD."
+            exit 1
+          fi
+          echo "$DEMO_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/demo.p12"
+          trap 'rm -f "$RUNNER_TEMP/demo.p12"' EXIT
+          ./gradlew assembleRelease
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$tools/zipalign" -p -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$tools/apksigner" sign --ks "$RUNNER_TEMP/demo.p12" --ks-type PKCS12 \
+            --ks-pass env:DEMO_KEYSTORE_PASSWORD --ks-key-alias "$DEMO_KEY_ALIAS" \
+            --key-pass env:DEMO_KEY_PASSWORD --out "$RUNNER_TEMP/clubedge-demo.apk" "$RUNNER_TEMP/aligned.apk"
+          "$tools/apksigner" verify "$RUNNER_TEMP/clubedge-demo.apk"
+          echo "Clubedge Demo $VERSION, signed with the demo's key." >> "$GITHUB_STEP_SUMMARY"
+      - name: Build a debug-signed APK, without the demo's key
+        if: env.DEMO_KEYSTORE == ''
+        working-directory: ${{ runner.temp }}/clubedge-demo/apps/shell/android
+        run: |
+          set -euo pipefail
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/clubedge-demo.apk"
+          {
+            echo "Clubedge Demo $VERSION is **debug-signed**: the repository has no DEMO_KEYSTORE secret."
+            echo "A later APK signed with another key cannot update it in place: uninstall it first."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Attach the APK to the release
+        working-directory: ${{ runner.temp }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha256sum clubedge-demo.apk > clubedge-demo.apk.sha256
+          gh release upload "$TAG" clubedge-demo.apk clubedge-demo.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
