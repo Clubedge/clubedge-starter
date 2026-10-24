@@ -104,10 +104,11 @@ jobs:
       # clubedge:end
       # clubedge:if api!=none
       # The frontend's image, and the API's, which owns the database and carries the migrator.
+      # Their own tags: the Starter repository runs every block of this file.
       - name: Build the production images
         run: |
           set -euo pipefail
-          docker build --tag app:ci .
+          docker build --tag web:ci .
           docker build --file apps/api/Dockerfile --tag api:ci .
       # clubedge:end
       # clubedge:if framework=next
@@ -149,8 +150,8 @@ jobs:
           set -euo pipefail
           docker run --detach --name api --network host \
             --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app api:ci
-          docker run --detach --name app --network host --env API_URL=http://127.0.0.1:3001 app:ci
-          trap 'docker logs api; docker logs app; docker rm --force api app' EXIT
+          docker run --detach --name web --network host --env API_URL=http://127.0.0.1:3001 web:ci
+          trap 'docker logs api; docker logs web; docker rm --force api web' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/api/health; then
               exit 0
