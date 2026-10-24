@@ -52,7 +52,12 @@
         }
       },
       "supabase|firebase|appwrite|better-auth": {
-        "files": ["src/server/users.ts"]
+        "files": [
+          "src/routes/account.ts",
+          "src/routes/account.test.ts",
+          "src/server/account.ts",
+          "src/server/users.ts"
+        ]
       }
     },
     "storage": {

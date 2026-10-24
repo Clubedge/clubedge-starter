@@ -25,8 +25,7 @@ const notices: Record<string, string> = {
   "account-deleted": "Your account was deleted.",
 };
 
-const checkEmailNotice =
-  "Account created. Check your inbox for the confirmation link to finish signing up.";
+const checkEmailNotice = "Check your email to confirm your account, then sign in.";
 
 export function LoginPage() {
   const navigate = useNavigate();
