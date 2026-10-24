@@ -12,10 +12,11 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
-      # Render puts each client's address in True-Client-IP (its X-Forwarded-For also keeps the
-      # entries a client sent), so rate limits read it there; see SETUP.md.
+      # Cloudflare, in front of every Render service, puts each client's address in
+      # CF-Connecting-IP and refuses requests that send their own; Render's X-Forwarded-For keeps
+      # the entries a client sent. Rate limits read the address there; see SETUP.md.
       - key: CLIENT_IP_HEADER
-        value: true-client-ip
+        value: cf-connecting-ip
       - key: NEXT_PUBLIC_APP_URL # clubedge:only framework=next
         sync: false # clubedge:only framework=next
       - key: APP_URL # clubedge:only framework=tanstack-start
