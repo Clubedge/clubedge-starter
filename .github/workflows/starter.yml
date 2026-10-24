@@ -382,6 +382,16 @@ jobs:
               framework: vite,
               modules: --api hono --auth firebase --cache redis --jobs bullmq --payments stripe,
             }
+          - {
+              name: vite-fastapi-modules-a,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --storage s3 --email smtp --cache redis --observability otel,
+            }
+          - {
+              name: vite-fastapi-modules-b,
+              framework: vite,
+              modules: --api fastapi --auth supabase --storage supabase --observability sentry,
+            }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
           - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
@@ -392,14 +402,36 @@ jobs:
               modules: --auth better-auth --api hono --email resend,
             }
           - {
+              name: vite-fastapi-resend,
+              framework: vite,
+              modules: --auth better-auth --api fastapi --email resend,
+            }
+          - {
               name: vite-fastapi-better-auth,
               framework: vite,
               modules: --auth better-auth --api fastapi,
+            }
+          # Payments on the FastAPI API: Stripe, in the same tables as the Hono API's.
+          - {
+              name: vite-fastapi-payments,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --payments stripe,
             }
           - { name: vite-hono-firebase, framework: vite, modules: --auth firebase --api hono }
           - { name: vite-fastapi-firebase, framework: vite, modules: --auth firebase --api fastapi }
           - { name: vite-hono-appwrite, framework: vite, modules: --auth appwrite --api hono }
           - { name: vite-fastapi-appwrite, framework: vite, modules: --auth appwrite --api fastapi }
+          # FastAPI with each jobs provider it offers.
+          - {
+              name: vite-fastapi-bullmq,
+              framework: vite,
+              modules: --api fastapi --auth firebase --cache redis --jobs bullmq,
+            }
+          - {
+              name: vite-fastapi-inngest,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --jobs inngest,
+            }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -423,14 +455,13 @@ jobs:
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
             --framework ${{ matrix.framework }} ${{ matrix.modules }} --no-git --no-install --yes
-      # FastAPI implements no module options beyond auth yet, so the CLI must refuse them rather
-      # than generate a frontend that calls endpoints its API lacks.
+      # FastAPI offers every module option but pg-boss, whose queue is a TypeScript library, so
+      # the CLI must refuse it rather than generate a frontend whose jobs its API cannot run.
       - name: Refuse modules FastAPI does not implement
         if: matrix.name == 'vite-fastapi'
         run: |
           set -euo pipefail
-          for option in "--storage s3" "--cache redis" "--email smtp" "--payments stripe" \
-            "--jobs pg-boss" "--observability otel"; do
+          for option in "--jobs pg-boss"; do
             if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
               --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
               --no-git --no-install --yes > "$RUNNER_TEMP/refused.log" 2>&1; then
@@ -788,12 +819,53 @@ jobs:
               modules: --auth better-auth --jobs inngest,
               mail-api: "",
             }
+          # The same with the FastAPI API: BullMQ's worker inside it, and Inngest's Dev Server
+          # calling it through the frontend, at the FRONTEND_URL Playwright gives the API.
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --jobs bullmq,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --jobs inngest,
+              mail-api: "",
+            }
           # The API's files in a local folder (STORAGE_DIRECTORY) instead of S3.
           - {
               infra: local,
               framework: vite,
               api: hono,
               modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
+          # The FastAPI API: its files in the Docker S3 service, then in a local folder; its email
+          # goes to Mailpit, or to the log in local mode; checkout, the webhook, and the portal against
+          # the Stripe fake; its rate limits in the Docker Redis, and its traces and errors through
+          # each observability provider.
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --storage s3 --email smtp --payments stripe --cache redis --observability otel,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --observability sentry,
+              mail-api: "",
+            }
+          - {
+              infra: local,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --storage s3 --email smtp,
               mail-api: "",
             }
     env:
@@ -807,6 +879,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The FastAPI API runs with uv.
+      - uses: astral-sh/setup-uv@v10.3.0
+        if: matrix.api == 'fastapi'
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -820,7 +895,10 @@ jobs:
             --framework ${{ matrix.framework }} --api ${{ matrix.api || 'none' }} --infra ${{ matrix.infra }} ${{ matrix.modules }} --no-git --no-install --yes
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          # The FastAPI API's environment, ready before the browser tests start the API.
+          if [ "${{ matrix.api }}" = fastapi ]; then (cd apps/api && uv sync --locked); fi
       # Better Auth checks that requests come from its own origin, which the browser tests reach
       # as 127.0.0.1; the frontend's server hosts it, and the API asks it for sessions there.
       - name: Serve Better Auth at the browser tests' origin

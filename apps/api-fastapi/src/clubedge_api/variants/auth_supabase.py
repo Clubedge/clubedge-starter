@@ -1,9 +1,13 @@
 """Supabase bearer-token validation for a decoupled API."""
 
+import os
+from urllib.parse import quote
+
 import httpx
 from fastapi import Request
 
-from clubedge_api.app import User
+from clubedge_api.contract import User
+from clubedge_api.routes.account import AccountDeletionResult, ProviderAccountDeletion
 
 
 async def get_current_user(
@@ -38,3 +42,53 @@ async def get_current_user(
         }
     except (httpx.HTTPError, ValueError):
         return None
+
+
+def can_delete_account() -> bool:
+    """Deleting a user is an admin operation, so it needs the project's secret key."""
+    keys = ("SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY")
+    return all(os.environ.get(key) for key in keys)
+
+
+def _signed_in_user_id(response: httpx.Response) -> object:
+    """The id of the user a password sign-in answered with."""
+    try:
+        session = response.json()
+    except ValueError:
+        return None
+    user = session.get("user") if isinstance(session, dict) else None
+    return user.get("id") if isinstance(user, dict) else None
+
+
+async def delete_account(deletion: ProviderAccountDeletion) -> AccountDeletionResult:
+    url = os.environ.get("SUPABASE_URL")
+    publishable_key = os.environ.get("SUPABASE_PUBLISHABLE_KEY")
+    secret_key = os.environ.get("SUPABASE_SECRET_KEY")
+    if not url or not publishable_key or not secret_key:
+        return "not-supported"
+    auth_url = f"{url.rstrip('/')}/auth/v1"
+    user = deletion.user
+    async with httpx.AsyncClient(timeout=15) as client:
+        # Signing in checks the password; the session it creates ends with the user below.
+        response = await client.post(
+            f"{auth_url}/token",
+            params={"grant_type": "password"},
+            headers={"apikey": publishable_key},
+            json={"email": user["email"], "password": deletion.password},
+        )
+        if response.status_code == 429:
+            return "rate-limited"
+        # An outage is not a wrong password: it answers 500, as the other providers do.
+        if response.status_code >= 500:
+            response.raise_for_status()
+        if response.status_code != 200 or _signed_in_user_id(response) != user["id"]:
+            return "invalid-password"
+        await deletion.before_delete()
+        deleted = await client.request(
+            "DELETE",
+            f"{auth_url}/admin/users/{quote(user['id'], safe='')}",
+            headers={"apikey": secret_key, "Authorization": f"Bearer {secret_key}"},
+            json={"should_soft_delete": False},
+        )
+        deleted.raise_for_status()
+    return "deleted"

@@ -4,6 +4,20 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": [
+    "Dockerfile",
+    "src/clubedge_api/account.py",
+    "src/clubedge_api/app.py",
+    "src/clubedge_api/auth.py",
+    "src/clubedge_api/check_services.py",
+    "src/clubedge_api/jobs.py",
+    "src/clubedge_api/main.py",
+    "src/clubedge_api/production_env.py",
+    "src/clubedge_api/server.py",
+    "src/clubedge_api/storage.py",
+    "tests/test_account.py",
+    "tests/test_storage_s3.py"
+  ],
   "deployment": {
     "id": "api",
     "port": 3001,
@@ -41,24 +55,134 @@
         "replace": {
           "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_better_auth.py"
         }
+      },
+      "supabase|firebase|appwrite|better-auth": {
+        "files": [
+          "src/clubedge_api/account.py",
+          "src/clubedge_api/routes/account.py",
+          "src/clubedge_api/users.py",
+          "tests/test_account.py",
+          "tests/test_users.py"
+        ]
       }
     },
     "storage": {
+      "s3|supabase": {
+        "files": ["src/clubedge_api/storage.py", "src/clubedge_api/storage_provider.py"]
+      },
+      "s3": {
+        "files": [
+          "src/clubedge_api/storage_local.py",
+          "src/clubedge_api/storage_s3.py",
+          "tests/test_storage_local.py",
+          "tests/test_storage_s3.py"
+        ]
+      },
+      "supabase": {
+        "files": ["src/clubedge_api/storage_supabase.py", "tests/test_storage_supabase.py"],
+        "replace": {
+          "src/clubedge_api/storage.py": "src/clubedge_api/variants/storage_supabase.py"
+        }
+      },
       "none": {}
     },
     "cache": {
-      "memory": {}
+      "redis": {
+        "files": ["tests/test_cache.py"]
+      },
+      "memory": {
+        "replace": {
+          "src/clubedge_api/cache.py": "src/clubedge_api/variants/cache_memory.py"
+        }
+      }
     },
     "email": {
+      "smtp|resend": {
+        "files": [
+          "src/clubedge_api/email.py",
+          "src/clubedge_api/email_provider.py",
+          "tests/test_email.py"
+        ]
+      },
+      "smtp": {
+        "files": ["src/clubedge_api/email_smtp.py", "tests/test_email_smtp.py"]
+      },
+      "resend": {
+        "files": ["src/clubedge_api/email_resend.py", "tests/test_email_resend.py"],
+        "replace": {
+          "src/clubedge_api/email.py": "src/clubedge_api/variants/email_resend.py"
+        }
+      },
       "none": {}
     },
     "payments": {
+      "stripe": {
+        "files": [
+          "src/clubedge_api/payments.py",
+          "src/clubedge_api/payments_stripe.py",
+          "src/clubedge_api/plans.py",
+          "src/clubedge_api/routes/billing.py",
+          "tests/fake_payments.py",
+          "tests/test_billing.py",
+          "tests/test_payments.py",
+          "tests/test_payments_stripe.py"
+        ]
+      },
       "none": {}
     },
     "jobs": {
+      "bullmq|inngest": {
+        "files": [
+          "src/clubedge_api/background_jobs.py",
+          "src/clubedge_api/job_queue.py",
+          "src/clubedge_api/jobs.py",
+          "src/clubedge_api/routes/jobs.py",
+          "tests/test_job_queue.py",
+          "tests/test_jobs.py"
+        ]
+      },
+      "bullmq": {
+        "files": [
+          "src/clubedge_api/jobs_bullmq.py",
+          "src/clubedge_api/routes/jobs_run.py",
+          "tests/test_background_jobs.py",
+          "tests/test_jobs_bullmq.py",
+          "tests/test_jobs_run.py"
+        ]
+      },
+      "inngest": {
+        "files": [
+          "src/clubedge_api/jobs_inngest.py",
+          "src/clubedge_api/routes/inngest.py",
+          "tests/test_inngest.py",
+          "tests/test_jobs_inngest.py"
+        ],
+        "replace": {
+          "src/clubedge_api/background_jobs.py": "src/clubedge_api/variants/background_jobs_inngest.py"
+        }
+      },
       "none": {}
     },
     "observability": {
+      "otel|sentry": {
+        "files": [
+          "src/clubedge_api/observability.py",
+          "src/clubedge_api/routes/client_errors.py",
+          "src/clubedge_api/telemetry.py",
+          "src/clubedge_api/tracing.py",
+          "tests/test_client_errors.py",
+          "tests/test_observability.py"
+        ]
+      },
+      "otel": {
+        "files": ["src/clubedge_api/telemetry_otel.py", "tests/test_telemetry_otel.py"]
+      },
+      "sentry": {
+        "files": ["src/clubedge_api/telemetry_sentry.py", "tests/test_telemetry_sentry.py"],
+        "replace": {
+          "src/clubedge_api/observability.py": "src/clubedge_api/variants/observability_sentry.py"
+        }
+      },
       "none": {}
     },
     "deploy": {

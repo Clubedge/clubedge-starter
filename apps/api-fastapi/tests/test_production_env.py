@@ -1,0 +1,95 @@
+"""The production variables `pnpm check:env` requires, for the modules this project has."""
+
+import pytest
+
+from clubedge_api.production_env import (
+    ProductionEnvCheck,
+    check_production_env,
+    is_local_url,
+    required_variables,
+)
+
+REQUIRED = {requirement.key for requirement in required_variables()}
+
+
+def complete(**values: str) -> dict[str, str]:
+    """A value for every variable this API requires, whichever modules it has, and `values`."""
+    return {**{key: "https://service.example.com" for key in REQUIRED}, **values}
+
+
+def test_passes_when_every_required_variable_is_set() -> None:
+    assert check_production_env(complete()) == ProductionEnvCheck()
+    assert check_production_env(complete()).ok
+
+
+def test_always_requires_the_database_and_the_frontends_url() -> None:
+    missing = {requirement.key for requirement in check_production_env({}).missing}
+    assert {"DATABASE_URL", "FRONTEND_URL"} <= missing
+
+
+def test_counts_empty_values_as_unset() -> None:
+    missing = check_production_env(complete(DATABASE_URL="  ")).missing
+    assert [requirement.key for requirement in missing] == ["DATABASE_URL"]
+
+
+def test_rejects_urls_to_this_machine() -> None:
+    result = check_production_env(complete(FRONTEND_URL="http://localhost:3000"))
+    assert result.local == ["FRONTEND_URL"]
+
+
+def test_rejects_a_url_that_is_not_absolute() -> None:
+    result = check_production_env(complete(FRONTEND_URL="my-app.example.com"))
+    assert result.invalid == ["FRONTEND_URL is not an absolute URL"]
+
+
+def test_checks_the_optional_direct_database_url() -> None:
+    def direct(url: str) -> ProductionEnvCheck:
+        return check_production_env(complete(DATABASE_URL_DIRECT=url))
+
+    assert direct("postgresql://u:p@ep-x-1.eu-central-1.aws.neon.tech/neondb").ok
+    assert direct("postgresql://u:p@localhost:5432/app").local == ["DATABASE_URL_DIRECT"]
+    assert direct("https://db.example.com/app").invalid == [
+        "DATABASE_URL_DIRECT is not a postgresql:// URL"
+    ]
+    assert direct("postgresql://u:p@ep-x-1-pooler.eu-central-1.aws.neon.tech/neondb").invalid == [
+        "DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"
+    ]
+
+
+@pytest.mark.skipif("INNGEST_SIGNING_KEY" not in REQUIRED, reason="this project has no Inngest")
+def test_refuses_the_inngest_dev_server_in_production() -> None:
+    assert check_production_env(complete(INNGEST_DEV="1")).invalid == [
+        "INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it"
+    ]
+    assert check_production_env(complete(INNGEST_DEV="0")).ok
+
+
+@pytest.mark.skipif("FIREBASE_API_KEY" not in REQUIRED, reason="this project has no Firebase")
+def test_refuses_the_firebase_auth_emulator_in_production() -> None:
+    result = check_production_env(complete(FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:9099"))
+    assert result.invalid == [
+        "FIREBASE_AUTH_EMULATOR_HOST is set: production uses your Firebase project, so remove it"
+    ]
+
+
+@pytest.mark.skipif("EMAIL_FROM" not in REQUIRED, reason="this project sends no email")
+def test_refuses_the_example_com_sender_of_env_example() -> None:
+    result = check_production_env(complete(EMAIL_FROM="App <no-reply@example.com>"))
+    assert result.invalid == [
+        "EMAIL_FROM still uses example.com: set a sender on a domain you verified"
+    ]
+    assert check_production_env(complete(EMAIL_FROM="App <hi@mail.example.org>")).ok
+
+
+def test_tells_local_urls_from_hosted_ones() -> None:
+    for url in [
+        "http://localhost:3000",
+        "redis://127.0.0.1:6379",
+        "http://[::1]:3001",
+        "http://0.0.0.0:3001",
+        "http://app.localhost",
+        "http://host.docker.internal:5432",
+    ]:
+        assert is_local_url(url), url
+    for url in ["https://example.com", "postgresql://u:p@db.example.com/app", "not a url"]:
+        assert not is_local_url(url), url

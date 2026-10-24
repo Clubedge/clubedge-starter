@@ -10,8 +10,8 @@
 # An optional part of a module also names itself with `x-clubedge-capability: <id>`, such as
 # the account settings (`account`, in the auth module). An API implements a capability fully or
 # not at all, and its conformance check says which ones it implements: without the capability,
-# its operations answer 404 like a missing module's. The Hono API implements `account`; the
-# FastAPI one does not yet.
+# its operations answer 404 like a missing module's. The Hono and FastAPI APIs implement
+# `account`.
 openapi: 3.1.0
 info:
   title: Clubedge API
