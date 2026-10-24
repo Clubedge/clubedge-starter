@@ -78,6 +78,9 @@ async def delete_account(deletion: ProviderAccountDeletion) -> AccountDeletionRe
         )
         if response.status_code == 429:
             return "rate-limited"
+        # An outage is not a wrong password: it answers 500, as the other providers do.
+        if response.status_code >= 500:
+            response.raise_for_status()
         if response.status_code != 200 or _signed_in_user_id(response) != user["id"]:
             return "invalid-password"
         await deletion.before_delete()

@@ -41,7 +41,8 @@ class MemoryCache:
         if entry.expires_at <= self._now():
             del self._entries[key]
             return None
-        return entry.value
+        # A copy, as Redis returns a new value each time: changing it leaves the cache as it was.
+        return copy.deepcopy(entry.value)
 
     async def set(self, key: str, value: object, ttl_seconds: int) -> None:
         if ttl_seconds <= 0:

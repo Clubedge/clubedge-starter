@@ -97,6 +97,17 @@ def test_supabase_keeps_the_user_when_the_password_does_not_sign_in(
 
 
 @pytest.mark.usefixtures("supabase")
+def test_supabase_reports_an_outage_rather_than_a_wrong_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    log: list[str] = []
+    serve(monkeypatch, log, supabase_api(httpx.Response(503, text="unavailable")))
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(auth_supabase.delete_account(deletion(log)))
+    assert log == ["POST /auth/v1/token"]
+
+
+@pytest.mark.usefixtures("supabase")
 def test_supabase_needs_the_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SUPABASE_SECRET_KEY")
     log: list[str] = []

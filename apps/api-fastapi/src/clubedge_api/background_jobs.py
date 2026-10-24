@@ -14,6 +14,9 @@ from clubedge_api.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+# How long shutdown waits for running jobs before leaving them to BullMQ's stalled-job retries.
+STOP_TIMEOUT_SECONDS = 25
+
 # How long the worker waits before trying to start again while Redis doesn't answer.
 RETRY_SECONDS = 5
 
@@ -105,5 +108,8 @@ async def stop_jobs_worker() -> None:
         await asyncio.gather(_state.starting, return_exceptions=True)
         _state.starting = None
     if _state.queue is not None:
-        await _state.queue.stop()
-        _state.queue = None
+        queue, _state.queue = _state.queue, None
+        try:
+            await asyncio.wait_for(queue.stop(), STOP_TIMEOUT_SECONDS)
+        except TimeoutError:
+            logger.warning("Background jobs: running jobs did not finish before shutdown.")

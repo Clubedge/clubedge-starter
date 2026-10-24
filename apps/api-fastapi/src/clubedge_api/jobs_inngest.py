@@ -7,7 +7,7 @@ process between requests, so start_worker and run_due have no work to do.
 
 import asyncio
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -283,7 +283,9 @@ class InngestJobs:
             )
         )
         # Inngest lists an event a moment after it accepts it: remember the job until then, so
-        # the page that queued it can already show it.
+        # the page that queued it can already show it. Expired entries go first, so jobs queued
+        # while nobody reads the list (emails, with their content) don't pile up.
+        self._forget_pending()
         self._pending[event_id] = _Pending(definition.name, dict(data), datetime.now(UTC))
         return event_id
 
@@ -331,12 +333,9 @@ class InngestJobs:
         found = [event for event in events if matches(_event_data(event), data)][:limit]
         # Jobs this process enqueued that Inngest doesn't list yet, as queued.
         listed = {str(event.get("id")) for event in found}
-        now = datetime.now(UTC)
+        self._forget_pending(listed)
         waiting: list[JobRecord] = []
-        for event_id, pending in list(self._pending.items()):
-            if event_id in listed or (now - pending.created_at).total_seconds() > PENDING_SECONDS:
-                del self._pending[event_id]
-                continue
+        for event_id, pending in self._pending.items():
             if pending.job == job.name and matches(pending.data, data):
                 waiting.append(
                     JobRecord(
@@ -354,6 +353,13 @@ class InngestJobs:
         everything = [*waiting, *records]
         everything.sort(key=lambda record: record.created_at, reverse=True)
         return everything[:limit]
+
+    def _forget_pending(self, listed: Collection[str] = ()) -> None:
+        """Drops the jobs Inngest now lists, and those remembered longer than PENDING_SECONDS."""
+        now = datetime.now(UTC)
+        for event_id, pending in list(self._pending.items()):
+            if event_id in listed or (now - pending.created_at).total_seconds() > PENDING_SECONDS:
+                del self._pending[event_id]
 
     async def stop(self) -> None:
         await self._api_client.aclose()

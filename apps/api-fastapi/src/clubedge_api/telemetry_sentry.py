@@ -82,6 +82,15 @@ def create_sentry_observability(
             "cookies": {"mode": "off"},
             "url_query_params": {"mode": "off"},
             "http_bodies": [],
+            # Sentry's own list for when personal data is off; omitted, it would filter nothing.
+            "http_headers": {
+                "request": {
+                    "mode": "denylist",
+                    "terms": ["forwarded", "-ip", "remote-", "via", "-user"],
+                }
+            },
+            "database_query_data": False,
+            "queues": False,
         },
         # Errors reach Sentry through ErrorEvents, tagged with their attributes; the other log
         # records stay breadcrumbs.

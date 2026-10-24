@@ -2,6 +2,7 @@
 instead of sent, so no Inngest server is needed."""
 
 import asyncio
+import dataclasses
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -12,7 +13,7 @@ import inngest
 import pytest
 
 from clubedge_api.job_queue import JobContext, JobData, JobDefinition
-from clubedge_api.jobs_inngest import InngestJobs, event_name
+from clubedge_api.jobs_inngest import PENDING_SECONDS, InngestJobs, event_name
 from clubedge_api.routes.jobs import BackgroundJobs
 from tests.fakes import client
 
@@ -186,6 +187,23 @@ def test_lists_a_job_it_just_enqueued_before_inngests_api_does(
         [job] = await queue.recent(GREET, data={"user": "ada"})
         assert (job.id, job.state, job.attempts, job.data) == (job_id, "queued", 0, {"user": "ada"})
         assert await queue.recent(GREET, data={"user": "grace"}) == []
+
+    asyncio.run(scenario())
+
+
+def test_forgets_old_pending_jobs_even_when_nobody_lists_them(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    queue = FakeInngest().queue(monkeypatch)
+
+    async def scenario() -> None:
+        old = await queue.enqueue(GREET, {"user": "ada"})
+        pending = queue._pending[old]
+        queue._pending[old] = dataclasses.replace(
+            pending, created_at=pending.created_at - timedelta(seconds=PENDING_SECONDS + 1)
+        )
+        new = await queue.enqueue(GREET, {"user": "grace"})
+        assert list(queue._pending) == [new]
 
     asyncio.run(scenario())
 
