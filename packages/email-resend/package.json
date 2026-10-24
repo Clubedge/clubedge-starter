@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/email-resend",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "description": "Resend provider for @clubedge/email, through Resend's HTTP API.",
   "private": true,
   "license": "Apache-2.0",
