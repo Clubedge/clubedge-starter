@@ -40,9 +40,8 @@ jobs:
   appwrite:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    # Every run signs up users in the one Appwrite Cloud test project and deletes them at the end,
-    # so runs that overlap (a push to main next to a pull request's) make each other's sign-ups
-    # fail. One at a time, across branches; a newer run waits rather than cancelling this one.
+    # Every run signs up users in the one Appwrite Cloud test project and deletes them at the end:
+    # one run at a time, across branches, so their users never mix. A newer run waits.
     concurrency:
       group: appwrite-cloud
       cancel-in-progress: false
@@ -68,6 +67,40 @@ jobs:
       - name: Run the auth conformance suite against Appwrite Cloud
         if: env.APPWRITE_API_KEY != ''
         run: pnpm exec vitest run packages/auth-appwrite/src/conformance.live.test.ts
+      # The adapter reports every refused sign-up as signup-failed. On a failure, this asks
+      # Appwrite the same way (create the account, then a session, with the key) and prints its
+      # answers: an expired key, a limit reached, or an outage shows here. The account is deleted.
+      - name: Show why Appwrite refused
+        if: failure() && env.APPWRITE_API_KEY != ''
+        run: |
+          # Every answer is printed, whatever the requests before it returned.
+          set +e
+          api() {
+            local headers=(-H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" -H "X-Appwrite-Key: $APPWRITE_API_KEY")
+            curl --silent --show-error --max-time 20 "${headers[@]}" -H "Content-Type: application/json" "$@"
+          }
+          answer() {
+            local response
+            response=$(cat)
+            jq -c '{code, type, message, total, "$id": .["$id"]}' <<<"$response" 2>/dev/null || echo "$response"
+          }
+          echo "::group::Users in the project"
+          api "$APPWRITE_ENDPOINT/users" | answer
+          echo "::endgroup::"
+          email="ci-diagnosis-$(date +%s)@example.com"
+          password="diagnosis-$RANDOM-$RANDOM-$RANDOM"
+          echo "::group::Create an account ($email)"
+          body="{\"userId\":\"unique()\",\"email\":\"$email\",\"password\":\"$password\"}"
+          created=$(api -X POST "$APPWRITE_ENDPOINT/account" -d "$body")
+          echo "$created" | answer
+          echo "::endgroup::"
+          id=$(echo "$created" | jq -r '.["$id"] // empty' 2>/dev/null || true)
+          if [ -n "$id" ]; then
+            echo "::group::Create a session for it"
+            api -X POST "$APPWRITE_ENDPOINT/account/sessions/email" -d "{\"email\":\"$email\",\"password\":\"$password\"}" | answer
+            echo "::endgroup::"
+            api -X DELETE "$APPWRITE_ENDPOINT/users/$id" >/dev/null || true
+          fi
 
   tanstack-start:
     runs-on: ubuntu-24.04
