@@ -40,6 +40,12 @@ jobs:
   appwrite:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Every run signs up users in the one Appwrite Cloud test project and deletes them at the end,
+    # so runs that overlap (a push to main next to a pull request's) make each other's sign-ups
+    # fail. One at a time, across branches; a newer run waits rather than cancelling this one.
+    concurrency:
+      group: appwrite-cloud
+      cancel-in-progress: false
     env:
       APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
       APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
