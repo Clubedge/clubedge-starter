@@ -162,3 +162,48 @@ jobs:
           echo "The containers did not become healthy."
           exit 1
       # clubedge:end
+
+  # clubedge:if api!=none
+  # Apps installed on phones keep calling the contract they shipped with, so a pull request must
+  # not change packages/contract/openapi.yaml in a way that breaks them: removing or renaming an
+  # operation or a field, or making an optional request field required. For a deliberate break
+  # before any app has shipped, label the pull request breaking-contract and run this job again.
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      # The labels are read when the job runs, so a label added after the push counts too.
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the base branch's contract
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          labels=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST" --jq '.labels[].name')
+          if grep -qx breaking-contract <<<"$labels"; then
+            echo "::notice::Labelled breaking-contract, so the contract is not compared."
+            exit 0
+          fi
+          git fetch --no-tags --depth 1 origin "$BASE_SHA"
+          if ! git cat-file -e "$BASE_SHA:packages/contract/openapi.yaml" 2>/dev/null; then
+            echo "::notice::The base branch has no contract, so no installed app depends on it."
+            exit 0
+          fi
+          git show "$BASE_SHA:packages/contract/openapi.yaml" > openapi.base.yaml
+          echo "compare=true" >> "$GITHUB_OUTPUT"
+      - name: Fail on changes that break existing clients
+        if: steps.base.outputs.compare == 'true'
+        uses: oasdiff/oasdiff-action/breaking@v0.1.20
+        with:
+          base: openapi.base.yaml
+          revision: packages/contract/openapi.yaml
+          fail-on: ERR
+          # Compared in CI only: the contract is not uploaded to oasdiff.com.
+          review: false
+  # clubedge:end

@@ -24,6 +24,7 @@ const apiRoutes = new Map([
   ["GET /api/health", "/api/health"],
   ["GET /api/ready", "/api/ready"],
   ["GET /api/session", "/api/session"],
+  ["GET /api/app-version", "/api/app-version"],
   ["GET /api/account", "/api/account"], // clubedge:only auth!=none
   ["POST /api/account/profile", "/api/account/profile"], // clubedge:only auth!=none
   ["POST /api/account/delete", "/api/account/delete"], // clubedge:only auth!=none

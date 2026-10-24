@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
+from clubedge_api.app_version import app_version_problems
 from clubedge_api.db import is_neon_pooled_url
 
 
@@ -118,6 +119,8 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             invalid.append(
                 "DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"
             )
+    # Optional too: the versions /api/app-version tells the apps installed on phones.
+    invalid.extend(app_version_problems(values))
     # clubedge:if jobs=inngest
     # The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
     inngest_dev = values.get("INNGEST_DEV", "")
