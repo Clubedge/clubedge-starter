@@ -119,7 +119,7 @@ def _serve(
         method: route.endpoint
         for route in app.routes
         if isinstance(route, APIRoute)
-        for method in route.methods
+        for method in route.methods or ()
     }
 
     async def handle(request: Request) -> Response:
