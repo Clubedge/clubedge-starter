@@ -55,6 +55,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/app-version": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The app versions the API serves, for apps installed on phones, which keep calling it long after a release. Never cached. */
+    get: operations["getAppVersion"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/account": {
     parameters: {
       query?: never;
@@ -285,6 +302,18 @@ export interface components {
       id: string;
       email: string;
       displayName: string | null;
+    };
+    /** @description Versions are MAJOR.MINOR.PATCH, such as 1.4.0. */
+    AppVersion: {
+      /** @description The oldest app version the API still serves: apps below it must update before continuing. */
+      minimumVersion: string | null;
+      /** @description The newest released version: apps below it may show an optional update notice. */
+      latestVersion: string | null;
+      /**
+       * Format: uri
+       * @description Where to get the update, such as a store listing or a download page.
+       */
+      updateUrl: string | null;
     };
     Account: {
       email: string;
@@ -525,6 +554,28 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Session"];
+        };
+      };
+    };
+  };
+  getAppVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The versions, each null until the API sets it. */
+      200: {
+        headers: {
+          /** @description no-store, so a new minimum version applies on the app's next check. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AppVersion"];
         };
       };
     };

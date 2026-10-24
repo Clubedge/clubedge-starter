@@ -3,6 +3,7 @@
 // instead of shipping an API whose features fail at runtime.
 import { parseClientIpSettings } from "@clubedge/core";
 import { isNeonPooledUrl } from "@clubedge/db/urls";
+import { appVersionProblems } from "@/server/app-version";
 
 type Env = Record<string, string | undefined>;
 
@@ -98,6 +99,8 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
   }
+  // Optional too: the versions /api/app-version tells the apps installed on phones.
+  invalid.push(...appVersionProblems(env));
   // Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
   try {
     parseClientIpSettings(env);

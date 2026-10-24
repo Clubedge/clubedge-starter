@@ -510,6 +510,15 @@ Run it before a new version starts serving; it skips migrations that are already
 
 Run the production image on any host or orchestrator that runs containers: build it with `pnpm docker:build` or in CI, push it to a registry, and start it with the production environment. Before each release, run the migrator above as a one-off task (a Kubernetes Job, an ECS task, or `docker run`), then roll out the new containers. Point the platform's health check at `/api/health`.
 
+On a server of your own, `pnpm clubedge deploy` sets this up with Docker Compose. It writes three files, and never overwrites one you changed:
+
+- `compose.yaml` runs the app's image behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself. <!-- clubedge:only api=none -->
+- `compose.yaml` runs the frontend's and the API's images behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself, and the API stays on the Compose network behind the frontend. <!-- clubedge:only api!=none -->
+- `Caddyfile` is Caddy's configuration.
+- `.github/workflows/release-images.yml` builds the images for linux/amd64 and linux/arm64 on each published GitHub release, and publishes them to this repository's GitHub Container Registry, tagged with the version, `<major>.<minor>`, and `latest`.
+
+It then prints the remaining steps: `DOMAIN` and the production variables in `.env.production`, the domain's DNS records, a release, the migrator, and `docker compose --env-file .env.production up -d`.
+
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=fly -->
 
@@ -564,14 +573,17 @@ Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER
 
 <!-- clubedge:end -->
 
+<!-- clubedge:if deploy!=docker -->
+
 `.github/workflows/deploy.yml` deploys on demand: in GitHub, open Actions, then Deploy, then Run workflow.
 
-- It builds the production image and publishes it to this repository's GitHub Container Registry as `ghcr.io/<owner>/<repository>`, tagged with the commit and `latest`, using the workflow's own token. Run the migrator from that image before rolling it out. <!-- clubedge:only deploy=docker -->
 - It needs the secret `FLY_API_TOKEN`, from `fly tokens create deploy`. <!-- clubedge:only deploy=fly -->
 - It needs the secret `RAILWAY_TOKEN`, a project token from the project's settings, and the variable `RAILWAY_SERVICE`, the service's name. <!-- clubedge:only deploy=railway -->
 - It needs the secret `RENDER_DEPLOY_HOOK_URL`, the deploy hook from the service's settings. <!-- clubedge:only deploy=render -->
 - It needs the secrets `VERCEL_TOKEN`, from your account settings, and `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, which `vercel link` writes to `.vercel/project.json`. <!-- clubedge:only deploy=vercel -->
 - It needs the secrets `NETLIFY_AUTH_TOKEN`, a personal access token, and `NETLIFY_SITE_ID`, from the site's settings. <!-- clubedge:only deploy=netlify -->
+
+<!-- clubedge:end -->
 
 <!-- clubedge:if infra=neon -->
 
@@ -709,10 +721,22 @@ Some endpoints are an optional part of a module, a capability (`x-clubedge-capab
 
 The settings page changes passwords with the auth provider, in the browser or in Better Auth's server, which signs out the user's other sessions and applies the provider's rate limits. The display name and account deletion go through the API, which keeps the app's data: deletion checks the password (10 tries a minute per user, refused while the limit cannot be checked), removes the user's app data, then deletes the user from the provider. <!-- clubedge:only auth!=none && api=hono|fastapi -->
 
-In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `docker compose up --build` runs both.
+In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `pnpm docker:dev` runs both, with `docker compose -f docker-compose.yml up --build`: name the file, since `compose.yaml` from `pnpm clubedge deploy` would take its place.
 
 Run `node migrate.mjs` in the API's image before a new version starts. <!-- clubedge:only api=hono -->
 The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `package.json` scripts call uv, ruff, mypy, and pytest, so `pnpm dev`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` run it like the other apps. The database schema and migrations stay in `packages/db`, and the API's image bundles their Node migrator: run `node migrate.mjs` in it before a new version starts. <!-- clubedge:only api=fastapi -->
+
+### Apps installed on phones
+
+An app installed on a phone calls the API through the frontend's domain and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
+
+- `APP_MINIMUM_VERSION`, the oldest app version the API still serves: below it, the app shows a blocking update screen.
+- `APP_LATEST_VERSION`, the newest released version: below it, the app may show an optional update notice.
+- `APP_UPDATE_URL`, where to get the update: an `https://` link to the store listing or a download page.
+
+Versions are `MAJOR.MINOR.PATCH`, such as `1.4.0`, and the latest may not be older than the minimum. Other values fail the request rather than reach the apps, and `pnpm check:env` lists them before a deploy.
+
+Installed apps keep calling the contract they shipped with, so change `openapi.yaml` only in ways they survive: add fields and operations, but never remove or rename them, and never make an optional request field required. The CI workflow's `contract` job compares each pull request's contract with its base branch's using [oasdiff](https://github.com/oasdiff/oasdiff), and fails on a change that breaks existing clients. For a deliberate break before any app has shipped, label the pull request `breaking-contract` and run the job again. Once apps have shipped, a break also needs `APP_MINIMUM_VERSION` raised to the first version that handles it, so older apps ask for an update instead of failing.
 
 <!-- clubedge:end -->
 

@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import urlsplit
 
+from clubedge_api.app_version import app_version_problems
 from clubedge_api.db import is_neon_pooled_url
 from clubedge_api.settings import parse_client_ip_settings
 
@@ -119,6 +120,8 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             invalid.append(
                 "DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"
             )
+    # Optional too: the versions /api/app-version tells the apps installed on phones.
+    invalid.extend(app_version_problems(values))
     # Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").
     try:
         parse_client_ip_settings(values)

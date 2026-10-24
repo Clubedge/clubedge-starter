@@ -16,11 +16,12 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from clubedge_api import telemetry  # clubedge:only observability!=none
-from clubedge_api.contract import GetCurrentUser
+from clubedge_api.contract import AppVersion, GetCurrentUser
 from clubedge_api.http import NO_STORE, ApiError, api_error
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
 from clubedge_api.routes import billing as billing_routes  # clubedge:only payments!=none
 from clubedge_api.routes.account import AccountService, account_router  # clubedge:only auth!=none
+from clubedge_api.routes.app_version import app_version_router
 from clubedge_api.routes.inngest import inngest_router  # clubedge:only jobs=inngest
 from clubedge_api.routes.jobs import BackgroundJobs, jobs_router  # clubedge:only jobs!=none
 from clubedge_api.routes.jobs_run import jobs_run_router  # clubedge:only jobs=bullmq
@@ -41,6 +42,8 @@ class ApiDependencies:
     frontend_origin: str = "http://localhost:3000"
     # Makes the limits for routes anyone can call: in process memory unless server.py says where.
     create_rate_limiter: CreateRateLimiter = create_memory_limiter
+    # The app versions installed apps check (app_version.py); every one None when absent.
+    app_version: Callable[[], AppVersion] | None = None
     # Where those limits find the client's address: the connection's own unless server.py says.
     client_ip_settings: ClientIpSettings = ClientIpSettings()
     # clubedge:if auth!=none
@@ -115,6 +118,8 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     @app.get("/api/session")
     async def session(request: Request) -> dict[str, Any]:
         return {"user": await dependencies.get_current_user(request)}
+
+    app.include_router(app_version_router(app_version=dependencies.app_version))
 
     # clubedge:if auth!=none
     app.include_router(

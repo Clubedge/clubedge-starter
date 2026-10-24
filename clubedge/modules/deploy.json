@@ -7,21 +7,23 @@
     },
     "fly": {
       "name": "Fly.io",
-      "files": ["fly.toml"]
+      "files": [".github/workflows/deploy.yml", "fly.toml"]
     },
     "railway": {
       "name": "Railway",
-      "files": [".railway/railway.ts"]
+      "files": [".github/workflows/deploy.yml", ".railway/railway.ts"]
     },
     "render": {
       "name": "Render",
-      "files": ["render.yaml"]
+      "files": [".github/workflows/deploy.yml", "render.yaml"]
     },
     "vercel": {
-      "name": "Vercel"
+      "name": "Vercel",
+      "files": [".github/workflows/deploy.yml"]
     },
     "netlify": {
-      "name": "Netlify"
+      "name": "Netlify",
+      "files": [".github/workflows/deploy.yml"]
     }
   }
 }

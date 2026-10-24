@@ -4,6 +4,7 @@ import { parseClientIpSettings } from "@clubedge/core";
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
 import { account } from "./account"; // clubedge:only auth!=none
+import { appVersion } from "./app-version";
 import { getCurrentUser } from "./auth";
 import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
@@ -25,6 +26,7 @@ export const dependencies: ApiDependencies = {
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,
+  appVersion,
   // Read at startup: a CLIENT_IP_HEADER or TRUSTED_PROXY_HOPS that cannot be right stops the API.
   clientIpSettings: parseClientIpSettings(process.env),
   account, // clubedge:only auth!=none

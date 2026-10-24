@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { Health, Ready, Session, User } from "@clubedge/contract";
+import type { AppVersion, Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError, type ClientIpSettings } from "@clubedge/core";
 import { apiError } from "@/http";
 import type { CreateRateLimiter } from "@/rate-limit";
+import { appVersionRoutes } from "@/routes/app-version";
 // clubedge:if auth!=none
 import { accountRoutes, type AccountService } from "@/routes/account";
 // clubedge:end
@@ -33,6 +34,8 @@ export interface ApiDependencies {
   getCurrentUser(request: Request): Promise<User | null>;
   /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
   createRateLimiter?: CreateRateLimiter;
+  /** The app versions installed apps check (src/server/app-version); all null when absent. */
+  appVersion?(): AppVersion;
   /** Where those limits find the client's address; the connection's own when absent. */
   clientIpSettings?: ClientIpSettings;
   // clubedge:if auth!=none
@@ -84,6 +87,8 @@ export function createApp(dependencies: ApiDependencies) {
   app.get("/api/session", async (c) =>
     c.json<Session>({ user: await dependencies.getCurrentUser(c.req.raw) }),
   );
+
+  app.route("/", appVersionRoutes(dependencies));
 
   // clubedge:if auth!=none
   app.route("/", accountRoutes(dependencies));

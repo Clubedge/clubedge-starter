@@ -43,6 +43,27 @@ describe("production env check", () => {
     ).toEqual(["DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"]);
   });
 
+  it("checks the optional app versions", () => {
+    const invalid = (values: Record<string, string>) =>
+      checkProductionEnv({ ...complete(), ...values }).invalid;
+    expect(
+      invalid({
+        APP_MINIMUM_VERSION: "1.2.0",
+        APP_LATEST_VERSION: "1.10.0",
+        APP_UPDATE_URL: "https://apps.example.com/my-product",
+      }),
+    ).toEqual([]);
+    expect(invalid({ APP_MINIMUM_VERSION: "1.2" })).toEqual([
+      "APP_MINIMUM_VERSION is not MAJOR.MINOR.PATCH, such as 1.4.0",
+    ]);
+    expect(invalid({ APP_MINIMUM_VERSION: "1.10.0", APP_LATEST_VERSION: "1.9.0" })).toEqual([
+      "APP_LATEST_VERSION is older than APP_MINIMUM_VERSION",
+    ]);
+    expect(invalid({ APP_UPDATE_URL: "http://apps.example.com/my-product" })).toEqual([
+      "APP_UPDATE_URL is not an https:// URL",
+    ]);
+  });
+
   it("rejects a URL that isn't absolute", () => {
     const env = { ...complete(), FRONTEND_URL: "my-app.example.com" };
     expect(checkProductionEnv(env).invalid).toEqual(["FRONTEND_URL is not an absolute URL"]);

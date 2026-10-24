@@ -64,6 +64,24 @@ def test_checks_the_optional_direct_database_url() -> None:
     ]
 
 
+def test_checks_the_optional_app_versions() -> None:
+    versions = complete(
+        APP_MINIMUM_VERSION="1.2.0",
+        APP_LATEST_VERSION="1.10.0",
+        APP_UPDATE_URL="https://apps.example.com/my-product",
+    )
+    assert check_production_env(versions).ok
+    assert check_production_env(complete(APP_MINIMUM_VERSION="1.2")).invalid == [
+        "APP_MINIMUM_VERSION is not MAJOR.MINOR.PATCH, such as 1.4.0"
+    ]
+    older = complete(APP_MINIMUM_VERSION="1.10.0", APP_LATEST_VERSION="1.9.0")
+    assert check_production_env(older).invalid == [
+        "APP_LATEST_VERSION is older than APP_MINIMUM_VERSION"
+    ]
+    http = complete(APP_UPDATE_URL="http://apps.example.com/my-product")
+    assert check_production_env(http).invalid == ["APP_UPDATE_URL is not an https:// URL"]
+
+
 @pytest.mark.skipif("INNGEST_SIGNING_KEY" not in REQUIRED, reason="this project has no Inngest")
 def test_refuses_the_inngest_dev_server_in_production() -> None:
     assert check_production_env(complete(INNGEST_DEV="1")).invalid == [

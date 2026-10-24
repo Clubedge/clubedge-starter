@@ -9,6 +9,7 @@ from fastapi import Request
 from clubedge_api import auth
 from clubedge_api.account import AccountSettings  # clubedge:only auth!=none
 from clubedge_api.app import ApiDependencies
+from clubedge_api.app_version import app_version
 from clubedge_api.background_jobs import background_jobs  # clubedge:only jobs!=none
 from clubedge_api.cache import create_rate_limiter
 from clubedge_api.contract import User
@@ -50,6 +51,7 @@ def dependencies() -> ApiDependencies:
         get_current_user=get_current_user,
         frontend_origin=settings.frontend_origin,
         create_rate_limiter=create_rate_limiter,
+        app_version=app_version,
         client_ip_settings=settings.client_ip_settings,
         account=AccountSettings(),  # clubedge:only auth!=none
         # clubedge:if observability!=none
