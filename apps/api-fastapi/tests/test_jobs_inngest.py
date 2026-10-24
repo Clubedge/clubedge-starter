@@ -198,6 +198,7 @@ def test_forgets_old_pending_jobs_even_when_nobody_lists_them(
 
     async def scenario() -> None:
         old = await queue.enqueue(GREET, {"user": "ada"})
+        assert old is not None
         pending = queue._pending[old]
         queue._pending[old] = dataclasses.replace(
             pending, created_at=pending.created_at - timedelta(seconds=PENDING_SECONDS + 1)
