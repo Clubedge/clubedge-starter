@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/jobs-bullmq",
-  "version": "0.24.2",
+  "version": "0.25.0",
   "description": "BullMQ provider for @clubedge/jobs: a job queue stored in Redis.",
   "private": true,
   "license": "Apache-2.0",
