@@ -10,6 +10,8 @@
     "src/clubedge_api/app.py",
     "src/clubedge_api/auth.py",
     "src/clubedge_api/check_services.py",
+    "src/clubedge_api/jobs.py",
+    "src/clubedge_api/main.py",
     "src/clubedge_api/production_env.py",
     "src/clubedge_api/server.py",
     "src/clubedge_api/storage.py",
@@ -122,6 +124,36 @@
       "none": {}
     },
     "jobs": {
+      "bullmq|inngest": {
+        "files": [
+          "src/clubedge_api/background_jobs.py",
+          "src/clubedge_api/job_queue.py",
+          "src/clubedge_api/jobs.py",
+          "src/clubedge_api/routes/jobs.py",
+          "tests/test_job_queue.py",
+          "tests/test_jobs.py"
+        ]
+      },
+      "bullmq": {
+        "files": [
+          "src/clubedge_api/jobs_bullmq.py",
+          "src/clubedge_api/routes/jobs_run.py",
+          "tests/test_background_jobs.py",
+          "tests/test_jobs_bullmq.py",
+          "tests/test_jobs_run.py"
+        ]
+      },
+      "inngest": {
+        "files": [
+          "src/clubedge_api/jobs_inngest.py",
+          "src/clubedge_api/routes/inngest.py",
+          "tests/test_inngest.py",
+          "tests/test_jobs_inngest.py"
+        ],
+        "replace": {
+          "src/clubedge_api/background_jobs.py": "src/clubedge_api/variants/background_jobs_inngest.py"
+        }
+      },
       "none": {}
     },
     "observability": {

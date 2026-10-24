@@ -421,6 +421,17 @@ jobs:
           - { name: vite-fastapi-firebase, framework: vite, modules: --auth firebase --api fastapi }
           - { name: vite-hono-appwrite, framework: vite, modules: --auth appwrite --api hono }
           - { name: vite-fastapi-appwrite, framework: vite, modules: --auth appwrite --api fastapi }
+          # FastAPI with each jobs provider it offers.
+          - {
+              name: vite-fastapi-bullmq,
+              framework: vite,
+              modules: --api fastapi --auth firebase --cache redis --jobs bullmq,
+            }
+          - {
+              name: vite-fastapi-inngest,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --jobs inngest,
+            }
     name: generated-project (${{ matrix.name }})
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
@@ -444,13 +455,13 @@ jobs:
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
             --framework ${{ matrix.framework }} ${{ matrix.modules }} --no-git --no-install --yes
-      # FastAPI does not implement every module option yet, so the CLI must refuse the others
-      # rather than generate a frontend that calls endpoints its API lacks.
+      # FastAPI offers every module option but pg-boss, whose queue is a TypeScript library, so
+      # the CLI must refuse it rather than generate a frontend whose jobs its API cannot run.
       - name: Refuse modules FastAPI does not implement
         if: matrix.name == 'vite-fastapi'
         run: |
           set -euo pipefail
-          for option in "--cache redis" \n            "--jobs pg-boss" "--observability otel"; do
+          for option in "--jobs pg-boss"; do
             if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
               --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
               --no-git --no-install --yes > "$RUNNER_TEMP/refused.log" 2>&1; then
@@ -805,6 +816,22 @@ jobs:
               infra: docker,
               framework: vite,
               api: hono,
+              modules: --auth better-auth --jobs inngest,
+              mail-api: "",
+            }
+          # The same with the FastAPI API: BullMQ's worker inside it, and Inngest's Dev Server
+          # calling it through the frontend, at the FRONTEND_URL Playwright gives the API.
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --jobs bullmq,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
               modules: --auth better-auth --jobs inngest,
               mail-api: "",
             }

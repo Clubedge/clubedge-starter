@@ -323,12 +323,16 @@ Payments go through the provider-neutral `PaymentProvider` protocol in `apps/api
 Jobs run outside requests, with retries, in a worker that starts inside the app server: `pnpm dev` and the production server both run it, so there is no separate process to deploy. [pg-boss](https://github.com/timgit/pg-boss) stores them in your PostgreSQL, and creates and upgrades its own tables in the `pgboss` schema when the app starts. <!-- clubedge:only jobs=pg-boss && api=none -->
 Jobs run outside requests, with retries, in a worker that starts inside the API: `pnpm dev` and the API's production server both run it, so there is no separate process to deploy. [pg-boss](https://github.com/timgit/pg-boss) stores them in your PostgreSQL, and creates and upgrades its own tables in the `pgboss` schema when the API starts. <!-- clubedge:only jobs=pg-boss && api=hono -->
 Jobs run outside requests, with retries, in a worker that starts inside the app server: `pnpm dev` and the production server both run it, so there is no separate process to deploy. [BullMQ](https://docs.bullmq.io) stores them in Redis (`REDIS_URL`, Redis 6.2 or newer), which the cache also uses; keep it on a Redis that doesn't evict keys, since jobs are data. <!-- clubedge:only jobs=bullmq && api=none -->
-Jobs run outside requests, with retries, in a worker that starts inside the API: `pnpm dev` and the API's production server both run it, so there is no separate process to deploy. [BullMQ](https://docs.bullmq.io) stores them in Redis (`REDIS_URL` in `apps/api/.env.local`, Redis 6.2 or newer), which the cache also uses; keep it on a Redis that doesn't evict keys, since jobs are data. <!-- clubedge:only jobs=bullmq && api=hono -->
+Jobs run outside requests, with retries, in a worker that starts inside the API: `pnpm dev` and the API's production server both run it, so there is no separate process to deploy. [BullMQ](https://docs.bullmq.io) stores them in Redis (`REDIS_URL` in `apps/api/.env.local`, Redis 6.2 or newer), which the cache also uses; keep it on a Redis that doesn't evict keys, since jobs are data. <!-- clubedge:only jobs=bullmq && api=hono|fastapi -->
 [Inngest](https://www.inngest.com) runs the jobs: the app sends an event for each one, and Inngest calls the app's `/api/inngest` to run it, with retries and schedules, so nothing runs between requests and serverless hosts need no cron. In development, start Inngest's Dev Server next to `pnpm dev` with `pnpm jobs:dev`, and open its dashboard at <http://localhost:8288> to see every run; `INNGEST_DEV=1` points the app at it. In production, create an app in Inngest, set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`, remove `INNGEST_DEV`, and sync the deployed `/api/inngest` URL in Inngest's dashboard (Inngest's Vercel and Netlify integrations do it on each deploy). <!-- clubedge:only jobs=inngest && api=none -->
-[Inngest](https://www.inngest.com) runs the jobs: the API sends an event for each one, and Inngest calls `/api/inngest` to run it, with retries and schedules. Inngest reaches the API through the frontend, which forwards `/api/inngest` to it, so the API stays private; the API tells Inngest its address from `FRONTEND_URL`. In development, start Inngest's Dev Server next to `pnpm dev` with `pnpm jobs:dev`, and open its dashboard at <http://localhost:8288> to see every run; `INNGEST_DEV=1` in `apps/api/.env.local` points the API at it, and the API syncs its jobs once the frontend answers. In production, create an app in Inngest, set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` on the API, remove `INNGEST_DEV`, and sync `https://<your-frontend>/api/inngest` in Inngest's dashboard. <!-- clubedge:only jobs=inngest && api=hono -->
+[Inngest](https://www.inngest.com) runs the jobs: the API sends an event for each one, and Inngest calls `/api/inngest` to run it, with retries and schedules. Inngest reaches the API through the frontend, which forwards `/api/inngest` to it, so the API stays private; the API tells Inngest its address from `FRONTEND_URL`. In development, start Inngest's Dev Server next to `pnpm dev` with `pnpm jobs:dev`, and open its dashboard at <http://localhost:8288> to see every run; `INNGEST_DEV=1` in `apps/api/.env.local` points the API at it, and the API syncs its jobs once the frontend answers. In production, create an app in Inngest, set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` on the API, remove `INNGEST_DEV`, and sync `https://<your-frontend>/api/inngest` in Inngest's dashboard. <!-- clubedge:only jobs=inngest && api=hono|fastapi -->
 
 Define a job in `apps/web/src/jobs` and add it to the list in `apps/web/src/jobs/index.ts`: <!-- clubedge:only api=none -->
 Define a job in `apps/api/src/jobs` and add it to the list in `apps/api/src/jobs/index.ts`: <!-- clubedge:only api=hono -->
+Define a job in `apps/api/src/clubedge_api/jobs.py` and add it to `JOBS` there: <!-- clubedge:only api=fastapi -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if jobs!=none && api!=fastapi -->
 
 ```ts
 import { defineJob } from "@clubedge/jobs";
@@ -342,20 +346,41 @@ export const welcomeEmail = defineJob<{ userId: string }>({
 });
 ```
 
+<!-- clubedge:end -->
+<!-- clubedge:if jobs!=none && api=fastapi -->
+
+```python
+async def _welcome_email(data: JobData, context: JobContext) -> None:
+    # Look the user up by data["userId"] and send the email.
+    ...
+
+welcome_email = JobDefinition(name="welcome-email", run=_welcome_email, retry_limit=3)
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if jobs!=none -->
+
 Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. To send any email in the background, enqueue `sendEmailJob` from `@/jobs` with the message, as the auth emails do. <!-- clubedge:only email!=none && api=none -->
 Queue it from the API's code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. To send any email in the background, enqueue `sendEmailJob` from `@/jobs` with the message. <!-- clubedge:only email!=none && api=hono -->
 Queue it from server code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. <!-- clubedge:only email=none && api=none -->
 Queue it from the API's code with `getJobs().enqueue(welcomeEmail, { userId })`, from `@/server/jobs`. <!-- clubedge:only email=none && api=hono -->
+Queue it from the API's code with `await get_jobs().enqueue(welcome_email, {"userId": user_id})`, from `clubedge_api.background_jobs`. To send any email in the background, enqueue `send_email_job` from `clubedge_api.jobs` with the message. <!-- clubedge:only email!=none && api=fastapi -->
+Queue it from the API's code with `await get_jobs().enqueue(welcome_email, {"userId": user_id})`, from `clubedge_api.background_jobs`. <!-- clubedge:only email=none && api=fastapi -->
 
 A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=none -->
 A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/api/src/jobs/sample.ts` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=hono -->
+A raised exception fails the attempt and the job is retried (`retry_limit`, `retry_delay_seconds`, `retry_backoff`). An attempt that runs past `timeout_seconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule="0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues `sample_job` from `apps/api/src/clubedge_api/jobs.py` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=fastapi -->
 
 Where no server keeps running, as on Vercel and Netlify, there is no worker: `JOBS_WORKER` defaults to `off` there, and you can set it yourself anywhere. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` every minute or so with the header `Authorization: Bearer <CRON_SECRET>`, from Vercel Cron, a Netlify scheduled function, or any scheduler. Each call runs the jobs that are due. <!-- clubedge:only jobs=pg-boss|bullmq && api=none -->
-To run the jobs elsewhere, set `JOBS_WORKER=off` on the API: it then runs no worker. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` on the frontend, which forwards it to the API, every minute or so with the header `Authorization: Bearer <CRON_SECRET>`. Each call runs the jobs that are due. The API stops its worker on `SIGTERM`, letting running jobs finish. <!-- clubedge:only jobs=pg-boss|bullmq && api=hono -->
+To run the jobs elsewhere, set `JOBS_WORKER=off` on the API: it then runs no worker. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` on the frontend, which forwards it to the API, every minute or so with the header `Authorization: Bearer <CRON_SECRET>`. Each call runs the jobs that are due. The API stops its worker on `SIGTERM`, letting running jobs finish. <!-- clubedge:only jobs=pg-boss|bullmq && api=hono|fastapi -->
 Inngest keeps the job history: the jobs card reads it from Inngest's API (the Dev Server's locally), and Inngest's dashboard shows each run's attempts, output, and errors. <!-- clubedge:only jobs=inngest -->
 
 Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss`, `bullmq`, or `inngest`. To add another, implement `JobQueue` in a new package, return it from `apps/web/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=none -->
 Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss`, `bullmq`, or `inngest`. To add another, implement `JobQueue` in a new package, return it from `apps/api/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=hono -->
+Jobs go through the provider-neutral `JobQueue` protocol in `apps/api/src/clubedge_api/job_queue.py`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs bullmq` or `inngest`; pg-boss, which the TypeScript stacks offer, is not available with the FastAPI API. To add another, implement `JobQueue` in a new module and return it from `apps/api/src/clubedge_api/background_jobs.py`. <!-- clubedge:only api=fastapi -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if jobs!=none && api!=fastapi -->
 
 ```ts
 import { describeJobQueue } from "@clubedge/jobs/conformance";

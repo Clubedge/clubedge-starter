@@ -19,6 +19,9 @@ from clubedge_api.http import NO_STORE, ApiError, api_error
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
 from clubedge_api.routes import billing as billing_routes  # clubedge:only payments!=none
 from clubedge_api.routes.account import AccountService, account_router  # clubedge:only auth!=none
+from clubedge_api.routes.inngest import inngest_router  # clubedge:only jobs=inngest
+from clubedge_api.routes.jobs import BackgroundJobs, jobs_router  # clubedge:only jobs!=none
+from clubedge_api.routes.jobs_run import jobs_run_router  # clubedge:only jobs=bullmq
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,10 @@ class ApiDependencies:
     # clubedge:if auth!=none
     # The account settings (account.py); they answer 503 not_configured when absent.
     account: AccountService | None = None
+    # clubedge:end
+    # clubedge:if jobs!=none
+    # Background jobs (background_jobs.py); their routes answer 404 when absent.
+    jobs: BackgroundJobs | None = None
     # clubedge:end
     # clubedge:if payments!=none
     # Billing with the payment provider (server.py); payments are not configured while absent.
@@ -87,6 +94,14 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
             create_rate_limiter=dependencies.create_rate_limiter,
         )
     )
+
+    # clubedge:end
+    # clubedge:if jobs!=none
+    if dependencies.jobs:
+        jobs = dependencies.jobs
+        app.include_router(jobs_router(jobs=jobs, get_current_user=dependencies.get_current_user))
+        app.include_router(jobs_run_router(jobs=jobs))  # clubedge:only jobs=bullmq
+        app.include_router(inngest_router(jobs=jobs))  # clubedge:only jobs=inngest
 
     # clubedge:end
     # clubedge:if payments!=none

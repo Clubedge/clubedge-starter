@@ -9,6 +9,7 @@ from fastapi import Request
 from clubedge_api import auth
 from clubedge_api.account import AccountSettings  # clubedge:only auth!=none
 from clubedge_api.app import ApiDependencies
+from clubedge_api.background_jobs import background_jobs  # clubedge:only jobs!=none
 from clubedge_api.contract import User
 from clubedge_api.db import is_database_ready
 from clubedge_api.payments_stripe import stripe_billing  # clubedge:only payments=stripe
@@ -42,6 +43,7 @@ def dependencies() -> ApiDependencies:
         get_current_user=get_current_user,
         frontend_origin=settings.frontend_origin,
         account=AccountSettings(),  # clubedge:only auth!=none
+        jobs=background_jobs,  # clubedge:only jobs!=none
         # clubedge:if payments=stripe
         payments=stripe_billing(settings.database_url, settings.frontend_origin),
         # clubedge:end
