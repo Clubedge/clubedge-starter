@@ -638,15 +638,15 @@ Rate limits count requests per client address, so the server must know which add
 Next.js gives the app no connection address, so without either setting the address is the last `X-Forwarded-For` entry, the one the proxy nearest the app added: right on Vercel, which replaces the header with the client's address, and behind one proxy you run. Set your host's setting from the table anyway, since some hosts add more than one entry. <!-- clubedge:only framework=next -->
 The frontend's server finds the address with its own settings and sends it to the API as the only `X-Forwarded-For` entry, dropping any address header the client sent. An API that only the frontend's server reaches, over a private network as in `docker-compose.yml`, sets `TRUSTED_PROXY_HOPS=1`. <!-- clubedge:only api!=none -->
 
-| Where the app runs                    | Setting                                           |
-| ------------------------------------- | ------------------------------------------------- |
-| Railway                               | `CLIENT_IP_HEADER=x-real-ip`                      |
-| Render                                | `CLIENT_IP_HEADER=true-client-ip` (`render.yaml`) |
-| Fly.io                                | `CLIENT_IP_HEADER=fly-client-ip` (`fly.toml`)     |
-| Vercel                                | `CLIENT_IP_HEADER=x-real-ip`                      |
-| Netlify                               | `CLIENT_IP_HEADER=x-nf-client-connection-ip`      |
-| Behind proxies you run (Caddy, nginx) | `TRUSTED_PROXY_HOPS=1`, or the number of proxies  |
-| Reached by clients directly           | Neither                                           |
+| Where the app runs                    | Setting                                             |
+| ------------------------------------- | --------------------------------------------------- |
+| Railway                               | `CLIENT_IP_HEADER=x-real-ip`                        |
+| Render                                | `CLIENT_IP_HEADER=cf-connecting-ip` (`render.yaml`) |
+| Fly.io                                | `CLIENT_IP_HEADER=fly-client-ip` (`fly.toml`)       |
+| Vercel                                | `CLIENT_IP_HEADER=x-real-ip`                        |
+| Netlify                               | `CLIENT_IP_HEADER=x-nf-client-connection-ip`        |
+| Behind proxies you run (Caddy, nginx) | `TRUSTED_PROXY_HOPS=1`, or the number of proxies    |
+| Reached by clients directly           | Neither                                             |
 
 Vercel and Netlify take runtime variables only from the project's settings, not from `vercel.json` or `netlify.toml`, so set `CLIENT_IP_HEADER` there with the others.
 
