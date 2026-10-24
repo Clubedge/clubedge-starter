@@ -190,6 +190,17 @@ def test_lists_a_job_it_just_enqueued_before_inngests_api_does(
     asyncio.run(scenario())
 
 
+def test_sends_with_the_dev_servers_key_when_the_project_sets_an_empty_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # .env.example leaves INNGEST_EVENT_KEY empty, and the SDK falls back to the environment.
+    monkeypatch.setenv("INNGEST_EVENT_KEY", "")
+    jobs = InngestJobs([GREET], dev="http://inngest.test")
+    request = jobs.client._build_send_request([inngest.Event(name="greet")])
+    assert not isinstance(request, Exception)
+    assert request.url.path == "/e/NO_EVENT_KEY_SET"
+
+
 def test_has_no_worker_to_start_and_nothing_to_run_on_demand(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -51,6 +51,9 @@ STATES: dict[str, JobState] = {
     "canceled": "cancelled",
 }
 
+# The key the Inngest Dev Server accepts when the project sets none (the SDK's own default).
+DEV_SERVER_EVENT_KEY = "NO_EVENT_KEY_SET"
+
 
 def event_name(job: str) -> str:
     """The event that runs a job."""
@@ -173,7 +176,10 @@ class InngestJobs:
         self._on_error = on_error
         self.client = inngest.Inngest(
             app_id=app_id,
-            event_key=event_key,
+            # Without a key the SDK reads INNGEST_EVENT_KEY, and the empty line .env.example leaves
+            # there would send events to /e/ with no key, which the Dev Server refuses; it takes
+            # any key, so development names its placeholder.
+            event_key=event_key or (DEV_SERVER_EVENT_KEY if dev_url else None),
             signing_key=signing_key,
             is_production=dev_url is None,
             api_base_url=dev_url,
