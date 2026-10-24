@@ -16,6 +16,22 @@ dev = [
   "pytest==9.1.1",
   "ruff==0.17.1",
 ]
+# One group per module option. Every project keeps them all, so uv.lock is the same everywhere;
+# the production image installs only the selected ones (Dockerfile).
+storage-s3 = ["boto3>=1.35"]
+cache-redis = ["redis>=5.2"]
+email-smtp = ["aiosmtplib>=3"]
+observability-otel = [
+  "opentelemetry-sdk>=1.30",
+  "opentelemetry-exporter-otlp-proto-http>=1.30",
+]
+observability-sentry = ["sentry-sdk>=2.20"]
+payments-stripe = ["stripe>=11"]
+jobs-bullmq = ["bullmq>=2"]
+jobs-inngest = ["inngest>=0.4"]
+
+[tool.uv]
+default-groups = "all"
 
 [build-system]
 requires = ["hatchling"]
