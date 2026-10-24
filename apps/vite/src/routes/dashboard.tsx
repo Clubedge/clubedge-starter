@@ -44,6 +44,7 @@ import { DashboardShell, type DashboardArea } from "@/components/dashboard/dashb
 import { JobsCard } from "@/components/jobs/jobs-card"; // clubedge:only jobs!=none
 import { api } from "@/lib/api";
 import { authEnabled } from "@/lib/auth-enabled";
+import { publicOrigin } from "@/lib/public-origin";
 
 const modules = [
   {
@@ -223,7 +224,7 @@ export function DashboardPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 <a
                   className="inline-flex items-center gap-1 text-primary hover:underline"
-                  href="/api/health"
+                  href={`${publicOrigin}/api/health`}
                 >
                   Check liveness <ArrowUpRight aria-hidden="true" className="size-3" />
                 </a>

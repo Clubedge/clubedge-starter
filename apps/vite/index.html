@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Pages may draw under a phone's status bar and home indicator; src/styles.css pads for them. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- vite.config.ts fills in the name and description from src/config/site.json. -->
     <title>%SITE_NAME%</title>
     <meta name="description" content="%SITE_DESCRIPTION%" />

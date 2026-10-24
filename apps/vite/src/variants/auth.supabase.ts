@@ -3,8 +3,28 @@ import { AccountError, type AuthClient } from "@/lib/auth-client";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-export const supabase =
-  url && publishableKey ? createSupabaseBrowserClient(url, publishableKey) : null;
+
+function createClient() {
+  if (!url || !publishableKey) return null;
+  // clubedge:if shell!=none
+  if (import.meta.env.MODE === "app") {
+    // The mobile app keeps its session in the device's storage, and its address never carries
+    // one: emailed links open the website.
+    const device = () => import("@clubedge/mobile").then((mobile) => mobile.storage);
+    return createSupabaseBrowserClient(url, publishableKey, {
+      storage: {
+        getItem: async (key) => (await device()).get(key),
+        setItem: async (key, value) => (await device()).set(key, value),
+        removeItem: async (key) => (await device()).remove(key),
+      },
+      detectSessionInUrl: false,
+    });
+  }
+  // clubedge:end
+  return createSupabaseBrowserClient(url, publishableKey);
+}
+
+export const supabase = createClient();
 
 export const authClient: AuthClient = {
   configured: Boolean(supabase),
