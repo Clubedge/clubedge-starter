@@ -24,10 +24,26 @@ export interface S3StorageConfig {
   publicUrl?: string;
 }
 
-function bodyForS3(body: UploadInput["body"]) {
-  if (body instanceof Blob) return body.stream();
+/** The SDK hashes bodies in memory with its default checksums and cannot hash a flowing
+ *  stream (Blob.stream() or a ReadableStream), so every body is read into bytes first. */
+async function bodyForS3(body: UploadInput["body"]): Promise<Uint8Array> {
+  if (body instanceof Uint8Array) return body;
   if (body instanceof ArrayBuffer) return new Uint8Array(body);
-  return body;
+  if (body instanceof Blob) return new Uint8Array(await body.arrayBuffer());
+  const chunks: Uint8Array[] = [];
+  const reader = body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const out = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
 }
 
 /** Works with AWS S3 and S3-compatible services such as Cloudflare R2, MinIO, and s3mock. */
@@ -58,7 +74,7 @@ export function createS3Storage(config: S3StorageConfig): StorageProvider {
         new PutObjectCommand({
           Bucket: bucket(),
           Key: key,
-          Body: bodyForS3(body),
+          Body: await bodyForS3(body),
           ContentType: contentType,
           ...(contentLength ? { ContentLength: contentLength } : {}),
         }),

@@ -111,8 +111,8 @@ export function createFileSystemStorage({ directory }: FileSystemStorageConfig):
       const path = await existingPath(key);
       if (!path) return false;
       try {
-        await access(path);
-        return true;
+        // A key whose parent folders exist is still a missing object, as in object storage.
+        return (await lstat(path)).isFile();
       } catch {
         return false;
       }
