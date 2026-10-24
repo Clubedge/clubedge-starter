@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/auth-better-auth",
-  "version": "0.26.1",
+  "version": "0.27.0",
   "description": "Better Auth adapter for @clubedge/auth, storing users and sessions in your own PostgreSQL.",
   "private": true,
   "license": "Apache-2.0",
