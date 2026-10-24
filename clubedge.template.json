@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "name": "clubedge-starter",
   "packageManager": "pnpm",
   "siteConfig": "apps/web/src/config/site.json",
@@ -33,6 +33,20 @@
       "packages": {
         "@clubedge/contract": "packages/contract"
       }
+    },
+    "shell": {
+      "name": "Mobile shell",
+      "question": "Package the web app as a mobile app?",
+      "path": "apps/shell",
+      "package": "@clubedge/shell",
+      "env": {
+        "example": "apps/shell/.env.example",
+        "target": "apps/shell/.env.local"
+      },
+      "roles": ["shell"],
+      "packages": {
+        "@clubedge/mobile": "packages/mobile"
+      }
     }
   },
   "modules": [
@@ -54,12 +68,15 @@
     ".github/workflows/ci.yml",
     ".github/workflows/deploy.yml",
     ".github/workflows/preview.yml",
+    ".gitignore",
+    ".prettierignore",
     "AGENTS.md",
     "README.md",
     "apps/vite/src/routes/index.tsx",
     "SETUP.md",
     "docker-compose.dev.yml",
     "docker-compose.yml",
+    "eslint.config.mjs",
     "render.yaml",
     "supabase/config.toml"
   ],

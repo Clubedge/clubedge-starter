@@ -65,5 +65,11 @@ export default defineConfig([
     "**/next-env.d.ts",
     "test-results/**",
     "playwright-report/**",
+    // clubedge:if shell!=none
+    // The web app's build for the mobile app, and the native projects it is copied into.
+    "**/dist-app/**",
+    "apps/shell/android/**",
+    "apps/shell/ios/**",
+    // clubedge:end
   ]),
 ]);

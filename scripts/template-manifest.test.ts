@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { posix } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// create-clubedge-app scaffolds projects from this repository, assembled from packs (schema 4):
+// create-clubedge-app scaffolds projects from this repository, assembled from packs (schema 5):
 //
 //   clubedge.template.json            slots (where apps land), the module order, shared files
 //   clubedge/modules/<id>.json        a module: options, packages, scripts, shared files
@@ -60,7 +60,8 @@ const manifest = {
         name: stack.name,
         app: stack.app,
         envExample: inApp(stack.app, stack.envExample),
-        dockerfile: inApp(stack.app, stack.dockerfile),
+        // A mobile shell runs on devices, not from an image.
+        ...(stack.dockerfile ? { dockerfile: inApp(stack.app, stack.dockerfile) } : {}),
       },
     ]),
   ),
@@ -78,10 +79,29 @@ const manifest = {
     ...stackDescriptors.map((stack) => `${stack.app}/clubedge.stack.json`),
   ],
 };
-const frameworks = Object.entries<Record<string, string>>(manifest.frameworks);
+const frameworks = Object.entries<{
+  name: string;
+  app: string;
+  envExample: string;
+  dockerfile?: string;
+}>(manifest.frameworks);
 
 /** Maps a generated-project path into the given framework's app in this repository. */
 const inFramework = (path: string, app: string) => path.replace(manifest.app, app);
+
+/**
+ * Stacks that name the project in a site config of their own: the framework slot's, and those of
+ * slots with a siteConfig. A mobile shell reads its web app's.
+ */
+const withSiteConfig = new Set(
+  stackDescriptors
+    .filter((stack) =>
+      Object.entries<{ roles: string[]; siteConfig?: string }>(root.slots).some(
+        ([id, s]) => s.roles.includes(stack.role) && (id === "framework" || s.siteConfig),
+      ),
+    )
+    .map((stack) => stack.id),
+);
 
 describe("stack packs", () => {
   it.each(stackDescriptors.map((stack) => [stack.app, stack]))(
@@ -149,7 +169,7 @@ describe("stack packs", () => {
 
 describe("clubedge.template.json", () => {
   it("uses the schema version the CLI understands", () => {
-    expect(manifest.schemaVersion).toBe(4);
+    expect(manifest.schemaVersion).toBe(5);
     expect(manifest.packageManager).toBe("pnpm");
   });
 
@@ -158,23 +178,23 @@ describe("clubedge.template.json", () => {
     expect(manifest.frameworks[slot.default].app).toBe(manifest.app);
   });
 
-  it.each(frameworks)("points at files that exist for %s", (_id, framework) => {
-    for (const path of [
-      framework.app,
-      framework.envExample,
-      framework.dockerfile,
-      inFramework(manifest.siteConfig, framework.app),
-    ]) {
+  it.each(frameworks)("points at files that exist for %s", (id, framework) => {
+    const paths = [framework.app, framework.envExample, framework.dockerfile];
+    if (withSiteConfig.has(id)) paths.push(inFramework(manifest.siteConfig, framework.app));
+    for (const path of paths.filter((path) => path !== undefined)) {
       expect(existsSync(path), path).toBe(true);
     }
     expect(framework.name).toEqual(expect.any(String));
   });
 
-  it.each(frameworks)("keeps the same project identity in %s", (_id, framework) => {
-    expect(readJson(inFramework(manifest.siteConfig, framework.app))).toEqual(
-      readJson(manifest.siteConfig),
-    );
-  });
+  it.each(frameworks.filter(([id]) => withSiteConfig.has(id)))(
+    "keeps the same project identity in %s",
+    (_id, framework) => {
+      expect(readJson(inFramework(manifest.siteConfig, framework.app))).toEqual(
+        readJson(manifest.siteConfig),
+      );
+    },
+  );
 
   it("names the site config fields the CLI rewrites", () => {
     expect(readJson(manifest.siteConfig)).toMatchObject({
