@@ -3,6 +3,7 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { clientIp, clientIpSettings } from "./client-ip.mjs";
 
 const root = resolve(fileURLToPath(new URL("./dist/", import.meta.url)));
 const configuredApiUrl = process.env.API_URL;
@@ -63,6 +64,18 @@ const hopByHopHeaders = new Set([
   "transfer-encoding",
   "upgrade",
 ]);
+// Headers a client could use to claim an address. The API takes the client's address from the
+// one x-forwarded-for entry this server sends (TRUSTED_PROXY_HOPS=1), so it never gets these.
+const addressHeaders = new Set([
+  "x-forwarded-for",
+  "x-real-ip",
+  "forwarded",
+  "true-client-ip",
+  "cf-connecting-ip",
+  "fly-client-ip",
+  "x-nf-client-connection-ip",
+]);
+if (clientIpSettings.header) addressHeaders.add(clientIpSettings.header);
 
 function proxy(request, response) {
   if (!apiTarget) {
@@ -90,10 +103,14 @@ function proxy(request, response) {
 
   const headers = Object.fromEntries(
     Object.entries(request.headers).filter(
-      ([name, value]) => value !== undefined && !hopByHopHeaders.has(name),
+      ([name, value]) =>
+        value !== undefined && !hopByHopHeaders.has(name) && !addressHeaders.has(name),
     ),
   );
   headers.host = apiTarget.host;
+  // The client's address as this server finds it (CLIENT_IP_HEADER, TRUSTED_PROXY_HOPS, or the
+  // connection), in place of whatever the client sent.
+  headers["x-forwarded-for"] = clientIp(request);
   headers["x-forwarded-host"] = request.headers.host ?? "";
   headers["x-forwarded-proto"] = "https";
 
@@ -201,7 +218,7 @@ async function serveFile(request, response) {
   else createReadStream(target).pipe(response);
 }
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
   const isApiRequest = request.url === "/api" || request.url?.startsWith("/api/");
   if (!isApiRequest && request.method !== "GET" && request.method !== "HEAD") {
     response.writeHead(405, { allow: "GET, HEAD" });
@@ -217,6 +234,8 @@ createServer(async (request, response) => {
     return;
   }
   await serveFile(request, response);
-}).listen(Number(process.env.PORT ?? 3000), "0.0.0.0", () => {
-  console.log(`Frontend listening on port ${process.env.PORT ?? 3000}.`);
+});
+server.listen(Number(process.env.PORT ?? 3000), "0.0.0.0", () => {
+  // The port bound, which PORT=0 leaves to the system.
+  console.log(`Frontend listening on port ${server.address().port}.`);
 });
