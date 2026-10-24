@@ -6,6 +6,12 @@
 # An operation that belongs to a module (payments, jobs, ...) names it with
 # `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
 # answers 404 not_found as for any unknown path; the conformance suite checks both cases.
+#
+# An optional part of a module also names itself with `x-clubedge-capability: <id>`, such as
+# the account settings (`account`, in the auth module). An API implements a capability fully or
+# not at all, and its conformance check says which ones it implements: without the capability,
+# its operations answer 404 like a missing module's. The Hono API implements `account`; the
+# FastAPI one does not yet.
 openapi: 3.1.0
 info:
   title: Clubedge API
@@ -53,6 +59,116 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+  /api/account:
+    get:
+      operationId: getAccount
+      summary: The signed-in user's account settings, for the settings page. Never cached.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: The account.
+          headers:
+            Cache-Control:
+              description: no-store.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /api/account/profile:
+    post:
+      operationId: updateProfile
+      summary: Sets the display name the app shows, or clears it with an empty one.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "204":
+          description: Saved.
+        "400":
+          description: Not a valid profile (code invalid_input).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+  /api/account/delete:
+    post:
+      operationId: deleteAccount
+      summary: >-
+        Deletes the signed-in user, after checking the password, with the data the app keeps for
+        it; the user's sessions end with it. Password checks are limited to 10 a minute per user,
+        and refused while the limit cannot be checked.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeletion"
+      responses:
+        "204":
+          description: Deleted.
+        "400":
+          description: No password (code invalid_input).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The password is not correct (code invalid_password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >-
+            A subscription is still active (code active_subscription); cancel it first, since a
+            deleted account cannot manage its billing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: >-
+            Deleting accounts is not set up on this server (code not_configured), or the rate limit
+            cannot be checked now (code unavailable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/client-errors:
     get:
       operationId: getBrowserErrorReporting
@@ -414,6 +530,35 @@ components:
           type: string
         displayName:
           type: [string, "null"]
+    Account:
+      type: object
+      required: [email, displayName, canDeleteAccount]
+      properties:
+        email:
+          type: string
+        displayName:
+          type: [string, "null"]
+          description: The name the user chose in the app's settings, kept in the app's database.
+        canDeleteAccount:
+          type: boolean
+          description: >-
+            Whether this server can delete accounts; some providers need a secret key for it.
+    ProfileUpdate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          maxLength: 80
+          description: Trimmed; an empty name clears it.
+    AccountDeletion:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
     Error:
       type: object
       required: [error]

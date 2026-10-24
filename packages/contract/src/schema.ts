@@ -55,6 +55,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/account": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The signed-in user's account settings, for the settings page. Never cached. */
+    get: operations["getAccount"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/account/profile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Sets the display name the app shows, or clears it with an empty one. */
+    post: operations["updateProfile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/account/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Deletes the signed-in user, after checking the password, with the data the app keeps for it; the user's sessions end with it. Password checks are limited to 10 a minute per user, and refused while the limit cannot be checked. */
+    post: operations["deleteAccount"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/client-errors": {
     parameters: {
       query?: never;
@@ -234,6 +285,20 @@ export interface components {
       id: string;
       email: string;
       displayName: string | null;
+    };
+    Account: {
+      email: string;
+      /** @description The name the user chose in the app's settings, kept in the app's database. */
+      displayName: string | null;
+      /** @description Whether this server can delete accounts; some providers need a secret key for it. */
+      canDeleteAccount: boolean;
+    };
+    ProfileUpdate: {
+      /** @description Trimmed; an empty name clears it. */
+      displayName: string;
+    };
+    AccountDeletion: {
+      password: string;
     };
     Error: {
       error: {
@@ -460,6 +525,125 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["Session"];
+        };
+      };
+    };
+  };
+  getAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The account. */
+      200: {
+        headers: {
+          /** @description no-store. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Account"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+    };
+  };
+  updateProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileUpdate"];
+      };
+    };
+    responses: {
+      /** @description Saved. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a valid profile (code invalid_input). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+    };
+  };
+  deleteAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountDeletion"];
+      };
+    };
+    responses: {
+      /** @description Deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No password (code invalid_input). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description The password is not correct (code invalid_password). */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description A subscription is still active (code active_subscription); cancel it first, since a deleted account cannot manage its billing. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      429: components["responses"]["TooManyRequests"];
+      /** @description Deleting accounts is not set up on this server (code not_configured), or the rate limit cannot be checked now (code unavailable). */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
         };
       };
     };

@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe } from "vitest";
-import { describeApiConformance, moduleOperations } from "@clubedge/contract/conformance";
+import {
+  capabilityOperations,
+  describeApiConformance,
+  moduleOperations,
+} from "@clubedge/contract/conformance";
 import { createApp } from "@/app";
 // clubedge:if jobs!=none
 import { createMemoryJobs } from "@clubedge/jobs";
@@ -14,10 +18,11 @@ import { sampleJob } from "@/jobs/sample";
 function apiModules(): Record<string, string> {
   const root = new URL("../../../package.json", import.meta.url);
   const { clubedge } = JSON.parse(readFileSync(root, "utf8"));
-  return (
-    clubedge?.modules ??
-    Object.fromEntries(Object.keys(moduleOperations).map((module) => [module, "starter"]))
-  );
+  const every = [
+    ...Object.keys(moduleOperations),
+    ...Object.values(capabilityOperations).map(({ module }) => module),
+  ];
+  return clubedge?.modules ?? Object.fromEntries(every.map((module) => [module, "starter"]));
 }
 
 const modules = apiModules();
@@ -25,6 +30,9 @@ const modules = apiModules();
 // A queue in memory, standing in for the jobs provider.
 const queue = createMemoryJobs([sampleJob]);
 // clubedge:end
+
+// The optional parts of the contract this API implements, for the modules it has.
+const capabilities = ["account"];
 
 // The shared contract suite, in process: the same checks any API stack passes over HTTP.
 describe("the API without a database", () => {
@@ -38,6 +46,7 @@ describe("the API without a database", () => {
     service: "my-product",
     ready: false,
     modules,
+    capabilities,
   });
 });
 
@@ -54,6 +63,7 @@ describe("the API with a database", () => {
     {
       ready: true,
       modules,
+      capabilities,
     },
   );
 });

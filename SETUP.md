@@ -72,6 +72,7 @@ The app is available at <http://localhost:3000>, the liveness endpoint at <http:
 
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server, so never give it a `NEXT_PUBLIC_` prefix. <!-- clubedge:only framework=next -->
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server. <!-- clubedge:only framework=tanstack-start -->
+To let users delete their account from the settings page, set `SUPABASE_SECRET_KEY` in `apps/api/.env.local` to a secret key from the project's API settings; only the API uses it. <!-- clubedge:only framework=vite && api=hono -->
 
 In Supabase Auth URL configuration, add this redirect URL for local email confirmation and password reset links:
 
@@ -642,6 +643,11 @@ To change the API, edit `openapi.yaml` first, run `pnpm --filter @clubedge/contr
 ```sh
 API_URL=http://127.0.0.1:3001 pnpm exec vitest run packages/contract/src/remote.test.ts
 ```
+
+Some endpoints are an optional part of a module, a capability (`x-clubedge-capability` in `openapi.yaml`): the account settings page's display name and account deletion are the `account` capability of the auth module. An API without a capability answers its endpoints with 404, and the suite checks that unless `API_CAPABILITIES` lists it (such as `API_CAPABILITIES=account`).
+
+The settings page changes passwords with the auth provider, in the browser or in Better Auth's server, which signs out the user's other sessions and applies the provider's rate limits. The display name and account deletion go through the API, which keeps the app's data: deletion checks the password (10 tries a minute per user, refused while the limit cannot be checked), removes the user's app data, then deletes the user from the provider. <!-- clubedge:only auth!=none && api=hono -->
+The FastAPI API does not implement the `account` capability yet, so the settings page offers only the password change. <!-- clubedge:only auth!=none && api=fastapi -->
 
 In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `docker compose up --build` runs both.
 

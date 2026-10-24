@@ -16,6 +16,16 @@ function selectedModules(): Record<string, string> {
   return clubedge?.modules ?? {};
 }
 
+/**
+ * The optional parts of the contract the API implements (capabilityOperations in conformance.ts)
+ * from API_CAPABILITIES, a comma-separated list such as "account"; none without it. An API sets
+ * it once it implements them; the Hono API's own test passes them directly.
+ */
+const capabilities = (process.env.API_CAPABILITIES ?? "")
+  .split(",")
+  .map((capability) => capability.trim())
+  .filter(Boolean);
+
 describeApiConformance(
   baseUrl ?? "API_URL",
   () => ({ request: (path, init) => fetch(new URL(path, baseUrl), init) }),
@@ -23,5 +33,6 @@ describeApiConformance(
     skip: !baseUrl,
     ...(process.env.API_SERVICE ? { service: process.env.API_SERVICE } : {}),
     modules: selectedModules(),
+    capabilities,
   },
 );

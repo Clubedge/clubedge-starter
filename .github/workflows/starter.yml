@@ -947,9 +947,8 @@ jobs:
           E2E_DATABASE: "1"
         run: |
           pnpm exec playwright install --with-deps chromium
-          # React + Vite has no settings page yet.
           pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts \
-            ${{ matrix.framework != 'vite' && 'e2e/settings.spec.ts' || '' }}
+            e2e/settings.spec.ts
       - name: Run a background job (the dev server's worker, or Inngest)
         if: contains(matrix.modules, '--jobs')
         working-directory: ${{ runner.temp }}/generated-app
@@ -988,9 +987,8 @@ jobs:
           SENTRY_DSN: http://public@127.0.0.1:4319/1
           SENTRY_TRACES_SAMPLE_RATE: "1"
         run: pnpm test:e2e e2e/observability.spec.ts
-      # React + Vite's login page does not yet show the confirm-your-email state this test expects.
       - name: Sign in only after confirming the email address
-        if: matrix.infra == 'docker' && matrix.mail-api != '' && contains(matrix.modules, '--auth better-auth') && matrix.framework != 'vite'
+        if: matrix.infra == 'docker' && matrix.mail-api != '' && contains(matrix.modules, '--auth better-auth')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}

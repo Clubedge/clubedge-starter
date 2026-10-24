@@ -25,6 +25,12 @@ export interface ApiConformanceOptions {
    * `clubedge.modules`). The operations of a module that is missing or "none" must answer 404.
    */
   modules?: Record<string, string>;
+  /**
+   * The capabilities this API implements (see capabilityOperations), such as "account". Without
+   * one, its operations must answer 404, as a missing module's do; with it, they must work
+   * whenever the project has the capability's module.
+   */
+  capabilities?: string[];
 }
 
 /** An operation of the contract, as its method and path. */
@@ -58,6 +64,24 @@ export const moduleOperations: Record<string, Operation[]> = {
   ],
 };
 
+/**
+ * Optional parts of a module: operations openapi.yaml tags with `x-clubedge-capability` as well
+ * as `x-clubedge-module`. A project with the module may still use an API that leaves them out,
+ * such as one written in another language that has not implemented them yet, so each API says
+ * which ones it implements (options.capabilities) rather than the project's modules deciding.
+ */
+export const capabilityOperations: Record<string, { module: string; operations: Operation[] }> = {
+  // The account settings page: display name and account deletion.
+  account: {
+    module: "auth",
+    operations: [
+      { method: "GET", path: "/api/account" },
+      { method: "POST", path: "/api/account/profile" },
+      { method: "POST", path: "/api/account/delete" },
+    ],
+  },
+};
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -86,6 +110,11 @@ const postJson = (body: unknown): RequestInit => ({
 /** Whether the project has `module`, so its operations must work. */
 const has = (options: ApiConformanceOptions, module: string) =>
   (options.modules?.[module] ?? "none") !== "none";
+
+/** Whether the API implements `capability` for this project, so its operations must work. */
+const hasCapability = (options: ApiConformanceOptions, capability: string) =>
+  has(options, capabilityOperations[capability]!.module) &&
+  (options.capabilities ?? []).includes(capability);
 
 /** A request any route would accept as far as its content type goes, so only the path decides. */
 function requestFor({ method, path }: Operation): [string, RequestInit] {
@@ -142,6 +171,18 @@ export function describeApiConformance(
       if (has(options, module)) continue;
       it.each(operations)(
         `answers $method $path with not_found without ${module}`,
+        async (operation) => {
+          const harness = await setup();
+          await expectNotFound(await harness.request(...requestFor(operation)));
+        },
+      );
+    }
+
+    // Nor does a capability the API leaves out.
+    for (const [capability, { operations }] of Object.entries(capabilityOperations)) {
+      if (hasCapability(options, capability)) continue;
+      it.each(operations)(
+        `answers $method $path with not_found without ${capability}`,
         async (operation) => {
           const harness = await setup();
           await expectNotFound(await harness.request(...requestFor(operation)));
@@ -266,6 +307,40 @@ export function describeApiConformance(
         expect(await json(response)).toMatchObject({
           error: { code: response.status === 400 ? "invalid_signature" : "not_configured" },
         });
+      });
+    });
+
+    // Signed out, as the suite has no user: every account operation needs one.
+    describe.runIf(hasCapability(options, "account"))("account", () => {
+      it.each(capabilityOperations.account!.operations)(
+        "answers $method $path with unauthorized when signed out",
+        async ({ method, path }) => {
+          const harness = await setup();
+          const body = path === "/api/account/delete" ? { password: "x" } : { displayName: "x" };
+          const response = await harness.request(
+            path,
+            method === "GET" ? { method } : postJson(body),
+          );
+          expect(response.status).toBe(401);
+          expect(await json(response)).toMatchObject({ error: { code: "unauthorized" } });
+        },
+      );
+
+      it("takes the profile only as JSON", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/account/profile", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: "displayName=x",
+        });
+        expect(response.status).toBe(415);
+        expect(await json(response)).toMatchObject({ error: { code: "unsupported_media_type" } });
+      });
+
+      it("never caches the account", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/account");
+        expect(response.headers.get("cache-control") ?? "").toContain("no-store");
       });
     });
   });

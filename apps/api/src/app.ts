@@ -4,6 +4,9 @@ import type { Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError } from "@clubedge/core";
 import { apiError } from "@/http";
 import type { CreateRateLimiter } from "@/rate-limit";
+// clubedge:if auth!=none
+import { accountRoutes, type AccountService } from "@/routes/account";
+// clubedge:end
 // clubedge:if observability!=none
 import type { BrowserErrorReporting } from "@clubedge/observability";
 import { clientErrorRoutes } from "@/routes/client-errors";
@@ -30,6 +33,10 @@ export interface ApiDependencies {
   getCurrentUser(request: Request): Promise<User | null>;
   /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
   createRateLimiter?: CreateRateLimiter;
+  // clubedge:if auth!=none
+  /** The account settings (src/server/account); they answer 503 not_configured when absent. */
+  account?: AccountService;
+  // clubedge:end
   // clubedge:if observability!=none
   /** How the browser reports its errors (src/server/observability); not at all when absent. */
   browserErrorReporting?(): BrowserErrorReporting;
@@ -75,6 +82,10 @@ export function createApp(dependencies: ApiDependencies) {
   app.get("/api/session", async (c) =>
     c.json<Session>({ user: await dependencies.getCurrentUser(c.req.raw) }),
   );
+
+  // clubedge:if auth!=none
+  app.route("/", accountRoutes(dependencies));
+  // clubedge:end
 
   // clubedge:if observability!=none
   app.route("/", clientErrorRoutes(dependencies));

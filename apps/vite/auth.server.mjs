@@ -201,9 +201,16 @@ function getAuthServer() {
           },
         }
       : {}),
-    user: { deleteUser: { enabled: true } },
+    // The API deletes accounts (POST /api/account/delete), removing the app's data with them, so
+    // Better Auth's own delete-user endpoint stays off.
+    user: { deleteUser: { enabled: false } },
     advanced: { database: { generateId: "uuid" } },
-    rateLimit: { enabled: true },
+    rateLimit: {
+      enabled: true,
+      // The settings page's password changes: 10 a minute per address, as the API allows
+      // account deletions per user. The limits are kept in this process, so they cannot fail open.
+      customRules: { "/change-password": { window: 60, max: 10 } },
+    },
   });
   return authServer;
 }
@@ -218,6 +225,11 @@ async function toWebRequest(request) {
   const headers = new Headers();
   for (const [name, value] of Object.entries(request.headers)) {
     if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+  }
+  // Better Auth limits requests per client address, which it reads from this header; without a
+  // proxy in front to set it, it is the connection's own address.
+  if (!headers.has("x-forwarded-for") && request.socket?.remoteAddress) {
+    headers.set("x-forwarded-for", request.socket.remoteAddress);
   }
   const method = request.method ?? "GET";
   let body;

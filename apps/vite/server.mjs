@@ -24,6 +24,9 @@ const apiRoutes = new Map([
   ["GET /api/health", "/api/health"],
   ["GET /api/ready", "/api/ready"],
   ["GET /api/session", "/api/session"],
+  ["GET /api/account", "/api/account"], // clubedge:only auth!=none
+  ["POST /api/account/profile", "/api/account/profile"], // clubedge:only auth!=none
+  ["POST /api/account/delete", "/api/account/delete"], // clubedge:only auth!=none
   ["GET /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
   ["POST /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
   ["GET /api/jobs", "/api/jobs"], // clubedge:only jobs!=none

@@ -2,6 +2,7 @@
 // receive what they need from here, so tests can give them stand-ins.
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
+import { account } from "./account"; // clubedge:only auth!=none
 import { getCurrentUser } from "./auth";
 import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
@@ -23,6 +24,7 @@ export const dependencies: ApiDependencies = {
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,
+  account, // clubedge:only auth!=none
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none
   payments: { isPaymentsConfigured, getBilling, getUserProfileId, appUrl }, // clubedge:only payments!=none
