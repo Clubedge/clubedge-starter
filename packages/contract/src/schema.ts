@@ -55,6 +55,213 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/account": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The signed-in user's account settings, for the settings page. Never cached. */
+    get: operations["getAccount"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/account/profile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Sets the display name the app shows, or clears it with an empty one. */
+    post: operations["updateProfile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/account/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Deletes the signed-in user, after checking the password, with the data the app keeps for it; the user's sessions end with it. Password checks are limited to 10 a minute per user, and refused while the limit cannot be checked. */
+    post: operations["deleteAccount"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/client-errors": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** How the browser reports its errors, read at runtime so builds never bake it in. */
+    get: operations["getBrowserErrorReporting"];
+    put?: never;
+    /** Reports an error from the browser like a server error. 30 a minute per address. */
+    post: operations["reportBrowserError"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/jobs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** How jobs run, and the current user's recent sample jobs. Never cached. */
+    get: operations["getJobsStatus"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/jobs/sample": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Queues the sample job for the current user; repeats within seconds are ignored. */
+    post: operations["runSampleJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/jobs/run": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Runs the jobs that are due, for a scheduler where no worker runs. Only providers that run jobs in the API (pg-boss, BullMQ) have it. */
+    get: operations["runDueJobs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/inngest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Inngest's protocol (opaque here); only the Inngest provider has it. */
+    get: operations["inspectInngest"];
+    /** Inngest's protocol (opaque here); only the Inngest provider has it. */
+    put: operations["syncInngest"];
+    /** Inngest's protocol (opaque here): Inngest calls it to run a job, signed with the signing key. Only the Inngest provider has it. */
+    post: operations["runInngestJob"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/billing": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The plans, and the signed-in user's subscription. Never cached. */
+    get: operations["getBilling"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/billing/checkout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Starts checkout for a plan, on the payment provider's hosted page. */
+    post: operations["startCheckout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/billing/portal": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Opens the payment provider's billing portal, where the user manages billing. */
+    post: operations["openBillingPortal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/webhooks/payments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** The payment provider's webhook, up to 1 MiB. The body is read raw, because the signature (Stripe-Signature) covers its exact bytes. Each event is applied once. */
+    post: operations["receivePaymentWebhook"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -79,6 +286,20 @@ export interface components {
       email: string;
       displayName: string | null;
     };
+    Account: {
+      email: string;
+      /** @description The name the user chose in the app's settings, kept in the app's database. */
+      displayName: string | null;
+      /** @description Whether this server can delete accounts; some providers need a secret key for it. */
+      canDeleteAccount: boolean;
+    };
+    ProfileUpdate: {
+      /** @description Trimmed; an empty name clears it. */
+      displayName: string;
+    };
+    AccountDeletion: {
+      password: string;
+    };
     Error: {
       error: {
         /** @description Stable and machine-readable, such as not_found. */
@@ -86,8 +307,152 @@ export interface components {
         message: string;
       };
     };
+    BrowserErrorReporting:
+      | {
+          /** @enum {string} */
+          provider: "endpoint";
+        }
+      | {
+          /** @enum {string} */
+          provider: "sentry";
+          dsn: string;
+          environment?: string;
+          release?: string;
+        }
+      | {
+          /** @enum {string} */
+          provider: "none";
+        };
+    /** @description An uncaught error, an unhandled rejection, or a render error a boundary caught. */
+    ClientErrorReport: {
+      /** @enum {string} */
+      kind: "error" | "unhandledrejection" | "render";
+      name: string;
+      message: string;
+      stack?: string;
+      /** @description The page's path, without its query string. */
+      path: string;
+    };
+    JobsStatus: {
+      /**
+       * @description Where jobs run: the API's own worker, a scheduler calling /api/jobs/run, or a jobs service (Inngest) calling the API.
+       * @enum {string}
+       */
+      runner: "worker" | "scheduler" | "service";
+      jobs: components["schemas"]["JobRun"][] | null;
+    };
+    JobRun: {
+      id: string;
+      name: string;
+      /** @enum {string} */
+      state: "queued" | "active" | "retrying" | "completed" | "failed" | "cancelled";
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      completedAt: string | null;
+    };
+    SampleJobQueued: {
+      /** @description The queued job's id, or null when a repeat was ignored. */
+      id: string | null;
+    };
+    DueJobsRun: {
+      completed: number;
+      failed: number;
+    };
+    Billing: {
+      /** @description Whether checkout and webhooks work, that is, the provider's keys are set. */
+      configured: boolean;
+      plans: components["schemas"]["Plan"][];
+      subscription: components["schemas"]["Subscription"] | null;
+    };
+    Plan: {
+      id: string;
+      name: string;
+      description: string;
+    };
+    /** @description The user's most recently updated subscription. */
+    Subscription: {
+      /** @description One of the plans' ids, or null for a price no plan uses. */
+      planId: string | null;
+      /** @enum {string} */
+      status:
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "unpaid"
+        | "paused"
+        | "incomplete"
+        | "incomplete_expired"
+        | "canceled";
+      /** Format: date-time */
+      currentPeriodEnd: string | null;
+      cancelAtPeriodEnd: boolean;
+      /** @description Whether the subscription grants the paid features (active or trialing). */
+      entitled: boolean;
+    };
+    CheckoutRequest: {
+      planId: string;
+    };
+    BillingRedirect: {
+      /** Format: uri */
+      url: string;
+    };
+    WebhookReceipt: {
+      /** @enum {boolean} */
+      received: true;
+      /** @enum {string} */
+      result: "applied" | "ignored" | "duplicate";
+    };
   };
-  responses: never;
+  responses: {
+    /** @description Not signed in (code unauthorized). */
+    Unauthorized: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The module's provider is not configured on this server (code not_configured). */
+    NotConfigured: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description Too many requests from this client (code rate_limited). */
+    TooManyRequests: {
+      headers: {
+        /** @description Seconds until the client may try again. */
+        "Retry-After"?: number;
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The request body is over the operation's limit (code payload_too_large). */
+    PayloadTooLarge: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+    /** @description The body is not JSON (code unsupported_media_type). Mutating operations take only JSON, which another site cannot make a browser send without the API's CORS approval. */
+    UnsupportedMediaType: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
+  };
   parameters: never;
   requestBodies: never;
   headers: never;
@@ -162,6 +527,464 @@ export interface operations {
           "application/json": components["schemas"]["Session"];
         };
       };
+    };
+  };
+  getAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The account. */
+      200: {
+        headers: {
+          /** @description no-store. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Account"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  updateProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileUpdate"];
+      };
+    };
+    responses: {
+      /** @description Saved. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a valid profile (code invalid_input). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  deleteAccount: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AccountDeletion"];
+      };
+    };
+    responses: {
+      /** @description Deleted. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No password (code invalid_input). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description The password is not correct (code invalid_password). */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      /** @description A subscription is still active (code active_subscription); cancel it first, since a deleted account cannot manage its billing. */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      429: components["responses"]["TooManyRequests"];
+      /** @description Deleting accounts is not set up on this server (code not_configured), or the rate limit cannot be checked now (code unavailable). */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  getBrowserErrorReporting: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Post errors back here, send them to Sentry, or do not report them. */
+      200: {
+        headers: {
+          /** @description no-store, so a new setting applies on the next page load. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BrowserErrorReporting"];
+        };
+      };
+    };
+  };
+  reportBrowserError: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ClientErrorReport"];
+      };
+    };
+    responses: {
+      /** @description Reported. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not an error report (code invalid_report). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      429: components["responses"]["TooManyRequests"];
+    };
+  };
+  getJobsStatus: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The runner, and the sample jobs queued by the signed-in user (or by anyone signed out), newest first; jobs is null when the queue could not be read. */
+      200: {
+        headers: {
+          /** @description no-store, so each page load lists the jobs as they are. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["JobsStatus"];
+        };
+      };
+    };
+  };
+  runSampleJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Queued, or ignored as a repeat (id null). */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SampleJobQueued"];
+        };
+      };
+      415: components["responses"]["UnsupportedMediaType"];
+      /** @description The queue could not be reached (code unavailable). */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  runDueJobs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The jobs that finished, and the attempts that failed, retries included. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DueJobsRun"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description CRON_SECRET is not set, so no scheduler may run jobs (code not_found). */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+    };
+  };
+  inspectInngest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Inngest reads the app's jobs. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  syncInngest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Registers the app's jobs with Inngest. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  runInngestJob: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The job's result. The SDK defines the answer. */
+      default: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  getBilling: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Billing for the current user; subscription is null when signed out, when the user never subscribed, or while payments are not configured. */
+      200: {
+        headers: {
+          /** @description no-store, so a new subscription shows on the next load. */
+          "Cache-Control"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Billing"];
+        };
+      };
+    };
+  };
+  startCheckout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckoutRequest"];
+      };
+    };
+    responses: {
+      /** @description Send the browser to this URL; it comes back to the frontend's dashboard. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingRedirect"];
+        };
+      };
+      /** @description No such plan (code invalid_plan). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  openBillingPortal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description An empty JSON object; like every mutating operation, it takes only JSON. */
+    requestBody?: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Send the browser to this URL; it comes back to the frontend's dashboard. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BillingRedirect"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      /** @description The user never subscribed, so has no billing account (code no_billing_account). */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  receivePaymentWebhook: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Stripe-Signature"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Received; applied, ignored as irrelevant, or a duplicate of an applied event. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookReceipt"];
+        };
+      };
+      /** @description Not signed by the provider (code invalid_signature). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      /** @description Applying the event failed, so the provider retries it (code webhook_failed). */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      503: components["responses"]["NotConfigured"];
     };
   };
 }

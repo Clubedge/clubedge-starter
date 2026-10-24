@@ -48,6 +48,8 @@ Every combination in the CI matrix is generated as a real project and runs its f
 
 - Next.js App Router with React, TypeScript, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=next -->
 - TanStack Start with React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=tanstack-start -->
+- A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a Hono API in TypeScript in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=hono -->
+- A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a FastAPI API in Python in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=fastapi -->
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Zod environment validation, security headers, structured errors, and `/api/health`.
@@ -55,13 +57,19 @@ Every combination in the CI matrix is generated as a real project and runs its f
 
 **Modules**
 
-- Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase -->
-- Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth -->
-- Firebase Authentication through the app's own pages, with server-side session cookies, a protected dashboard, and rate-limited sign-in; the Auth Emulator in development. <!-- clubedge:only auth=firebase -->
-- Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite -->
+- Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase && framework!=vite -->
+- Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework!=vite -->
+- Firebase Authentication through the app's own pages, with server-side session cookies, a protected dashboard, and rate-limited sign-in; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework!=vite -->
+- Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite && framework!=vite -->
+- Supabase Auth in the browser, with access tokens that the API verifies on each request, and a protected dashboard. <!-- clubedge:only auth=supabase && framework=vite -->
+- Better Auth in the frontend's server, with users and sessions in your own PostgreSQL, a secure session cookie that the API checks, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework=vite -->
+- Firebase Authentication in the browser, with ID tokens that the API verifies on each request, and a protected dashboard; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework=vite -->
+- Appwrite accounts in the browser, on Appwrite Cloud or your own server, with JWTs that the API verifies on each request, and a protected dashboard. <!-- clubedge:only auth=appwrite && framework=vite -->
 - Password reset by email, and email verification that can be required before sign-in. <!-- clubedge:only auth=better-auth && email!=none -->
 - Password reset by email, sent by Supabase. <!-- clubedge:only auth=supabase -->
-- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none -->
+- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework!=vite -->
+- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework=vite && api=hono -->
+- An account settings page with password change; the FastAPI API does not keep display names or delete accounts yet. <!-- clubedge:only auth!=none && framework=vite && api=fastapi -->
 - Email over SMTP, for any provider or a local inbox; development prints emails to the server log until SMTP is configured. <!-- clubedge:only email=smtp -->
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - S3-compatible storage adapter for AWS S3, Cloudflare R2, and MinIO. <!-- clubedge:only storage=s3 -->
@@ -69,15 +77,18 @@ Every combination in the CI matrix is generated as a real project and runs its f
 - Fixed-window rate limiter and cache on Redis, falling back to process memory without `REDIS_URL`. <!-- clubedge:only cache=redis -->
 - Fixed-window rate limiter and cache in process memory, suited to a single server instance. <!-- clubedge:only cache=memory -->
 - Subscriptions with Stripe Checkout and the customer portal, kept in sync by verified webhooks, behind a provider-neutral payments interface. <!-- clubedge:only payments=stripe -->
-- Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss -->
-- Background jobs with retries and schedules, stored in Redis by BullMQ and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=bullmq -->
+- Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss && api=none -->
+- Background jobs with retries and schedules, stored in PostgreSQL by pg-boss and run by a worker inside the API, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=pg-boss && api!=none -->
+- Background jobs with retries and schedules, stored in Redis by BullMQ and run by a worker inside the app server, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=bullmq && api=none -->
+- Background jobs with retries and schedules, stored in Redis by BullMQ and run by a worker inside the API, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=bullmq && api!=none -->
 - Background jobs with retries and schedules, run by Inngest, which calls the app for each one, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=inngest -->
 - Server error reporting and request tracing with OpenTelemetry, to any OTLP collector, behind a provider-neutral observability interface. <!-- clubedge:only observability=otel -->
 - Server error reporting and request tracing with Sentry, behind a provider-neutral observability interface. <!-- clubedge:only observability=sentry -->
 
 **Production**
 
-- A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release.
+- A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release. <!-- clubedge:only api=none -->
+- Production images for the frontend, served by Node, and for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only api!=none -->
 - A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database.
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `.railway/railway.ts`: migrations run before each release, and `pnpm clubedge deploy` sets up the project. <!-- clubedge:only deploy=railway -->

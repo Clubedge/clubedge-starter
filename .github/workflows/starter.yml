@@ -168,7 +168,13 @@ jobs:
           - { deploy: netlify, framework: next, auth: better-auth }
           - { deploy: netlify, framework: tanstack-start, auth: better-auth }
           - { deploy: docker, framework: vite, api: hono, auth: supabase }
-          - { deploy: railway, framework: vite, api: hono, auth: supabase }
+          - {
+              deploy: railway,
+              framework: vite,
+              api: hono,
+              auth: supabase,
+              modules: --payments stripe,
+            }
           - { deploy: docker, framework: vite, api: fastapi, auth: supabase }
           - { deploy: railway, framework: vite, api: fastapi, auth: supabase }
     env:
@@ -188,7 +194,7 @@ jobs:
           pnpm build
       - name: Generate the project
         run: |
-          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth ${{ matrix.auth }} ${{ matrix.api && format('--api {0}', matrix.api) || '' }}             --no-git --no-install --yes
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/app" --template-dir "$GITHUB_WORKSPACE"             --framework ${{ matrix.framework }} --deploy ${{ matrix.deploy }} --auth ${{ matrix.auth }} ${{ matrix.api && format('--api {0}', matrix.api) || '' }} ${{ matrix.modules }}             --no-git --no-install --yes
       - name: Check the platform config
         working-directory: ${{ runner.temp }}/app
         run: |
@@ -276,6 +282,18 @@ jobs:
               ! grep -q 'BETTER_AUTH_SECRET' "$env_schema"
               ;;
           esac
+          # A frontend and its API: the API's module variables go to the API only.
+          if [ -n "${{ matrix.api }}" ] && [[ "${{ matrix.modules }}" == *"--payments stripe"* ]]; then
+            grep -q '^STRIPE_SECRET_KEY=' apps/api/.env.example
+            grep -q '^STRIPE_WEBHOOK_SECRET=' apps/api/.env.example
+            grep -q '^STRIPE_PRICE_PRO=' apps/api/.env.example
+            for frontend in apps/web/.env.example .env.example; do
+              if [ -e "$frontend" ] && grep -n 'STRIPE_' "$frontend"; then
+                echo "$frontend has the API's Stripe variables."
+                exit 1
+              fi
+            done
+          fi
       - name: Lint the deploy workflow
         working-directory: ${{ runner.temp }}/app
         run: |
@@ -343,10 +361,36 @@ jobs:
             }
           # A frontend and a separate API, joined by packages/contract.
           - { name: vite-hono, framework: vite, modules: --auth none --api hono }
+          - {
+              name: vite-hono-minimal,
+              framework: vite,
+              modules: --auth none --api hono --storage none --cache memory --email none,
+            }
+          # Every module the API implements, on its providers' code paths.
+          - {
+              name: vite-hono-modules-a,
+              framework: vite,
+              modules: --api hono --auth better-auth --storage s3 --cache redis --observability otel --payments stripe --jobs pg-boss,
+            }
+          - {
+              name: vite-hono-modules-b,
+              framework: vite,
+              modules: --api hono --auth supabase --storage supabase --observability sentry --jobs inngest,
+            }
+          - {
+              name: vite-hono-bullmq,
+              framework: vite,
+              modules: --api hono --auth firebase --cache redis --jobs bullmq --payments stripe,
+            }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
           - { name: vite-fastapi-supabase, framework: vite, modules: --auth supabase --api fastapi }
           - { name: vite-hono-better-auth, framework: vite, modules: --auth better-auth --api hono }
+          - {
+              name: vite-hono-resend,
+              framework: vite,
+              modules: --auth better-auth --api hono --email resend,
+            }
           - {
               name: vite-fastapi-better-auth,
               framework: vite,
@@ -379,6 +423,24 @@ jobs:
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
             --framework ${{ matrix.framework }} ${{ matrix.modules }} --no-git --no-install --yes
+      # FastAPI implements no module options beyond auth yet, so the CLI must refuse them rather
+      # than generate a frontend that calls endpoints its API lacks.
+      - name: Refuse modules FastAPI does not implement
+        if: matrix.name == 'vite-fastapi'
+        run: |
+          set -euo pipefail
+          for option in "--storage s3" "--cache redis" "--email smtp" "--payments stripe" \
+            "--jobs pg-boss" "--observability otel"; do
+            if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
+              --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
+              --no-git --no-install --yes > "$RUNNER_TEMP/refused.log" 2>&1; then
+              echo "The CLI generated a FastAPI project with $option."
+              exit 1
+            fi
+            grep -q "FastAPI (Python) does not implement" "$RUNNER_TEMP/refused.log" \
+              || { cat "$RUNNER_TEMP/refused.log"; exit 1; }
+            test ! -e "$RUNNER_TEMP/refused"
+          done
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
         run: pnpm install --frozen-lockfile
@@ -607,7 +669,7 @@ jobs:
   # Generates projects with local infrastructure, starts it, and proves the app uses it: service
   # round trips through `pnpm check:services` and a real sign-up, sign-out, and sign-in.
   local-infra:
-    name: local-infra (${{ matrix.infra }}, ${{ matrix.framework }})
+    name: local-infra (${{ matrix.infra }}, ${{ matrix.framework }}, ${{ matrix.api || 'none' }}, ${{ matrix.modules }})
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
@@ -687,6 +749,53 @@ jobs:
               modules: --auth supabase --storage supabase --jobs pg-boss,
               mail-api: "http://127.0.0.1:55424",
             }
+          # A frontend and its API: Better Auth in the frontend's server, the rest in the API.
+          # Better Auth's emails go through the email module to Mailpit.
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --email smtp --observability otel --payments stripe,
+              mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --observability sentry,
+              mail-api: "",
+            }
+          # Each jobs provider, run by the API: a worker for pg-boss and BullMQ, and Inngest's Dev
+          # Server calling the API through the frontend.
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs bullmq,
+              mail-api: "",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs inngest,
+              mail-api: "",
+            }
+          # The API's files in a local folder (STORAGE_DIRECTORY) instead of S3.
+          - {
+              infra: local,
+              framework: vite,
+              api: hono,
+              modules: --auth better-auth --jobs pg-boss,
+              mail-api: "",
+            }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
       BETTER_AUTH_SECRET: ci-only-better-auth-secret-0123456789abcdef
@@ -708,10 +817,15 @@ jobs:
       - name: Generate the project
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
-            --framework ${{ matrix.framework }} --infra ${{ matrix.infra }} ${{ matrix.modules }} --no-git --no-install --yes
+            --framework ${{ matrix.framework }} --api ${{ matrix.api || 'none' }} --infra ${{ matrix.infra }} ${{ matrix.modules }} --no-git --no-install --yes
       - name: Install
         working-directory: ${{ runner.temp }}/generated-app
         run: pnpm install --frozen-lockfile
+      # Better Auth checks that requests come from its own origin, which the browser tests reach
+      # as 127.0.0.1; the frontend's server hosts it, and the API asks it for sessions there.
+      - name: Serve Better Auth at the browser tests' origin
+        if: matrix.framework == 'vite'
+        run: echo "BETTER_AUTH_URL=http://127.0.0.1:3000" >> "$GITHUB_ENV"
       - name: Move Supabase services to unused CI ports
         if: matrix.infra == 'supabase'
         working-directory: ${{ runner.temp }}/generated-app
@@ -833,8 +947,10 @@ jobs:
           E2E_DATABASE: "1"
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts e2e/settings.spec.ts
+          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts \
+            e2e/settings.spec.ts
       - name: Run a background job (the dev server's worker, or Inngest)
+        if: contains(matrix.modules, '--jobs')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_DATABASE: "1"
@@ -850,6 +966,7 @@ jobs:
         env:
           APP_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+          FRONTEND_URL: http://127.0.0.1:3000
         run: |
           nohup pnpm dev > "$RUNNER_TEMP/app.log" 2>&1 &
           for _ in $(seq 90); do curl --silent --fail --output /dev/null http://127.0.0.1:3000/api/health && break; sleep 2; done
@@ -871,7 +988,7 @@ jobs:
           SENTRY_TRACES_SAMPLE_RATE: "1"
         run: pnpm test:e2e e2e/observability.spec.ts
       - name: Sign in only after confirming the email address
-        if: matrix.infra == 'docker' && contains(matrix.modules, '--auth better-auth')
+        if: matrix.infra == 'docker' && matrix.mail-api != '' && contains(matrix.modules, '--auth better-auth')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}
@@ -921,6 +1038,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-local-infra-${{ matrix.infra }}-${{ matrix.framework }}
+          name: playwright-local-infra-${{ matrix.infra }}-${{ matrix.framework }}-${{ matrix.api || 'none' }}-${{ strategy.job-index }}
           path: ${{ runner.temp }}/generated-app/test-results
           if-no-files-found: ignore

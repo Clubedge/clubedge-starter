@@ -4,6 +4,18 @@
   "role": "api",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": [
+    "scripts/check-services.ts",
+    "src/app.test.ts",
+    "src/app.ts",
+    "src/env/production.ts",
+    "src/index.ts",
+    "src/jobs/index.ts",
+    "src/server/account.ts",
+    "src/server/auth.ts",
+    "src/server/index.ts",
+    "src/server/storage.ts"
+  ],
   "deployment": {
     "id": "api",
     "port": 3001,
@@ -35,24 +47,98 @@
         "replace": {
           "src/server/auth.ts": "src/server/variants/auth.better-auth.ts"
         }
+      },
+      "supabase|firebase|appwrite|better-auth": {
+        "files": [
+          "src/routes/account.ts",
+          "src/routes/account.test.ts",
+          "src/server/account.ts",
+          "src/server/users.ts"
+        ]
       }
     },
     "storage": {
+      "s3|supabase": {
+        "files": ["src/server/storage.ts"]
+      },
+      "supabase": {
+        "replace": {
+          "src/server/storage.ts": "src/server/variants/storage.supabase.ts"
+        }
+      },
       "none": {}
     },
     "cache": {
-      "memory": {}
+      "redis": {
+        "files": ["src/server/cache.test.ts"]
+      },
+      "memory": {
+        "replace": {
+          "src/server/cache.ts": "src/server/variants/cache.memory.ts"
+        }
+      }
     },
     "email": {
+      "smtp|resend": {
+        "files": ["src/server/email.ts"]
+      },
+      "resend": {
+        "replace": {
+          "src/server/email.ts": "src/server/variants/email.resend.ts"
+        }
+      },
       "none": {}
     },
     "payments": {
+      "stripe": {
+        "files": [
+          "src/config/plans.ts",
+          "src/routes/billing.test.ts",
+          "src/routes/billing.ts",
+          "src/server/payments.ts"
+        ]
+      },
       "none": {}
     },
     "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": ["src/jobs", "src/routes/jobs.test.ts", "src/routes/jobs.ts", "src/server/jobs.ts"]
+      },
+      "pg-boss|bullmq": {
+        "files": [
+          "src/routes/jobs-run.test.ts",
+          "src/routes/jobs-run.ts",
+          "src/server/jobs.test.ts"
+        ]
+      },
+      "bullmq": {
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.bullmq.ts"
+        }
+      },
+      "inngest": {
+        "files": ["src/routes/inngest.test.ts", "src/routes/inngest.ts"],
+        "replace": {
+          "src/server/jobs.ts": "src/server/variants/jobs.inngest.ts"
+        }
+      },
       "none": {}
     },
     "observability": {
+      "otel|sentry": {
+        "files": [
+          "src/routes/client-errors.test.ts",
+          "src/routes/client-errors.ts",
+          "src/server/observability.test.ts",
+          "src/server/observability.ts",
+          "src/tracing.ts"
+        ]
+      },
+      "sentry": {
+        "replace": {
+          "src/server/observability.ts": "src/server/variants/observability.sentry.ts"
+        }
+      },
       "none": {}
     },
     "deploy": {

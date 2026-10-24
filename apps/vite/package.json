@@ -7,14 +7,19 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env.local dev.mjs",
     "build": "vite build && node build-auth-server.mjs",
-    "start": "vite preview",
+    "start": "node --env-file-if-exists=.env.local server.mjs",
     "typecheck": "tsc --noEmit",
     "check:services": "pnpm --filter @clubedge/api check:services",
     "check:env": "pnpm --filter @clubedge/api check:env"
   },
   "dependencies": {
+    "@clubedge/auth": "workspace:*",
     "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/contract": "workspace:*",
+    "@clubedge/email": "workspace:*",
+    "@clubedge/email-resend": "workspace:*",
+    "@clubedge/email-smtp": "workspace:*",
+    "@clubedge/observability-sentry": "workspace:*",
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
     "appwrite": "^29.1.0",

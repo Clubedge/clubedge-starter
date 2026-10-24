@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Button } from "@clubedge/ui/components/button";
 import { Input } from "@clubedge/ui/components/input";
 import { Label } from "@clubedge/ui/components/label";
@@ -18,21 +18,26 @@ function safeNext(value: string | null): string {
   }
 }
 
+const notices: Record<string, string> = {
+  "reset-sent": "If that email has an account, we sent it a link to reset the password.",
+  "password-updated": "Password updated. Sign in with your new password.",
+  "password-reset": "Your password has been reset. Sign in with your new password.",
+  "account-deleted": "Your account was deleted.",
+};
+
+const checkEmailNotice = "Check your email to confirm your account, then sign in.";
+
 export function LoginPage() {
   const navigate = useNavigate();
-  const params = new URLSearchParams(window.location.search);
+  // Read on each render: signing up moves to /login?check-email=1 on the same page.
+  const search = useRouterState({ select: (state) => state.location.searchStr });
+  const params = new URLSearchParams(search);
   const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [signup] = useState(params.get("mode") === "signup");
+  const signup = params.get("mode") === "signup";
   const [message, setMessage] = useState(
-    params.get("notice") === "reset-sent"
-      ? "If that email has an account, we sent it a link to reset the password."
-      : params.get("notice") === "password-updated"
-        ? "Password updated. Sign in with your new password."
-        : params.get("notice") === "password-reset"
-          ? "Your password has been reset. Sign in with your new password."
-          : "",
+    params.has("check-email") ? checkEmailNotice : (notices[params.get("notice") ?? ""] ?? ""),
   );
   const [error, setError] = useState(
     params.get("error") === "rate-limited"
@@ -76,8 +81,12 @@ export function LoginPage() {
           `${window.location.origin}/login?next=${encodeURIComponent(next)}`,
         );
         if (result.needsConfirmation) {
-          setMessage("Check your email to confirm your account, then sign in.");
+          setMessage(checkEmailNotice);
+          setPassword("");
           setBusy(false);
+          const query = new URLSearchParams({ "check-email": "1" });
+          if (next !== "/dashboard") query.set("next", next);
+          await navigate({ href: `/login?${query}` });
           return;
         }
       } else {
@@ -88,9 +97,7 @@ export function LoginPage() {
     } catch (cause) {
       setBusy(false);
       if (cause instanceof Error && cause.name === "EmailVerificationRequiredError") {
-        setError(
-          "Your email is not verified. Check your inbox or try signing in again for a new link.",
-        );
+        setError("Confirm your email address first: open the link in the email we sent you.");
       } else if (cause instanceof Error && cause.name === "EmailVerificationDeliveryError") {
         setError(
           "Your account was created, but we could not send the verification email. Sign in to request another link.",

@@ -9,6 +9,7 @@ import { LandingPage } from "@/routes/index";
 import { LoginPage } from "@/routes/login";
 import { ForgotPasswordPage } from "@/routes/forgot-password";
 import { ResetPasswordPage } from "@/routes/reset-password";
+import { SettingsPage } from "@/routes/settings";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -49,12 +50,19 @@ export const dashboardRoute = createRoute({
   component: DashboardPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
   dashboardRoute,
+  settingsRoute,
 ]);
 export const router = createRouter({
   routeTree,

@@ -51,9 +51,10 @@ export default defineConfig({
       // A placeholder unless set, so pages render without a database.
       DATABASE_URL:
         process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
-      // Next.js reads NEXT_PUBLIC_APP_URL; TanStack Start reads APP_URL.
+      // Next.js reads NEXT_PUBLIC_APP_URL; TanStack Start reads APP_URL; an API, FRONTEND_URL.
       NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000",
       APP_URL: "http://127.0.0.1:3000",
+      FRONTEND_URL: "http://127.0.0.1:3000",
       NODE_ENV: "development",
     },
   })),

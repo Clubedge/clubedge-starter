@@ -8,6 +8,7 @@ overrides:
   '@grpc/grpc-js': ^1.13.6
   esbuild: ^0.25.0
   fast-xml-parser: ^5.10.1
+  undici@>=6.23.0 <6.29.1: ^6.29.1
 
 importers:
 
@@ -46,6 +47,12 @@ importers:
       '@clubedge/auth-supabase':
         specifier: workspace:*
         version: link:../../packages/auth-supabase
+      '@clubedge/cache':
+        specifier: workspace:*
+        version: link:../../packages/cache
+      '@clubedge/cache-redis':
+        specifier: workspace:*
+        version: link:../../packages/cache-redis
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract
@@ -55,9 +62,57 @@ importers:
       '@clubedge/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@clubedge/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@clubedge/email-resend':
+        specifier: workspace:*
+        version: link:../../packages/email-resend
+      '@clubedge/email-smtp':
+        specifier: workspace:*
+        version: link:../../packages/email-smtp
+      '@clubedge/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
+      '@clubedge/jobs-bullmq':
+        specifier: workspace:*
+        version: link:../../packages/jobs-bullmq
+      '@clubedge/jobs-inngest':
+        specifier: workspace:*
+        version: link:../../packages/jobs-inngest
+      '@clubedge/jobs-pg-boss':
+        specifier: workspace:*
+        version: link:../../packages/jobs-pg-boss
+      '@clubedge/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@clubedge/observability-otel':
+        specifier: workspace:*
+        version: link:../../packages/observability-otel
+      '@clubedge/observability-sentry':
+        specifier: workspace:*
+        version: link:../../packages/observability-sentry
+      '@clubedge/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
+      '@clubedge/payments-stripe':
+        specifier: workspace:*
+        version: link:../../packages/payments-stripe
+      '@clubedge/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@clubedge/storage-s3':
+        specifier: workspace:*
+        version: link:../../packages/storage-s3
+      '@clubedge/storage-supabase':
+        specifier: workspace:*
+        version: link:../../packages/storage-supabase
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.13)
+      better-auth:
+        specifier: ^1.7.7
+        version: 1.7.7(@opentelemetry/api@1.9.1)(@tanstack/react-start@1.168.61(crossws@0.4.15(srvx@1.0.5))(esbuild@0.25.12)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rolldown@1.2.13)(rollup@4.64.2)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)))(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.5.8)(@opentelemetry/api@1.9.1)(@types/pg@8.15.6)(@upstash/redis@1.39.0)(kysely@0.29.6)(pg@8.23.1)(postgres@3.4.9))(next@16.4.3(@opentelemetry/api@1.9.1)(@playwright/test@1.64.0)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(pg@8.23.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@5.0.3(@opentelemetry/api@1.9.1)(@types/node@22.20.5)(vite@8.3.4(@types/node@22.20.5)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)))
       firebase-admin:
         specifier: ^14.5.0
         version: 14.5.0
@@ -219,12 +274,27 @@ importers:
 
   apps/vite:
     dependencies:
+      '@clubedge/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@clubedge/auth-supabase':
         specifier: workspace:*
         version: link:../../packages/auth-supabase
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@clubedge/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@clubedge/email-resend':
+        specifier: workspace:*
+        version: link:../../packages/email-resend
+      '@clubedge/email-smtp':
+        specifier: workspace:*
+        version: link:../../packages/email-smtp
+      '@clubedge/observability-sentry':
+        specifier: workspace:*
+        version: link:../../packages/observability-sentry
       '@clubedge/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -5299,8 +5369,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@6.29.0:
-    resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
+  undici@6.29.1:
+    resolution: {integrity: sha512-EvRlUt/QqAEvXdQeRMYUfwOQsfzpDztykrG2owGEE/rBOBoYv9uF39ZzsNDh4lTFHhTr2XOZjKkYgueD12ZmGA==}
     engines: {node: '>=18.17'}
 
   unenv@2.0.0-rc.24:
@@ -7747,7 +7817,7 @@ snapshots:
     dependencies:
       progress: 2.0.3
       proxy-from-env: 1.1.0
-      undici: 6.29.0
+      undici: 6.29.1
       which: 2.0.2
     optionalDependencies:
       '@sentry/cli-darwin': 3.8.0
@@ -9643,7 +9713,7 @@ snapshots:
   node-appwrite@30.0.1:
     dependencies:
       json-bigint: 1.0.0
-      undici: 6.29.0
+      undici: 6.29.1
 
   node-domexception@1.0.0: {}
 
@@ -10311,7 +10381,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@6.29.0: {}
+  undici@6.29.1: {}
 
   unenv@2.0.0-rc.24:
     dependencies:

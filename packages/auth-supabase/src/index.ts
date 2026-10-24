@@ -31,6 +31,18 @@ export async function getSupabaseBearerUser(
   };
 }
 
+/**
+ * A Supabase client that acts as the user who holds a bearer token, for an API that receives
+ * the browser's access token instead of session cookies. Row-level security policies, such as
+ * Storage bucket policies, see that user; without a token the client acts as anonymous.
+ */
+export function createSupabaseBearerClient(url: string, publishableKey: string, token?: string) {
+  return createClient(url, publishableKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),
+  });
+}
+
 /** A request-scoped Supabase client. Storage adapters can reuse it for user-scoped access. */
 export function createSupabaseServerClient({
   url,

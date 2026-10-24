@@ -4,6 +4,13 @@
   "role": "frontend",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
+  "conditional": [
+    "auth.server.mjs",
+    "server.mjs",
+    "src/components/route-error.tsx",
+    "src/main.tsx",
+    "src/routes/dashboard.tsx"
+  ],
   "deployment": {
     "id": "web",
     "port": 3000,
@@ -21,6 +28,7 @@
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
+          "src/routes/settings.tsx",
           "src/variants/router.supabase.tsx",
           "src/components/dashboard/variants/account-button.supabase.tsx",
           "src/variants/auth-enabled.supabase.ts"
@@ -39,6 +47,7 @@
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
+          "src/routes/settings.tsx",
           "src/variants/auth.firebase.ts",
           "src/variants/router.supabase.tsx",
           "src/variants/api.supabase.ts",
@@ -59,6 +68,7 @@
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
+          "src/routes/settings.tsx",
           "src/variants/auth.appwrite.ts",
           "src/variants/router.supabase.tsx",
           "src/variants/api.supabase.ts",
@@ -81,6 +91,7 @@
           "src/routes/login.tsx",
           "src/routes/forgot-password.tsx",
           "src/routes/reset-password.tsx",
+          "src/routes/settings.tsx",
           "src/variants/auth.better-auth.ts",
           "src/variants/router.supabase.tsx",
           "src/variants/api.supabase.ts",
@@ -95,6 +106,34 @@
           "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
         }
       }
+    },
+    "email": {
+      "smtp": {},
+      "resend": {},
+      "none": {}
+    },
+    "jobs": {
+      "pg-boss|bullmq|inngest": {
+        "files": ["src/components/jobs"]
+      },
+      "none": {}
+    },
+    "payments": {
+      "stripe": {
+        "files": ["src/components/billing"]
+      },
+      "none": {}
+    },
+    "observability": {
+      "otel|sentry": {
+        "files": ["src/components/error-reporting.tsx"]
+      },
+      "sentry": {
+        "replace": {
+          "src/components/error-reporting.tsx": "src/components/variants/error-reporting.sentry.tsx"
+        }
+      },
+      "none": {}
     },
     "deploy": {
       "docker": {},

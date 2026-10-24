@@ -186,4 +186,30 @@ describe("createInngestJobs", () => {
     const body = (await response.json()) as { function_count?: number };
     expect(body.function_count).toBe(1);
   });
+  it("registers at serveOrigin when a proxy in front of the app changes its URL", async () => {
+    const registered: string[] = [];
+    const fetcher = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input instanceof Request ? input.url : input));
+      if (url.pathname === "/fn/register") {
+        registered.push(String((JSON.parse(String(init?.body)) as { url?: string }).url));
+        return Response.json({ ok: true, modified: true });
+      }
+      return new Response("not found", { status: 404 });
+    }) as typeof fetch;
+    const queue = createInngestJobs({
+      jobs: [greet],
+      dev: "http://inngest.test",
+      serveOrigin: "http://127.0.0.1:3000",
+      fetch: fetcher,
+    });
+    // The request as the API sees it, behind the frontend's proxy.
+    await queue.handler(
+      new Request("http://127.0.0.1:3001/api/inngest", {
+        method: "PUT",
+        headers: { host: "127.0.0.1:3001" },
+      }),
+    );
+    expect(registered).toHaveLength(1);
+    expect(registered[0]).toMatch(/^http:\/\/127\.0\.0\.1:3000\/api\/inngest/);
+  });
 });

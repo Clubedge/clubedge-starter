@@ -2,6 +2,16 @@
 # language, and proves it by passing the conformance suite (src/conformance.ts); every frontend
 # calls it through the client generated from this file (src/schema.ts, `pnpm generate`).
 # Change the API here first, then in each stack.
+#
+# An operation that belongs to a module (payments, jobs, ...) names it with
+# `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
+# answers 404 not_found as for any unknown path; the conformance suite checks both cases.
+#
+# An optional part of a module also names itself with `x-clubedge-capability: <id>`, such as
+# the account settings (`account`, in the auth module). An API implements a capability fully or
+# not at all, and its conformance check says which ones it implements: without the capability,
+# its operations answer 404 like a missing module's. The Hono API implements `account`; the
+# FastAPI one does not yet.
 openapi: 3.1.0
 info:
   title: Clubedge API
@@ -49,12 +59,442 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+  /api/account:
+    get:
+      operationId: getAccount
+      summary: The signed-in user's account settings, for the settings page. Never cached.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: The account.
+          headers:
+            Cache-Control:
+              description: no-store.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+  /api/account/profile:
+    post:
+      operationId: updateProfile
+      summary: Sets the display name the app shows, or clears it with an empty one.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "204":
+          description: Saved.
+        "400":
+          description: Not a valid profile (code invalid_input).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+  /api/account/delete:
+    post:
+      operationId: deleteAccount
+      summary: >-
+        Deletes the signed-in user, after checking the password, with the data the app keeps for
+        it; the user's sessions end with it. Password checks are limited to 10 a minute per user,
+        and refused while the limit cannot be checked.
+      x-clubedge-module: auth
+      x-clubedge-capability: account
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeletion"
+      responses:
+        "204":
+          description: Deleted.
+        "400":
+          description: No password (code invalid_input).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The password is not correct (code invalid_password).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >-
+            A subscription is still active (code active_subscription); cancel it first, since a
+            deleted account cannot manage its billing.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: >-
+            Deleting accounts is not set up on this server (code not_configured), or the rate limit
+            cannot be checked now (code unavailable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/client-errors:
+    get:
+      operationId: getBrowserErrorReporting
+      summary: How the browser reports its errors, read at runtime so builds never bake it in.
+      x-clubedge-module: observability
+      responses:
+        "200":
+          description: Post errors back here, send them to Sentry, or do not report them.
+          headers:
+            Cache-Control:
+              description: no-store, so a new setting applies on the next page load.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrowserErrorReporting"
+    post:
+      operationId: reportBrowserError
+      summary: Reports an error from the browser like a server error. 30 a minute per address.
+      x-clubedge-module: observability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientErrorReport"
+      responses:
+        "204":
+          description: Reported.
+        "400":
+          description: Not an error report (code invalid_report).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+  /api/jobs:
+    get:
+      operationId: getJobsStatus
+      summary: How jobs run, and the current user's recent sample jobs. Never cached.
+      x-clubedge-module: jobs
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: >-
+            The runner, and the sample jobs queued by the signed-in user (or by anyone signed
+            out), newest first; jobs is null when the queue could not be read.
+          headers:
+            Cache-Control:
+              description: no-store, so each page load lists the jobs as they are.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobsStatus"
+  /api/jobs/sample:
+    post:
+      operationId: runSampleJob
+      summary: Queues the sample job for the current user; repeats within seconds are ignored.
+      x-clubedge-module: jobs
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "202":
+          description: Queued, or ignored as a repeat (id null).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SampleJobQueued"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "503":
+          description: The queue could not be reached (code unavailable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/jobs/run:
+    get:
+      operationId: runDueJobs
+      summary: >-
+        Runs the jobs that are due, for a scheduler where no worker runs. Only providers that
+        run jobs in the API (pg-boss, BullMQ) have it.
+      x-clubedge-module: jobs
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: The jobs that finished, and the attempts that failed, retries included.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DueJobsRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: CRON_SECRET is not set, so no scheduler may run jobs (code not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/inngest:
+    get:
+      operationId: inspectInngest
+      summary: Inngest's protocol (opaque here); only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: Inngest reads the app's jobs. The SDK defines the answer.
+    put:
+      operationId: syncInngest
+      summary: Inngest's protocol (opaque here); only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: Registers the app's jobs with Inngest. The SDK defines the answer.
+    post:
+      operationId: runInngestJob
+      summary: >-
+        Inngest's protocol (opaque here): Inngest calls it to run a job, signed with the signing
+        key. Only the Inngest provider has it.
+      x-clubedge-module: jobs
+      responses:
+        default:
+          description: The job's result. The SDK defines the answer.
+  /api/billing:
+    get:
+      operationId: getBilling
+      summary: The plans, and the signed-in user's subscription. Never cached.
+      x-clubedge-module: payments
+      security:
+        - bearerAuth: []
+        - {}
+      responses:
+        "200":
+          description: >-
+            Billing for the current user; subscription is null when signed out, when the user
+            never subscribed, or while payments are not configured.
+          headers:
+            Cache-Control:
+              description: no-store, so a new subscription shows on the next load.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Billing"
+  /api/billing/checkout:
+    post:
+      operationId: startCheckout
+      summary: Starts checkout for a plan, on the payment provider's hosted page.
+      x-clubedge-module: payments
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "200":
+          description: Send the browser to this URL; it comes back to the frontend's dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+        "400":
+          description: No such plan (code invalid_plan).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+  /api/billing/portal:
+    post:
+      operationId: openBillingPortal
+      summary: Opens the payment provider's billing portal, where the user manages billing.
+      x-clubedge-module: payments
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        description: An empty JSON object; like every mutating operation, it takes only JSON.
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Send the browser to this URL; it comes back to the frontend's dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingRedirect"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The user never subscribed, so has no billing account (code no_billing_account).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+  /api/webhooks/payments:
+    post:
+      operationId: receivePaymentWebhook
+      summary: >-
+        The payment provider's webhook, up to 1 MiB. The body is read raw, because the signature
+        (Stripe-Signature) covers its exact bytes. Each event is applied once.
+      x-clubedge-module: payments
+      parameters:
+        - name: Stripe-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Received; applied, ignored as irrelevant, or a duplicate of an applied event.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookReceipt"
+        "400":
+          description: Not signed by the provider (code invalid_signature).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          description: Applying the event failed, so the provider retries it (code webhook_failed).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
 components:
+  # Answers that module operations share, each with its Error code.
+  responses:
+    Unauthorized:
+      description: Not signed in (code unauthorized).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotConfigured:
+      description: The module's provider is not configured on this server (code not_configured).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    TooManyRequests:
+      description: Too many requests from this client (code rate_limited).
+      headers:
+        Retry-After:
+          description: Seconds until the client may try again.
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    PayloadTooLarge:
+      description: The request body is over the operation's limit (code payload_too_large).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnsupportedMediaType:
+      description: >-
+        The body is not JSON (code unsupported_media_type). Mutating operations take only JSON,
+        which another site cannot make a browser send without the API's CORS approval.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cronSecret:
+      type: http
+      scheme: bearer
+      description: The API's CRON_SECRET.
   schemas:
     Health:
       type: object
@@ -94,6 +534,35 @@ components:
           type: string
         displayName:
           type: [string, "null"]
+    Account:
+      type: object
+      required: [email, displayName, canDeleteAccount]
+      properties:
+        email:
+          type: string
+        displayName:
+          type: [string, "null"]
+          description: The name the user chose in the app's settings, kept in the app's database.
+        canDeleteAccount:
+          type: boolean
+          description: >-
+            Whether this server can delete accounts; some providers need a secret key for it.
+    ProfileUpdate:
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: string
+          maxLength: 80
+          description: Trimmed; an empty name clears it.
+    AccountDeletion:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
     Error:
       type: object
       required: [error]
@@ -107,3 +576,167 @@ components:
               description: Stable and machine-readable, such as not_found.
             message:
               type: string
+    BrowserErrorReporting:
+      oneOf:
+        - type: object
+          description: Post errors to /api/client-errors.
+          required: [provider]
+          properties:
+            provider:
+              type: string
+              enum: [endpoint]
+        - type: object
+          description: Send errors to Sentry with its browser SDK; a DSN is public by design.
+          required: [provider, dsn]
+          properties:
+            provider:
+              type: string
+              enum: [sentry]
+            dsn:
+              type: string
+            environment:
+              type: string
+            release:
+              type: string
+        - type: object
+          description: Do not report browser errors.
+          required: [provider]
+          properties:
+            provider:
+              type: string
+              enum: [none]
+    ClientErrorReport:
+      type: object
+      description: An uncaught error, an unhandled rejection, or a render error a boundary caught.
+      required: [kind, name, message, path]
+      properties:
+        kind:
+          type: string
+          enum: [error, unhandledrejection, render]
+        name:
+          type: string
+        message:
+          type: string
+        stack:
+          type: string
+        path:
+          type: string
+          description: The page's path, without its query string.
+    JobsStatus:
+      type: object
+      required: [runner, jobs]
+      properties:
+        runner:
+          type: string
+          description: >-
+            Where jobs run: the API's own worker, a scheduler calling /api/jobs/run, or a jobs
+            service (Inngest) calling the API.
+          enum: [worker, scheduler, service]
+        jobs:
+          oneOf:
+            - type: array
+              items:
+                $ref: "#/components/schemas/JobRun"
+            - type: "null"
+    JobRun:
+      type: object
+      required: [id, name, state, createdAt, completedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        state:
+          type: string
+          enum: [queued, active, retrying, completed, failed, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+    SampleJobQueued:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: [string, "null"]
+          description: The queued job's id, or null when a repeat was ignored.
+    DueJobsRun:
+      type: object
+      required: [completed, failed]
+      properties:
+        completed:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+    Billing:
+      type: object
+      required: [configured, plans, subscription]
+      properties:
+        configured:
+          type: boolean
+          description: Whether checkout and webhooks work, that is, the provider's keys are set.
+        plans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Plan"
+        subscription:
+          oneOf:
+            - $ref: "#/components/schemas/Subscription"
+            - type: "null"
+    Plan:
+      type: object
+      required: [id, name, description]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+    Subscription:
+      type: object
+      description: The user's most recently updated subscription.
+      required: [planId, status, currentPeriodEnd, cancelAtPeriodEnd, entitled]
+      properties:
+        planId:
+          type: [string, "null"]
+          description: One of the plans' ids, or null for a price no plan uses.
+        status:
+          type: string
+          enum:
+            [active, trialing, past_due, unpaid, paused, incomplete, incomplete_expired, canceled]
+        currentPeriodEnd:
+          type: [string, "null"]
+          format: date-time
+        cancelAtPeriodEnd:
+          type: boolean
+        entitled:
+          type: boolean
+          description: Whether the subscription grants the paid features (active or trialing).
+    CheckoutRequest:
+      type: object
+      required: [planId]
+      properties:
+        planId:
+          type: string
+    BillingRedirect:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+    WebhookReceipt:
+      type: object
+      required: [received, result]
+      properties:
+        received:
+          type: boolean
+          enum: [true]
+        result:
+          type: string
+          enum: [applied, ignored, duplicate]

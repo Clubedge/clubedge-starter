@@ -18,12 +18,27 @@ if (
 ) {
   throw new Error("API_URL must be an HTTP(S) origin without credentials, a path, or query.");
 }
-// Only these contract endpoints are proxied. The upstream host comes from API_URL;
-// request input can select a fixed path, but can never supply the request URL.
+// Only these contract endpoints are proxied. The upstream host comes from API_URL; request
+// input can select a fixed path and add a query string, but can never supply the request URL.
 const apiRoutes = new Map([
   ["GET /api/health", "/api/health"],
   ["GET /api/ready", "/api/ready"],
   ["GET /api/session", "/api/session"],
+  ["GET /api/account", "/api/account"], // clubedge:only auth!=none
+  ["POST /api/account/profile", "/api/account/profile"], // clubedge:only auth!=none
+  ["POST /api/account/delete", "/api/account/delete"], // clubedge:only auth!=none
+  ["GET /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
+  ["POST /api/client-errors", "/api/client-errors"], // clubedge:only observability!=none
+  ["GET /api/jobs", "/api/jobs"], // clubedge:only jobs!=none
+  ["POST /api/jobs/sample", "/api/jobs/sample"], // clubedge:only jobs!=none
+  ["GET /api/jobs/run", "/api/jobs/run"], // clubedge:only jobs=pg-boss|bullmq
+  ["GET /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["PUT /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["POST /api/inngest", "/api/inngest"], // clubedge:only jobs=inngest
+  ["GET /api/billing", "/api/billing"], // clubedge:only payments=stripe
+  ["POST /api/billing/checkout", "/api/billing/checkout"], // clubedge:only payments=stripe
+  ["POST /api/billing/portal", "/api/billing/portal"], // clubedge:only payments=stripe
+  ["POST /api/webhooks/payments", "/api/webhooks/payments"], // clubedge:only payments=stripe
 ]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -57,9 +72,11 @@ function proxy(request, response) {
   }
 
   let upstreamPath;
+  let search = "";
   try {
-    const requestPath = new URL(request.url ?? "/", "http://frontend.invalid").pathname;
-    upstreamPath = apiRoutes.get(`${request.method} ${requestPath}`);
+    const requestUrl = new URL(request.url ?? "/", "http://frontend.invalid");
+    upstreamPath = apiRoutes.get(`${request.method} ${requestUrl.pathname}`);
+    search = requestUrl.search;
   } catch {
     response.writeHead(400);
     response.end("Bad request.");
@@ -87,7 +104,7 @@ function proxy(request, response) {
       hostname: apiTarget.hostname,
       port: apiTarget.port || undefined,
       method: request.method,
-      path: upstreamPath,
+      path: `${upstreamPath}${search}`,
       headers,
     },
     (upstreamResponse) => {

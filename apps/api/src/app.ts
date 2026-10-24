@@ -1,7 +1,29 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { ApiError, Health, Ready, Session, User } from "@clubedge/contract";
+import type { Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError } from "@clubedge/core";
+import { apiError } from "@/http";
+import type { CreateRateLimiter } from "@/rate-limit";
+// clubedge:if auth!=none
+import { accountRoutes, type AccountService } from "@/routes/account";
+// clubedge:end
+// clubedge:if observability!=none
+import type { BrowserErrorReporting } from "@clubedge/observability";
+import { clientErrorRoutes } from "@/routes/client-errors";
+import { requestTracing } from "@/tracing";
+// clubedge:end
+// clubedge:if jobs!=none
+import { jobsRoutes, type BackgroundJobs } from "@/routes/jobs";
+// clubedge:end
+// clubedge:if jobs=pg-boss|bullmq
+import { jobsRunRoutes } from "@/routes/jobs-run";
+// clubedge:end
+// clubedge:if jobs=inngest
+import { inngestRoutes } from "@/routes/inngest";
+// clubedge:end
+// clubedge:if payments!=none
+import { billingRoutes, type BillingDependencies } from "@/routes/billing";
+// clubedge:end
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -9,14 +31,30 @@ export interface ApiDependencies {
   frontendOrigin?: string;
   isReady(): Promise<boolean>;
   getCurrentUser(request: Request): Promise<User | null>;
+  /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
+  createRateLimiter?: CreateRateLimiter;
+  // clubedge:if auth!=none
+  /** The account settings (src/server/account); they answer 503 not_configured when absent. */
+  account?: AccountService;
+  // clubedge:end
+  // clubedge:if observability!=none
+  /** How the browser reports its errors (src/server/observability); not at all when absent. */
+  browserErrorReporting?(): BrowserErrorReporting;
+  // clubedge:end
+  // clubedge:if jobs!=none
+  /** Background jobs (src/server/jobs); their routes answer 404 when absent. */
+  jobs?: BackgroundJobs;
+  // clubedge:end
+  // clubedge:if payments!=none
+  /** Billing with the payment provider (src/server/payments); not configured when absent. */
+  payments?: BillingDependencies;
+  // clubedge:end
 }
-
-const notFound: ApiError = { error: { code: "not_found", message: "No such API endpoint." } };
-const internal: ApiError = { error: { code: "internal_error", message: "Something went wrong." } };
 
 /** The API, implementing packages/contract/openapi.yaml. */
 export function createApp(dependencies: ApiDependencies) {
   const app = new Hono();
+  app.use("/api/*", requestTracing); // clubedge:only observability!=none
   app.use(
     "/api/*",
     cors({
@@ -45,10 +83,31 @@ export function createApp(dependencies: ApiDependencies) {
     c.json<Session>({ user: await dependencies.getCurrentUser(c.req.raw) }),
   );
 
-  app.notFound((c) => c.json(notFound, 404));
+  // clubedge:if auth!=none
+  app.route("/", accountRoutes(dependencies));
+  // clubedge:end
+
+  // clubedge:if observability!=none
+  app.route("/", clientErrorRoutes(dependencies));
+  // clubedge:end
+  // clubedge:if jobs!=none
+  if (dependencies.jobs) {
+    app.route("/", jobsRoutes(dependencies.jobs, dependencies));
+    app.route("/", jobsRunRoutes(dependencies.jobs)); // clubedge:only jobs=pg-boss|bullmq
+    app.route("/", inngestRoutes(dependencies.jobs)); // clubedge:only jobs=inngest
+  }
+  // clubedge:end
+  // clubedge:if payments!=none
+  app.route("/", billingRoutes(dependencies));
+  // clubedge:end
+
+  app.notFound((c) => apiError(c, 404, "not_found", "No such API endpoint."));
   app.onError((error, c) => {
-    reportError(error);
-    return c.json(internal, 500);
+    reportError(error, {
+      message: "Request failed",
+      attributes: { "http.request.method": c.req.method, "url.path": c.req.path },
+    });
+    return apiError(c, 500, "internal_error", "Something went wrong.");
   });
   return app;
 }

@@ -10,9 +10,10 @@ await build({
   target: "node22",
   format: "esm",
   sourcemap: true,
-  // Some dependencies still call require(); give the ESM bundle one.
+  // Some dependencies still call require(); give the ESM bundle one. The import is renamed
+  // because bundled modules (Sentry's) import createRequire themselves, at the same top level.
   banner: {
-    js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+    js: 'import { createRequire as createBannerRequire } from "node:module"; const require = createBannerRequire(import.meta.url);',
   },
   logLevel: "info",
 });
