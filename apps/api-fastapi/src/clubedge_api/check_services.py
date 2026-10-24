@@ -6,6 +6,7 @@ It reads the API's .env.local like the API does, so it confirms the API's own se
 import asyncio
 import os
 import sys
+import time  # clubedge:only cache=redis
 from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Any
 
 import psycopg
 
+from clubedge_api.cache import RedisCache  # clubedge:only cache=redis
 from clubedge_api.db import is_neon_pooled_url
 from clubedge_api.payments_stripe import StripePayments  # clubedge:only payments=stripe
 from clubedge_api.settings import load_env_file
@@ -41,6 +43,7 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
     """Every service this API uses, for the modules this project has."""
     database_url = env.get("DATABASE_URL", "").strip()
     direct_url = env.get("DATABASE_URL_DIRECT", "").strip()
+    redis_url = env.get("REDIS_URL", "").strip()  # clubedge:only cache=redis
 
     async def postgres() -> str:
         async with await psycopg.AsyncConnection.connect(database_url, connect_timeout=5) as db:
@@ -58,6 +61,16 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
             row = await (await db.execute("select current_database()")).fetchone()
         return f'connected to database "{row[0] if row else ""}" through DATABASE_URL_DIRECT'
 
+    # clubedge:if cache=redis
+    async def redis() -> str:
+        cache = RedisCache(redis_url)
+        value = {"checkedAt": time.time_ns()}
+        await cache.set("check-services", value, 30)
+        if await cache.get("check-services") != value:
+            raise RuntimeError("read back a different value")
+        return "wrote and read a cached value"
+
+    # clubedge:end
     # clubedge:if storage=s3 && infra=local
     storage_directory = env.get("STORAGE_DIRECTORY", "").strip()
 
@@ -150,6 +163,13 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
             postgres_direct,
             skip_unless(direct_url, "DATABASE_URL_DIRECT is not set; migrations use DATABASE_URL"),
         ),
+        # clubedge:if cache=redis
+        Check(
+            "Redis",
+            redis,
+            skip_unless(redis_url, "REDIS_URL is not set; the API uses process memory"),
+        ),
+        # clubedge:end
         # clubedge:if storage=s3 && infra=local
         Check(
             "Local folder storage",

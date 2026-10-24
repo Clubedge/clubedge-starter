@@ -247,7 +247,7 @@ Use `rediss://` for TLS connections such as Upstash and `redis://` for an unencr
 
 Without `REDIS_URL`, the rate limiter and cache use process memory. Memory limits apply per server process, so configure Redis when you run several instances or serverless functions. Never commit a real Redis URL or password.
 
-The API's rate limits use Redis, so `REDIS_URL` belongs in `apps/api/.env.local` and on the API's service. A limit answers `429` with `Retry-After`; when Redis is unreachable, requests go through and the failure is reported. <!-- clubedge:only api=hono -->
+The API's rate limits use Redis, so `REDIS_URL` belongs in `apps/api/.env.local` and on the API's service. A limit answers `429` with `Retry-After`; when Redis is unreachable, requests go through and the failure is reported. <!-- clubedge:only api!=none -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if cache=memory -->

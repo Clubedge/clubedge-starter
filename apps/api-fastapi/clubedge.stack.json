@@ -87,7 +87,14 @@
       "none": {}
     },
     "cache": {
-      "memory": {}
+      "redis": {
+        "files": ["tests/test_cache.py"]
+      },
+      "memory": {
+        "replace": {
+          "src/clubedge_api/cache.py": "src/clubedge_api/variants/cache_memory.py"
+        }
+      }
     },
     "email": {
       "smtp|resend": {
