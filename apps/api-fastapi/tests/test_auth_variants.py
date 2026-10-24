@@ -1,4 +1,5 @@
-"""Each auth provider's account deletion, against stand-ins for its HTTP API or the database.
+"""Each auth provider's account deletion, and Better Auth's session check, against stand-ins for
+the provider's HTTP API or the database.
 
 The providers are variants of auth.py, so only the Starter repository has them all: this file
 stays out of generated projects (clubedge.template.json's exclude).
@@ -11,6 +12,7 @@ from typing import Any
 
 import httpx
 import pytest
+from fastapi import Request
 
 from clubedge_api.routes.account import ProviderAccountDeletion
 from clubedge_api.variants import auth_appwrite, auth_better_auth, auth_firebase, auth_supabase
@@ -337,3 +339,55 @@ def test_better_auth_deletes_the_user_once_the_password_matches(
     else:
         assert log == []
         assert db.statements == [select]
+
+
+# Better Auth's sessions: the frontend's server checks them, from the cookie or the bearer token.
+
+CREDENTIALS = ("cookie", "authorization")
+SESSION = {"user": {"id": USER["id"], "email": USER["email"], "name": USER["displayName"]}}
+
+
+def session_request(headers: dict[str, str]) -> Request:
+    """A request to the API carrying these headers."""
+    raw = [(name.encode(), value.encode()) for name, value in headers.items()]
+    return Request({"type": "http", "headers": raw})
+
+
+def better_auth_session(sent: list[dict[str, str]]) -> Handler:
+    """Better Auth's get-session, answering with USER's session, keeping each one's credentials."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append({name: value for name, value in request.headers.items() if name in CREDENTIALS})
+        return httpx.Response(200, json=SESSION)
+
+    return handler
+
+
+@pytest.mark.parametrize(
+    "credentials",
+    [
+        {"cookie": "better-auth.session_token=token.signature"},
+        # A client without the cookie, such as a mobile app, sends the session token instead.
+        {"authorization": "Bearer token.signature"},
+    ],
+)
+def test_better_auth_asks_for_the_session_with_the_cookie_or_token(
+    monkeypatch: pytest.MonkeyPatch, credentials: dict[str, str]
+) -> None:
+    monkeypatch.setenv("BETTER_AUTH_URL", "http://frontend.test/")
+    log: list[str] = []
+    sent: list[dict[str, str]] = []
+    serve(monkeypatch, log, better_auth_session(sent))
+    assert asyncio.run(auth_better_auth.get_current_user(session_request(credentials))) == USER
+    assert log == ["GET /api/auth/get-session"]
+    assert sent == [credentials]
+
+
+def test_better_auth_asks_nothing_without_a_cookie_or_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("BETTER_AUTH_URL", "http://frontend.test")
+    log: list[str] = []
+    serve(monkeypatch, log, better_auth_session([]))
+    assert asyncio.run(auth_better_auth.get_current_user(session_request({}))) is None
+    assert log == []

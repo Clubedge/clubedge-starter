@@ -9,11 +9,18 @@ export async function getCurrentUser(
 ): Promise<User | null> {
   void _config;
   const authUrl = process.env.BETTER_AUTH_URL;
-  const cookie = request.headers.get("cookie");
-  if (!authUrl || !cookie) return null;
+  // The session's cookie, or its token as a bearer token from a client without the cookie, such
+  // as a mobile app, which Better Auth's bearer plugin takes.
+  const headers = Object.fromEntries(
+    ["cookie", "authorization"].flatMap((name) => {
+      const value = request.headers.get(name);
+      return value ? [[name, value]] : [];
+    }),
+  );
+  if (!authUrl || Object.keys(headers).length === 0) return null;
   try {
     const response = await fetch(new URL("/api/auth/get-session", authUrl), {
-      headers: { cookie },
+      headers,
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return null;
