@@ -3,7 +3,8 @@
 They receive what they need from the composition root (server.py), so tests can pass stand-ins.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -14,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
+from clubedge_api import telemetry  # clubedge:only observability!=none
 from clubedge_api.contract import GetCurrentUser
 from clubedge_api.http import NO_STORE, ApiError, api_error
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
@@ -42,6 +44,12 @@ class ApiDependencies:
     # The account settings (account.py); they answer 503 not_configured when absent.
     account: AccountService | None = None
     # clubedge:end
+    # clubedge:if observability!=none
+    # How the browser reports its errors (observability.py); not at all when absent.
+    browser_error_reporting: Callable[[], telemetry.BrowserErrorReporting] | None = None
+    # The observability provider (observability.py), which traces each request; none when absent.
+    observability: telemetry.Observability | None = None
+    # clubedge:end
     # clubedge:if jobs!=none
     # Background jobs (background_jobs.py); their routes answer 404 when absent.
     jobs: BackgroundJobs | None = None
@@ -55,8 +63,20 @@ class ApiDependencies:
 def create_app(dependencies: ApiDependencies) -> FastAPI:
     """The API. Each module's routes come from routes/, included after the session route for the
     modules this project uses, with what they need from `dependencies`."""
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Runs while the server does: what follows the yield runs once it has stopped taking
+        requests."""
+        yield
+        # clubedge:if observability!=none
+        if dependencies.observability is not None:
+            # Send what the provider still buffers before the process exits.
+            await dependencies.observability.flush()
+        # clubedge:end
+
     # The contract is openapi.yaml, so FastAPI's generated schema and docs are not served.
-    app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None)
+    app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[dependencies.frontend_origin],
@@ -64,6 +84,13 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
+    # clubedge:if observability!=none
+    from clubedge_api.tracing import RequestTracing
+
+    # Added last, so it runs first: each request's span covers CORS and the route too.
+    if dependencies.observability is not None:
+        app.add_middleware(RequestTracing, observability=dependencies.observability)
+    # clubedge:end
 
     @app.get("/api/health")
     async def health() -> dict[str, Any]:
@@ -92,6 +119,17 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
             get_current_user=dependencies.get_current_user,
             account=dependencies.account,
             create_rate_limiter=dependencies.create_rate_limiter,
+        )
+    )
+
+    # clubedge:end
+    # clubedge:if observability!=none
+    from clubedge_api.routes.client_errors import client_errors_router
+
+    app.include_router(
+        client_errors_router(
+            create_rate_limiter=dependencies.create_rate_limiter,
+            browser_error_reporting=dependencies.browser_error_reporting,
         )
     )
 

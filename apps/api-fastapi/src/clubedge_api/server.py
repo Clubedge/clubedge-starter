@@ -27,6 +27,12 @@ def site_config() -> dict[str, Any]:
 
 def dependencies() -> ApiDependencies:
     settings = get_settings()
+    # clubedge:if observability!=none
+    from clubedge_api.observability import browser_error_reporting, start_observability
+
+    # Before the first request, so the provider traces and reports from the start.
+    observability = start_observability(str(site_config()["serviceId"]))
+    # clubedge:end
 
     async def is_ready() -> bool:
         return await is_database_ready(settings.database_url)
@@ -45,6 +51,10 @@ def dependencies() -> ApiDependencies:
         frontend_origin=settings.frontend_origin,
         create_rate_limiter=create_rate_limiter,
         account=AccountSettings(),  # clubedge:only auth!=none
+        # clubedge:if observability!=none
+        browser_error_reporting=browser_error_reporting,
+        observability=observability,
+        # clubedge:end
         jobs=background_jobs,  # clubedge:only jobs!=none
         # clubedge:if payments=stripe
         payments=stripe_billing(settings.database_url, settings.frontend_origin),

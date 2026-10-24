@@ -385,12 +385,12 @@ jobs:
           - {
               name: vite-fastapi-modules-a,
               framework: vite,
-              modules: --api fastapi --auth better-auth --storage s3 --email smtp,
+              modules: --api fastapi --auth better-auth --storage s3 --email smtp --cache redis --observability otel,
             }
           - {
               name: vite-fastapi-modules-b,
               framework: vite,
-              modules: --api fastapi --auth supabase --storage supabase,
+              modules: --api fastapi --auth supabase --storage supabase --observability sentry,
             }
           - { name: vite-fastapi, framework: vite, modules: --auth none --api fastapi }
           - { name: vite-hono-supabase, framework: vite, modules: --auth supabase --api hono }
@@ -845,13 +845,21 @@ jobs:
             }
           # The FastAPI API: its files in the Docker S3 service, then in a local folder; its email
           # goes to Mailpit, or to the log in local mode; checkout, the webhook, and the portal against
-          # the Stripe fake.
+          # the Stripe fake; its rate limits in the Docker Redis, and its traces and errors through
+          # each observability provider.
           - {
               infra: docker,
               framework: vite,
               api: fastapi,
-              modules: --auth better-auth --storage s3 --email smtp --payments stripe,
+              modules: --auth better-auth --storage s3 --email smtp --payments stripe --cache redis --observability otel,
               mail-api: "http://127.0.0.1:8025",
+            }
+          - {
+              infra: docker,
+              framework: vite,
+              api: fastapi,
+              modules: --auth better-auth --observability sentry,
+              mail-api: "",
             }
           - {
               infra: local,
