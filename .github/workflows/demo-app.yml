@@ -45,13 +45,14 @@ jobs:
           cd "$RUNNER_TEMP/cli"
           pnpm install --frozen-lockfile
           pnpm build
-      # The folder's name names the project, and so the app: Clubedge Demo. Every module the demo
-      # does not show is left out, or takes its lightest option.
+      # The folder's name names the project, and so the app: Clubedge Demo. The demo shows the
+      # dashboard's jobs card, whose sample job runs on the device, and file storage in its module
+      # list; every other module is left out, or takes its lightest option.
       - name: Generate the project
         run: |
           node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/clubedge-demo" --template-dir "$GITHUB_WORKSPACE" \
-            --framework vite --api hono --auth better-auth --shell capacitor --storage none \
-            --cache memory --email none --payments none --jobs none --observability none \
+            --framework vite --api hono --auth better-auth --shell capacitor --storage s3 \
+            --cache memory --email none --payments none --jobs pg-boss --observability none \
             --infra none --no-git --no-install --yes
       # The app's id becomes permanent with the Android project, which the build creates.
       - name: Set the app's id
