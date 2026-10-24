@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/observability-otel",
-  "version": "0.24.1",
+  "version": "0.24.2",
   "description": "OpenTelemetry provider for @clubedge/observability: traces and error logs exported over OTLP to any collector.",
   "private": true,
   "license": "Apache-2.0",
