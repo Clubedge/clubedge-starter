@@ -1,0 +1,23 @@
+{
+  "name": "@clubedge/mobile",
+  "version": "0.26.1",
+  "description": "The mobile app's native helpers, through Capacitor: device storage and the app's version.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
