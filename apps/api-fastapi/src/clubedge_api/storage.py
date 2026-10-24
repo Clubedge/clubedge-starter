@@ -10,9 +10,7 @@ from functools import cache
 from fastapi import Request
 
 from clubedge_api.settings import get_settings
-# clubedge:if infra=local
-from clubedge_api.storage_local import FileSystemStorage
-# clubedge:end
+from clubedge_api.storage_local import FileSystemStorage  # clubedge:only infra=local
 from clubedge_api.storage_provider import StorageProvider, UploadResult
 from clubedge_api.storage_s3 import S3Storage
 
