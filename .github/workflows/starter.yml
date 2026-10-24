@@ -337,6 +337,11 @@ jobs:
         working-directory: ${{ runner.temp }}/app
         run: |
           set -euo pipefail
+          # Docker projects deploy with the files `clubedge deploy` writes, so they have no deploy.yml.
+          if [ "${{ matrix.deploy }}" = docker ]; then
+            test ! -e .github/workflows/deploy.yml
+            exit 0
+          fi
           bash <(curl --fail --silent --show-error https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7 "$RUNNER_TEMP"
           "$RUNNER_TEMP/actionlint" .github/workflows/deploy.yml
           ! grep -n "clubedge:" .github/workflows/deploy.yml
