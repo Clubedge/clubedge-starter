@@ -84,6 +84,7 @@
     ".github/assets",
     ".github/dependabot.yml",
     ".github/workflows/starter.yml",
+    ".github/workflows/starter-ios.yml",
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
     "apps/api/src/server/variants/auth.better-auth.test.ts",
