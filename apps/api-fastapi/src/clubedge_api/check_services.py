@@ -14,6 +14,7 @@ from typing import Any
 import psycopg
 
 from clubedge_api.db import is_neon_pooled_url
+from clubedge_api.payments_stripe import StripePayments  # clubedge:only payments=stripe
 from clubedge_api.settings import load_env_file
 
 
@@ -127,6 +128,21 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
         return "API key accepted"
 
     # clubedge:end
+    # clubedge:if payments=stripe
+    stripe_secret_key = env.get("STRIPE_SECRET_KEY", "").strip()
+
+    async def stripe_api() -> str:
+        # A read-only request that checks the key; nothing is charged or created.
+        payments = StripePayments(
+            secret_key=stripe_secret_key,
+            webhook_secret=env.get("STRIPE_WEBHOOK_SECRET", "").strip() or "unused",
+            prices={},
+            api_base=env.get("STRIPE_API_BASE", "").strip() or None,
+        )
+        await payments.verify()
+        return "secret key accepted"
+
+    # clubedge:end
     return [
         Check("PostgreSQL", postgres, skip_unless(database_url, "DATABASE_URL is not set")),
         Check(
@@ -160,6 +176,13 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
             skip_unless(
                 resend_api_key, "RESEND_API_KEY is not set; development prints emails to the log"
             ),
+        ),
+        # clubedge:end
+        # clubedge:if payments=stripe
+        Check(
+            "Payments (Stripe)",
+            stripe_api,
+            skip_unless(stripe_secret_key, "STRIPE_SECRET_KEY is not set"),
         ),
         # clubedge:end
     ]

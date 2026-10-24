@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException
 from clubedge_api.contract import GetCurrentUser
 from clubedge_api.http import NO_STORE, ApiError, api_error
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
+from clubedge_api.routes import billing as billing_routes  # clubedge:only payments!=none
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,10 @@ class ApiDependencies:
     frontend_origin: str = "http://localhost:3000"
     # Makes the limits for routes anyone can call: in process memory unless server.py says where.
     create_rate_limiter: CreateRateLimiter = create_memory_limiter
+    # clubedge:if payments!=none
+    # Billing with the payment provider (server.py); payments are not configured while absent.
+    payments: billing_routes.BillingDependencies | None = None
+    # clubedge:end
 
 
 def create_app(dependencies: ApiDependencies) -> FastAPI:
@@ -68,6 +73,14 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     @app.get("/api/session")
     async def session(request: Request) -> dict[str, Any]:
         return {"user": await dependencies.get_current_user(request)}
+
+    # clubedge:if payments!=none
+    app.include_router(
+        billing_routes.billing_router(
+            payments=dependencies.payments, get_current_user=dependencies.get_current_user
+        )
+    )
+    # clubedge:end
 
     @app.exception_handler(ApiError)
     async def refused(request: Request, exc: ApiError) -> JSONResponse:

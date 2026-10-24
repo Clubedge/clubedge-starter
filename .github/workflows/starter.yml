@@ -411,6 +411,12 @@ jobs:
               framework: vite,
               modules: --auth better-auth --api fastapi,
             }
+          # Payments on the FastAPI API: Stripe, in the same tables as the Hono API's.
+          - {
+              name: vite-fastapi-payments,
+              framework: vite,
+              modules: --api fastapi --auth better-auth --payments stripe,
+            }
           - { name: vite-hono-firebase, framework: vite, modules: --auth firebase --api hono }
           - { name: vite-fastapi-firebase, framework: vite, modules: --auth firebase --api fastapi }
           - { name: vite-hono-appwrite, framework: vite, modules: --auth appwrite --api hono }
@@ -444,8 +450,7 @@ jobs:
         if: matrix.name == 'vite-fastapi'
         run: |
           set -euo pipefail
-          for option in "--cache redis" "--payments stripe" \
-            "--jobs pg-boss" "--observability otel"; do
+          for option in "--cache redis" \n            "--jobs pg-boss" "--observability otel"; do
             if node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/refused" \
               --template-dir "$GITHUB_WORKSPACE" --framework vite --api fastapi $option \
               --no-git --no-install --yes > "$RUNNER_TEMP/refused.log" 2>&1; then
@@ -812,12 +817,13 @@ jobs:
               mail-api: "",
             }
           # The FastAPI API: its files in the Docker S3 service, then in a local folder; its email
-          # goes to Mailpit, or to the log in local mode.
+          # goes to Mailpit, or to the log in local mode; checkout, the webhook, and the portal against
+          # the Stripe fake.
           - {
               infra: docker,
               framework: vite,
               api: fastapi,
-              modules: --auth better-auth --storage s3 --email smtp,
+              modules: --auth better-auth --storage s3 --email smtp --payments stripe,
               mail-api: "http://127.0.0.1:8025",
             }
           - {
@@ -838,6 +844,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The FastAPI API runs with uv.
       - uses: astral-sh/setup-uv@v10.3.0
         if: matrix.api == 'fastapi'
       - name: Build create-clubedge-app
@@ -855,6 +862,7 @@ jobs:
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           pnpm install --frozen-lockfile
+          # The FastAPI API's environment, ready before the browser tests start the API.
           if [ "${{ matrix.api }}" = fastapi ]; then (cd apps/api && uv sync --locked); fi
       # Better Auth checks that requests come from its own origin, which the browser tests reach
       # as 127.0.0.1; the frontend's server hosts it, and the API asks it for sessions there.

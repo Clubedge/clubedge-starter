@@ -6,8 +6,10 @@
   "dockerfile": "Dockerfile",
   "conditional": [
     "Dockerfile",
+    "src/clubedge_api/app.py",
     "src/clubedge_api/check_services.py",
     "src/clubedge_api/production_env.py",
+    "src/clubedge_api/server.py",
     "src/clubedge_api/storage.py",
     "tests/test_storage_s3.py"
   ],
@@ -93,6 +95,18 @@
       "none": {}
     },
     "payments": {
+      "stripe": {
+        "files": [
+          "src/clubedge_api/payments.py",
+          "src/clubedge_api/payments_stripe.py",
+          "src/clubedge_api/plans.py",
+          "src/clubedge_api/routes/billing.py",
+          "tests/fake_payments.py",
+          "tests/test_billing.py",
+          "tests/test_payments.py",
+          "tests/test_payments_stripe.py"
+        ]
+      },
       "none": {}
     },
     "jobs": {

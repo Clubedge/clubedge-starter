@@ -288,12 +288,13 @@ Without a provider configured, development prints each email to the server log, 
 
 The plans users can buy are in `apps/web/src/config/plans.ts`, with the app's own ids. The dashboard's billing card offers checkout for each plan, then shows the subscription and opens billing management. Server code reads a user's plan with `getBilling().subscriptionFor(userId)` and `isEntitled` from `@/server/payments`, and the `subscriptions` table keeps it in sync through the provider's webhook at `/api/webhooks/payments`. <!-- clubedge:only api=none -->
 The plans users can buy are in `apps/api/src/config/plans.ts`, with the app's own ids, and the API serves them at `/api/billing`. The dashboard's billing card offers checkout for each plan, then shows the subscription and opens billing management; checkout and the portal send the user back to `FRONTEND_URL`. API code reads a user's plan with `getBilling().subscriptionFor(await getUserProfileId(user))` and `isEntitled` from `@/server/payments` and `@/server/users`, and the `subscriptions` table keeps it in sync through the provider's webhook at `/api/webhooks/payments`, which the frontend forwards to the API. <!-- clubedge:only api=hono -->
+The plans users can buy are in `apps/api/src/clubedge_api/plans.py`, with the app's own ids, and the API serves them at `/api/billing`. The dashboard's billing card offers checkout for each plan, then shows the subscription and opens billing management; checkout and the portal send the user back to `FRONTEND_URL`. API code checks a user's plan with `has_active_subscription(await ensure_user_id(user))` from `clubedge_api.payments` and `clubedge_api.users`, or reads it with `find_subscription` and `is_entitled`. The `subscriptions` table keeps it in sync through the provider's webhook at `/api/webhooks/payments`, which the frontend forwards to the API; its tables and migrations are those of `packages/payments`, applied by `pnpm db:migrate` and by the image's `node migrate.mjs`. <!-- clubedge:only api=fastapi -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if payments=stripe -->
 
 [Stripe](https://stripe.com) runs checkout and billing management. In test mode: <!-- clubedge:only api=none -->
-[Stripe](https://stripe.com) runs checkout and billing management. The Stripe variables go in `apps/api/.env.local`. In test mode: <!-- clubedge:only api=hono -->
+[Stripe](https://stripe.com) runs checkout and billing management. The Stripe variables go in `apps/api/.env.local`. In test mode: <!-- clubedge:only api!=none -->
 
 1. Copy the secret key from the dashboard's API keys into `STRIPE_SECRET_KEY`.
 2. Create a recurring price for each plan and put its id in `STRIPE_PRICE_<PLAN>`, such as `STRIPE_PRICE_PRO`.
@@ -303,7 +304,7 @@ The plans users can buy are in `apps/api/src/config/plans.ts`, with the app's ow
 stripe listen --forward-to localhost:3000/api/webhooks/payments
 ```
 
-The Stripe CLI posts to the frontend on port 3000, which forwards the webhook, body untouched, to the API; the API itself stays private. <!-- clubedge:only api=hono -->
+The Stripe CLI posts to the frontend on port 3000, which forwards the webhook, body untouched, to the API; the API itself stays private. <!-- clubedge:only api!=none -->
 
 Turn on the customer portal in the dashboard's billing settings, so "Manage billing" works. In production, add a webhook endpoint for `https://<your-domain>/api/webhooks/payments` with the events `checkout.session.completed` and `customer.subscription.created`, `.updated`, `.deleted`, `.paused`, and `.resumed`, and use its signing secret. Every webhook's signature is verified, each event is applied once, and subscription events read the subscription's current state from Stripe, so retried or out-of-order deliveries are safe.
 
@@ -312,6 +313,7 @@ Turn on the customer portal in the dashboard's billing settings, so "Manage bill
 
 Payments go through the provider-neutral `PaymentProvider` interface in `packages/payments`. To use another provider, implement that interface in a new package and return it from `apps/web/src/server/payments.ts`; billing logic, the tables, the routes, and the billing card stay the same. <!-- clubedge:only api=none -->
 Payments go through the provider-neutral `PaymentProvider` interface in `packages/payments`. To use another provider, implement that interface in a new package and return it from `apps/api/src/server/payments.ts`; billing logic, the tables, the routes, and the billing card stay the same. <!-- clubedge:only api=hono -->
+Payments go through the provider-neutral `PaymentProvider` protocol in `apps/api/src/clubedge_api/payments.py`, which follows `packages/payments` and reads and writes the same tables. To use another provider, implement that protocol in a new module and build its `Billing` in place of `stripe_billing` (`apps/api/src/clubedge_api/payments_stripe.py`); billing logic, the tables, the routes, and the billing card stay the same. <!-- clubedge:only api=fastapi -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if jobs!=none -->
