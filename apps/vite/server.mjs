@@ -201,8 +201,94 @@ async function serveFile(request, response) {
   else createReadStream(target).pipe(response);
 }
 
+// Origins whose pages this server does not serve but that call /api, such as a mobile app's:
+// comma-separated, in MOBILE_ORIGINS. They send the session as a bearer token, not a cookie, so
+// their requests get CORS headers that allow no credentials.
+// clubedge:if shell!=none
+// The mobile app's pages load from capacitor://localhost on iOS and https://localhost on Android.
+process.env.MOBILE_ORIGINS ??= "capacitor://localhost,https://localhost";
+// clubedge:end
+const mobileOrigins = new Set(
+  (process.env.MOBILE_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
+
+/** Changes the headers of the answer to a request, whichever handler writes them. */
+function editHeaders(response, edit) {
+  const writeHead = response.writeHead;
+  response.writeHead = function (statusCode, ...rest) {
+    // writeHead(statusCode[, statusMessage][, headers])
+    const at = typeof rest[0] === "string" ? 1 : 0;
+    rest[at] = edit({ ...rest[at] });
+    return writeHead.call(this, statusCode, ...rest);
+  };
+}
+
+/**
+ * CORS on /api for the origins in MOBILE_ORIGINS: answers their preflights for the forwarded
+ * routes and Better Auth's, and gives the answers to their requests CORS headers in place of any
+ * the API sent. Returns true when it has answered the request. Other origins get no CORS headers.
+ */
+function allowMobileOrigins(request, response) {
+  const origin = request.headers.origin;
+  if (!origin || !mobileOrigins.has(origin)) {
+    // clubedge:if shell!=none
+    // Better Auth's bearer plugin answers each sign-in with the session token in a header, for
+    // the mobile app. The website's pages keep their session in the HttpOnly cookie, out of
+    // scripts' reach, so their answers go without it.
+    if (request.url?.startsWith("/api/auth/")) {
+      editHeaders(response, (headers) => {
+        delete headers["set-auth-token"];
+        delete headers["access-control-expose-headers"];
+        return headers;
+      });
+    }
+    // clubedge:end
+    return false;
+  }
+  const cors = {
+    "access-control-allow-origin": origin,
+    "access-control-expose-headers": "set-auth-token",
+    vary: "Origin",
+  };
+  const method = request.headers["access-control-request-method"];
+  if (request.method === "OPTIONS" && method) {
+    let pathname;
+    try {
+      pathname = new URL(request.url ?? "/", "http://frontend.invalid").pathname;
+    } catch {
+      return false;
+    }
+    const allowed = pathname.startsWith("/api/auth/")
+      ? method === "GET" || method === "POST"
+      : apiRoutes.has(`${method} ${pathname}`);
+    if (!allowed) return false;
+    response.writeHead(204, {
+      ...cors,
+      "access-control-allow-methods": "GET, POST",
+      "access-control-allow-headers": "authorization, content-type",
+      "access-control-max-age": "600",
+    });
+    response.end();
+    return true;
+  }
+  editHeaders(response, (headers) => {
+    const kept = Object.entries(headers).filter(([name]) => !name.startsWith("access-control-"));
+    // Answers differ by origin, and by whatever else the API names.
+    const varies = String(headers.vary ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name && name.toLowerCase() !== "origin");
+    return { ...Object.fromEntries(kept), ...cors, vary: [...varies, "Origin"].join(", ") };
+  });
+  return false;
+}
+
 createServer(async (request, response) => {
   const isApiRequest = request.url === "/api" || request.url?.startsWith("/api/");
+  if (isApiRequest && allowMobileOrigins(request, response)) return;
   if (!isApiRequest && request.method !== "GET" && request.method !== "HEAD") {
     response.writeHead(405, { allow: "GET, HEAD" });
     response.end("Method not allowed.");
