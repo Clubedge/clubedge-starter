@@ -1,5 +1,9 @@
 @import "@clubedge/ui/globals.css";
 @source "./";
+/* clubedge:if shell!=none */
+/* The mobile app's own screens, in packages/mobile. */
+@source "../../../packages/mobile/src";
+/* clubedge:end */
 
 /*
  * Safe areas: index.html lets pages draw under a phone's status bar, notch, and home indicator

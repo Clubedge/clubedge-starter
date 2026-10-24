@@ -750,7 +750,25 @@ importers:
       '@capacitor/preferences':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.5.3)
+      '@clubedge/contract':
+        specifier: workspace:*
+        version: link:../contract
+      '@clubedge/ui':
+        specifier: workspace:*
+        version: link:../ui
     devDependencies:
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: ^19.2.0
+        version: 19.3.1
+      react-dom:
+        specifier: ^19.2.0
+        version: 19.3.1(react@19.3.1)
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

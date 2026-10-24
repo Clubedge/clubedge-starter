@@ -25,6 +25,15 @@ export default defineConfig([
       "no-restricted-imports": ["error", { patterns: [frameworkImports, appImports] }],
     },
   },
+  // clubedge:if shell!=none
+  {
+    // The mobile app's own screens, such as its update notice, are React, like the shared UI.
+    files: ["packages/mobile/**/*.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { patterns: [appImports] }],
+    },
+  },
+  // clubedge:end
   {
     files: ["packages/core/**/*.ts"],
     rules: {

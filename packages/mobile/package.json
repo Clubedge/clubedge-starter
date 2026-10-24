@@ -1,13 +1,14 @@
 {
   "name": "@clubedge/mobile",
   "version": "0.26.1",
-  "description": "The mobile app's native helpers, through Capacitor: device storage and the app's version.",
+  "description": "The mobile app's native helpers, through Capacitor, and its own screens, such as the update notice.",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./update-notice": "./src/update-notice.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
@@ -15,9 +16,19 @@
   "dependencies": {
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
-    "@capacitor/preferences": "^8.0.1"
+    "@capacitor/preferences": "^8.0.1",
+    "@clubedge/contract": "workspace:*",
+    "@clubedge/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "typescript": "^5.9.2"
   }
 }

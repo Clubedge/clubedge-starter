@@ -12,6 +12,7 @@
     "src/lib/api.ts",
     "src/main.tsx",
     "src/routes/dashboard.tsx",
+    "src/styles.css",
     "src/variants/api.better-auth.ts",
     "src/variants/api.supabase.ts",
     "src/variants/auth.better-auth.ts",
