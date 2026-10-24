@@ -167,8 +167,8 @@ jobs:
   # The mobile app: the web app's build for it, copied into the Android project (which Capacitor
   # creates when the project has none yet), and a debug APK to try on a device.
   android:
-    # The Starter's own repository is the template every project comes from, not a project.
-    if: github.repository != 'Clubedge/clubedge-starter'
+    # The Starter's repository is the template projects come from, not one. # clubedge:only starter-repository
+    if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
