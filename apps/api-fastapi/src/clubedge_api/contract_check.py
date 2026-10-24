@@ -15,7 +15,7 @@ from pathlib import Path
 # The optional parts of the contract this API implements: capabilityOperations in
 # packages/contract/src/conformance.ts. The suite expects each one's operations to work when the
 # project has the capability's module, and to answer 404 otherwise.
-CAPABILITIES: list[str] = []
+CAPABILITIES: list[str] = ["account"]
 
 # This stack's descriptor, which only the Starter repository has.
 STACK_DESCRIPTOR = Path(__file__).resolve().parents[2] / "clubedge.stack.json"

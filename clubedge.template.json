@@ -69,6 +69,7 @@
     ".github/workflows/starter.yml",
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
+    "apps/api-fastapi/tests/test_auth_variants.py",
     "clubedge.template.json",
     "scripts/stack-preview-render.mjs",
     "scripts/stack-preview-generate.mjs",

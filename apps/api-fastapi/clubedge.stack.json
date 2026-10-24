@@ -6,11 +6,14 @@
   "dockerfile": "Dockerfile",
   "conditional": [
     "Dockerfile",
+    "src/clubedge_api/account.py",
     "src/clubedge_api/app.py",
+    "src/clubedge_api/auth.py",
     "src/clubedge_api/check_services.py",
     "src/clubedge_api/production_env.py",
     "src/clubedge_api/server.py",
     "src/clubedge_api/storage.py",
+    "tests/test_account.py",
     "tests/test_storage_s3.py"
   ],
   "deployment": {
@@ -50,6 +53,15 @@
         "replace": {
           "src/clubedge_api/auth.py": "src/clubedge_api/variants/auth_better_auth.py"
         }
+      },
+      "supabase|firebase|appwrite|better-auth": {
+        "files": [
+          "src/clubedge_api/account.py",
+          "src/clubedge_api/routes/account.py",
+          "src/clubedge_api/users.py",
+          "tests/test_account.py",
+          "tests/test_users.py"
+        ]
       }
     },
     "storage": {

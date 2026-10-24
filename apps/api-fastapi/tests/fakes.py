@@ -1,8 +1,10 @@
-"""Stand-ins the tests share: the composition root's dependencies, a signed-in user, and a rate
-limiter whose backend is down."""
+"""Stand-ins the tests share: the composition root's dependencies, a signed-in user, a rate
+limiter whose backend is down, and a database."""
 
-from dataclasses import replace
-from typing import Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field, replace
+from typing import Any, Self
 
 from fastapi import Request
 from fastapi.testclient import TestClient
@@ -50,3 +52,29 @@ class UnavailableLimiter:
 
     async def limit(self, identifier: str) -> RateLimitResult:
         raise ConnectionError("The rate limiter's backend is down.")
+
+
+@dataclass
+class FakeCursor:
+    row: tuple[object, ...] | None
+
+    async def fetchone(self) -> tuple[object, ...] | None:
+        return self.row
+
+
+@dataclass
+class FakeDatabase:
+    """A database that answers each statement with the next of `rows` (None when they run out),
+    and records the statements, with their whitespace collapsed. Tests put its connect() in place
+    of db.connect where a module imported it."""
+
+    rows: list[tuple[object, ...] | None] = field(default_factory=list)
+    statements: list[tuple[str, tuple[object, ...]]] = field(default_factory=list)
+
+    async def execute(self, query: str, params: tuple[object, ...] = ()) -> FakeCursor:
+        self.statements.append((" ".join(query.split()), params))
+        return FakeCursor(self.rows.pop(0) if self.rows else None)
+
+    @asynccontextmanager
+    async def connect(self) -> AsyncIterator[Self]:
+        yield self

@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import Request
 
 from clubedge_api import auth
+from clubedge_api.account import AccountSettings  # clubedge:only auth!=none
 from clubedge_api.app import ApiDependencies
 from clubedge_api.contract import User
 from clubedge_api.db import is_database_ready
@@ -40,6 +41,7 @@ def dependencies() -> ApiDependencies:
         is_ready=is_ready,
         get_current_user=get_current_user,
         frontend_origin=settings.frontend_origin,
+        account=AccountSettings(),  # clubedge:only auth!=none
         # clubedge:if payments=stripe
         payments=stripe_billing(settings.database_url, settings.frontend_origin),
         # clubedge:end
