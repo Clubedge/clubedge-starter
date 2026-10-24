@@ -13,6 +13,8 @@ const app = createApp({
   isReady: async () => true,
   getCurrentUser: async () => null,
   browserErrorReporting: () => ({ provider: "sentry", dsn: "https://public@sentry.example/1" }),
+  // As behind the frontend's server, which sends the client's address in x-forwarded-for.
+  clientIpSettings: { trustedHops: 1 },
 });
 
 const post = (body: string, headers: Record<string, string> = {}) =>

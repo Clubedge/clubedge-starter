@@ -48,6 +48,14 @@ describe("production env check", () => {
     expect(checkProductionEnv(env).invalid).toEqual(["FRONTEND_URL is not an absolute URL"]);
   });
 
+  it("checks where rate limits find the client's address", () => {
+    const env = { ...complete(), TRUSTED_PROXY_HOPS: "1" };
+    expect(checkProductionEnv(env).invalid).toEqual([]);
+    expect(checkProductionEnv({ ...env, CLIENT_IP_HEADER: "x real ip" }).invalid).toEqual([
+      'CLIENT_IP_HEADER must be a header name, such as x-real-ip, not "x real ip"',
+    ]);
+  });
+
   const hasInngest = requiredVariables().some(({ key }) => key === "INNGEST_SIGNING_KEY");
   it.runIf(hasInngest)("refuses the Inngest Dev Server in production", () => {
     expect(checkProductionEnv({ ...complete(), INNGEST_DEV: "1" }).invalid).toEqual([

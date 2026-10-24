@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { Health, Ready, Session, User } from "@clubedge/contract";
-import { reportError } from "@clubedge/core";
+import { reportError, type ClientIpSettings } from "@clubedge/core";
 import { apiError } from "@/http";
 import type { CreateRateLimiter } from "@/rate-limit";
 // clubedge:if auth!=none
@@ -33,6 +33,8 @@ export interface ApiDependencies {
   getCurrentUser(request: Request): Promise<User | null>;
   /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
   createRateLimiter?: CreateRateLimiter;
+  /** Where those limits find the client's address; the connection's own when absent. */
+  clientIpSettings?: ClientIpSettings;
   // clubedge:if auth!=none
   /** The account settings (src/server/account); they answer 503 not_configured when absent. */
   account?: AccountService;

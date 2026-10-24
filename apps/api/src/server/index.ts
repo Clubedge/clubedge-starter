@@ -1,5 +1,6 @@
 // The composition root: the only place that reads env and picks providers. Routes in src/app.ts
 // receive what they need from here, so tests can give them stand-ins.
+import { parseClientIpSettings } from "@clubedge/core";
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
 import { account } from "./account"; // clubedge:only auth!=none
@@ -24,6 +25,8 @@ export const dependencies: ApiDependencies = {
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,
+  // Read at startup: a CLIENT_IP_HEADER or TRUSTED_PROXY_HOPS that cannot be right stops the API.
+  clientIpSettings: parseClientIpSettings(process.env),
   account, // clubedge:only auth!=none
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none
