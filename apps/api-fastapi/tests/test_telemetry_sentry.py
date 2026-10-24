@@ -10,7 +10,7 @@ import sentry_sdk
 from clubedge_api.telemetry_sentry import ErrorEvents, create_sentry_observability
 
 
-def test_starts_the_sdk_without_user_details_cookies_query_strings_or_bodies(
+def test_starts_the_sdk_without_personal_data(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     started: list[dict[str, Any]] = []
@@ -29,6 +29,14 @@ def test_starts_the_sdk_without_user_details_cookies_query_strings_or_bodies(
         "cookies": {"mode": "off"},
         "url_query_params": {"mode": "off"},
         "http_bodies": [],
+        "http_headers": {
+            "request": {
+                "mode": "denylist",
+                "terms": ["forwarded", "-ip", "remote-", "via", "-user"],
+            }
+        },
+        "database_query_data": False,
+        "queues": False,
     }
     create_sentry_observability(dsn="https://public@sentry.example/1", traces_sample_rate=0)
     assert started[-1]["traces_sample_rate"] == 0
