@@ -4,7 +4,7 @@
   "role": "frontend",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
-  "conditional": ["src/routes/dashboard.tsx"],
+  "conditional": ["auth.server.mjs", "src/routes/dashboard.tsx"],
   "deployment": {
     "id": "web",
     "port": 3000,
@@ -96,6 +96,11 @@
           "src/components/dashboard/account-button.tsx": "src/components/dashboard/variants/account-button.supabase.tsx"
         }
       }
+    },
+    "email": {
+      "smtp": {},
+      "resend": {},
+      "none": {}
     },
     "deploy": {
       "docker": {},

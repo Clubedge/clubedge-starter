@@ -56,6 +56,15 @@ importers:
       '@clubedge/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@clubedge/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@clubedge/email-resend':
+        specifier: workspace:*
+        version: link:../../packages/email-resend
+      '@clubedge/email-smtp':
+        specifier: workspace:*
+        version: link:../../packages/email-smtp
       '@clubedge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -229,12 +238,24 @@ importers:
 
   apps/vite:
     dependencies:
+      '@clubedge/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@clubedge/auth-supabase':
         specifier: workspace:*
         version: link:../../packages/auth-supabase
       '@clubedge/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@clubedge/email':
+        specifier: workspace:*
+        version: link:../../packages/email
+      '@clubedge/email-resend':
+        specifier: workspace:*
+        version: link:../../packages/email-resend
+      '@clubedge/email-smtp':
+        specifier: workspace:*
+        version: link:../../packages/email-smtp
       '@clubedge/ui':
         specifier: workspace:*
         version: link:../../packages/ui

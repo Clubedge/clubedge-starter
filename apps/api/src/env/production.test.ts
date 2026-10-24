@@ -56,6 +56,17 @@ describe("production env check", () => {
     ]);
   });
 
+  const hasEmail = requiredVariables().some(({ key }) => key === "EMAIL_FROM");
+  it.runIf(hasEmail)("refuses .env.example's example.com sender", () => {
+    const env = { ...complete(), EMAIL_FROM: "App <no-reply@example.com>" };
+    expect(checkProductionEnv(env).invalid).toEqual([
+      "EMAIL_FROM still uses example.com: set a sender on a domain you verified",
+    ]);
+    expect(checkProductionEnv({ ...env, EMAIL_FROM: "App <hi@mail.example.org>" }).invalid).toEqual(
+      [],
+    );
+  });
+
   it("tells local URLs from hosted ones", () => {
     expect(isLocalUrl("http://localhost:3000")).toBe(true);
     expect(isLocalUrl("redis://127.0.0.1:6379")).toBe(true);

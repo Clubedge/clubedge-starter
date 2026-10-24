@@ -53,6 +53,14 @@
       "memory": {}
     },
     "email": {
+      "smtp|resend": {
+        "files": ["src/server/email.ts"]
+      },
+      "resend": {
+        "replace": {
+          "src/server/email.ts": "src/server/variants/email.resend.ts"
+        }
+      },
       "none": {}
     },
     "payments": {

@@ -32,6 +32,15 @@ export function requiredVariables(): Requirement[] {
     { key: "STORAGE_ACCESS_KEY_ID", use: "file storage" },
     { key: "STORAGE_SECRET_ACCESS_KEY", use: "file storage" },
     // clubedge:end
+    // clubedge:if email=smtp
+    { key: "SMTP_URL", use: "email", url: true },
+    // clubedge:end
+    // clubedge:if email=resend
+    { key: "RESEND_API_KEY", use: "email" },
+    // clubedge:end
+    // clubedge:if email=smtp|resend
+    { key: "EMAIL_FROM", use: "the sender of every email" },
+    // clubedge:end
   ];
 }
 
@@ -82,6 +91,12 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
     invalid.push(
       "FIREBASE_AUTH_EMULATOR_HOST is set: production uses your Firebase project, so remove it",
     );
+  }
+  // clubedge:end
+  // clubedge:if email=smtp|resend
+  // .env.example's placeholder sender: providers refuse a domain you haven't verified.
+  if (/@example\.com\b/i.test(env.EMAIL_FROM ?? "")) {
+    invalid.push("EMAIL_FROM still uses example.com: set a sender on a domain you verified");
   }
   // clubedge:end
   return { missing, local, invalid };

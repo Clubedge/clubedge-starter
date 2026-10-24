@@ -96,6 +96,7 @@ openssl rand -base64 32
 Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Signing in again on another device creates another session row, and signing out deletes it.
 
 Sign-up signs the user in immediately; add email verification in `packages/auth-better-auth` if your application needs it. <!-- clubedge:only email=none -->
+The frontend's server still sends password reset and verification emails through Resend when `RESEND_API_KEY` and `EMAIL_FROM` are both set in `apps/web/.env.local`. <!-- clubedge:only email=none && api!=none -->
 Better Auth sends its emails through the [email module](#email): <!-- clubedge:only email!=none -->
 
 - **Password reset:** "Forgot password?" on the login page emails a link to `/reset-password`, valid for one hour and usable once. <!-- clubedge:only email!=none -->
@@ -257,7 +258,9 @@ The rate limiter and cache keep their state in process memory, which suits a sin
 
 ## Email
 
-The app sends email through the `EmailProvider` in `apps/web/src/server/email.ts`. Server code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`.
+The app sends email through the `EmailProvider` in `apps/web/src/server/email.ts`. Server code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api=none -->
+The API sends email through the `EmailProvider` in `apps/api/src/server/email.ts`: its code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api!=none -->
+Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which sends its emails with the same provider, so set the email variables in both `apps/web/.env.local` and `apps/api/.env.local`. <!-- clubedge:only api!=none && auth=better-auth -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if email=smtp -->
