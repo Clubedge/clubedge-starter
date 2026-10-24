@@ -3,6 +3,7 @@
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
 import { account } from "./account"; // clubedge:only auth!=none
+import { appVersion } from "./app-version";
 import { getCurrentUser } from "./auth";
 import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
@@ -24,6 +25,7 @@ export const dependencies: ApiDependencies = {
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,
+  appVersion,
   account, // clubedge:only auth!=none
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none

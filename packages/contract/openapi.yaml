@@ -59,6 +59,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+  /api/app-version:
+    get:
+      operationId: getAppVersion
+      summary: >-
+        The app versions the API serves, for apps installed on phones, which keep calling it long
+        after a release. Never cached.
+      responses:
+        "200":
+          description: The versions, each null until the API sets it.
+          headers:
+            Cache-Control:
+              description: no-store, so a new minimum version applies on the app's next check.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppVersion"
   /api/account:
     get:
       operationId: getAccount
@@ -534,6 +552,26 @@ components:
           type: string
         displayName:
           type: [string, "null"]
+    AppVersion:
+      type: object
+      description: Versions are MAJOR.MINOR.PATCH, such as 1.4.0.
+      required: [minimumVersion, latestVersion, updateUrl]
+      properties:
+        minimumVersion:
+          type: [string, "null"]
+          pattern: ^\d+\.\d+\.\d+$
+          description: >-
+            The oldest app version the API still serves: apps below it must update before
+            continuing.
+        latestVersion:
+          type: [string, "null"]
+          pattern: ^\d+\.\d+\.\d+$
+          description: >-
+            The newest released version: apps below it may show an optional update notice.
+        updateUrl:
+          type: [string, "null"]
+          format: uri
+          description: Where to get the update, such as a store listing or a download page.
     Account:
       type: object
       required: [email, displayName, canDeleteAccount]
