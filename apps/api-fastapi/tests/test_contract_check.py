@@ -1,6 +1,7 @@
 """`pnpm test`'s contract check: what it tells the shared suite about this API."""
 
 import json
+import shutil
 import subprocess
 from typing import Any
 
@@ -17,8 +18,8 @@ def test_passes_the_capabilities_and_starts_the_api(monkeypatch: pytest.MonkeyPa
         calls.append((command, options["env"]))
         return subprocess.CompletedProcess(command, 0)
 
-    monkeypatch.setattr(contract_check.shutil, "which", lambda name: f"/bin/{name}")
-    monkeypatch.setattr(contract_check.subprocess, "run", run)
+    monkeypatch.setattr(shutil, "which", lambda name: f"/bin/{name}")
+    monkeypatch.setattr(subprocess, "run", run)
     assert contract_check.main() == 0
     [(command, env)] = calls
     assert command == ["/bin/clubedge-contract-check", "--", "python", "-m", "clubedge_api"]
@@ -35,6 +36,6 @@ def test_passes_the_capabilities_and_starts_the_api(monkeypatch: pytest.MonkeyPa
 def test_says_how_to_run_it_without_the_contract_package(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(contract_check.shutil, "which", lambda name: None)
+    monkeypatch.setattr(shutil, "which", lambda name: None)
     assert contract_check.main() == 1
     assert "pnpm test" in capsys.readouterr().err

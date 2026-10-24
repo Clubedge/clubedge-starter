@@ -39,7 +39,8 @@ def guarded_client() -> TestClient:
 
 def post(path: str, body: str, content_type: str | None = None) -> httpx.Response:
     headers = {"content-type": content_type} if content_type else {}
-    return guarded_client().post(path, content=body, headers=headers)
+    response: httpx.Response = guarded_client().post(path, content=body, headers=headers)
+    return response
 
 
 def test_accepts_json_and_refuses_what_a_cross_site_form_can_send() -> None:

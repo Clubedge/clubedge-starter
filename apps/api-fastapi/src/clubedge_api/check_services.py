@@ -6,9 +6,10 @@ It reads the API's .env.local like the API does, so it confirms the API's own se
 import asyncio
 import os
 import sys
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import psycopg
 
@@ -21,7 +22,7 @@ class Check:
     """A service round trip: `run` says what it did, or raises why it failed."""
 
     name: str
-    run: Callable[[], Awaitable[str]]
+    run: Callable[[], Coroutine[Any, Any, str]]
     # Why it doesn't run, such as a variable that isn't set.
     skip: str | None = None
 
@@ -165,7 +166,7 @@ def service_checks(env: Mapping[str, str]) -> list[Check]:
 
 
 async def with_retry(
-    run: Callable[[], Awaitable[str]], attempts: int = 15, delay: float = 2.0
+    run: Callable[[], Coroutine[Any, Any, str]], attempts: int = 15, delay: float = 2.0
 ) -> str:
     """Services can take a few seconds to accept connections after `pnpm infra:up`."""
     attempt = 1
