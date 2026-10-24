@@ -29,9 +29,14 @@ describe("getClientIp", () => {
     expect(getClientIp(new Headers(), { trustedHops: 1, socketAddress })).toBe(socketAddress);
   });
 
+  it("trusts the nearest proxy where the runtime gives no connection address", () => {
+    // Next.js runs behind a host's edge or a proxy, which appends the address it saw.
+    expect(getClientIp(forwarded("198.51.100.66, 203.0.113.1"))).toBe("203.0.113.1");
+    expect(getClientIp(forwarded("203.0.113.1, 10.0.0.2"), { trustedHops: 2 })).toBe("203.0.113.1");
+  });
+
   it("answers unknown when nothing gives an address", () => {
     expect(getClientIp(new Headers())).toBe("unknown");
-    expect(getClientIp(forwarded("198.51.100.66"))).toBe("unknown");
     expect(getClientIp(forwarded("203.0.113.1"), { trustedHops: 2 })).toBe("unknown");
   });
 

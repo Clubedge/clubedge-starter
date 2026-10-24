@@ -35,9 +35,12 @@ function headerValue(headers, name) {
  * (its first entry, should it hold a list). With `trustedHops`, the x-forwarded-for entry that
  * many places from the end: the one the outermost of your proxies added; entries before it are
  * whatever the client sent, so they never count. Without either, or when the request lacks what
- * they name, the connection's own address, else "unknown".
+ * they name, the connection's own address, else "unknown". Without a connection address and
+ * either setting, it trusts the nearest proxy, whose entry is the last.
  */
-export function getClientIp(headers, { header, trustedHops = 0, socketAddress } = {}) {
+export function getClientIp(headers, options = {}) {
+  const { header, socketAddress } = options;
+  const trustedHops = options.trustedHops || (header || socketAddress !== undefined ? 0 : 1);
   let address;
   if (header) {
     address = headerValue(headers, header)?.split(",")[0];

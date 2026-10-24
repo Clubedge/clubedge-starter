@@ -623,7 +623,7 @@ Rate limits count requests per client address, so the server must know which add
 
 `CLIENT_IP_HEADER` wins when both are set. Without either, or when a request lacks what they name, the address is the connection's own, which is right for a server that clients reach directly. A value that cannot be right stops the server at startup, and `pnpm check:env` reports it.
 
-Next.js gives the app no connection address, so run it behind a host or proxy that one of the settings describes; without either setting, all clients share one count. <!-- clubedge:only framework=next -->
+Next.js gives the app no connection address, so without either setting the address is the last `X-Forwarded-For` entry, the one the proxy nearest the app added: right on Vercel, which replaces the header with the client's address, and behind one proxy you run. Set your host's setting from the table anyway, since some hosts add more than one entry. <!-- clubedge:only framework=next -->
 The frontend's server finds the address with its own settings and sends it to the API as the only `X-Forwarded-For` entry, dropping any address header the client sent. An API that only the frontend's server reaches, over a private network as in `docker-compose.yml`, sets `TRUSTED_PROXY_HOPS=1`. <!-- clubedge:only api!=none -->
 
 | Where the app runs                    | Setting                                           |

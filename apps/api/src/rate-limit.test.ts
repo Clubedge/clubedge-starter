@@ -43,10 +43,12 @@ describe("rateLimit", () => {
     expect((await app.request("/", from("198.51.100.2, 203.0.113.1"))).status).toBe(429);
   });
 
-  it("ignores x-forwarded-for while no proxy is trusted", async () => {
+  it("trusts the nearest proxy for a request with no connection address", async () => {
+    // app.request has no connection, so the last entry, the nearest proxy's, counts; the client
+    // cannot pick another count by changing the entries before it.
     const app = appWith(createMemoryLimiter(1, 60));
-    expect((await app.request("/", from("203.0.113.1"))).status).toBe(200);
-    expect((await app.request("/", from("203.0.113.2"))).status).toBe(429);
+    expect((await app.request("/", from("198.51.100.66, 203.0.113.1"))).status).toBe(200);
+    expect((await app.request("/", from("198.51.100.67, 203.0.113.1"))).status).toBe(429);
   });
 
   it("counts by the connection's address when the Node.js server serves the API", async () => {

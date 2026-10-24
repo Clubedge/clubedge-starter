@@ -23,10 +23,13 @@ const maxTrustedHops = 10;
  * should it hold a list). With `trustedHops`, the x-forwarded-for entry that many places from the
  * end: the one the outermost of your proxies added; entries before it are whatever the client
  * sent, so they never count. Without either, or when the request lacks what they name, the
- * connection's own address, else "unknown".
+ * connection's own address, else "unknown". A runtime that gives no connection address, such as
+ * Next.js, runs behind a host's edge or a proxy: without either setting, it trusts the nearest
+ * one, whose entry is the last.
  */
 export function getClientIp(headers: Pick<Headers, "get">, options: ClientIpOptions = {}): string {
-  const { header, trustedHops = 0, socketAddress } = options;
+  const { header, socketAddress } = options;
+  const trustedHops = options.trustedHops || (header || socketAddress !== undefined ? 0 : 1);
   let address: string | undefined;
   if (header) {
     address = headers.get(header)?.split(",")[0];
