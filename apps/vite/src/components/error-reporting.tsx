@@ -34,7 +34,11 @@ export function reportBrowserError(error: unknown) {
  */
 export function ErrorReporting() {
   useEffect(() => {
-    const onError = (event: ErrorEvent) => send("error", event.error ?? event.message);
+    // A failed <img> or <script> also reaches this capture listener, as a plain Event without an
+    // error or message: only script errors are reported.
+    const onError = (event: Event) => {
+      if (event instanceof ErrorEvent) send("error", event.error ?? event.message);
+    };
     const onRejection = (event: PromiseRejectionEvent) => send("unhandledrejection", event.reason);
     // Capture phase: runs before handlers that might stop the event, such as a dev overlay.
     window.addEventListener("error", onError, true);

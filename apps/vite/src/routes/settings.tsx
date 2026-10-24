@@ -126,11 +126,16 @@ export function SettingsPage() {
 
   async function saveProfile(form: HTMLFormElement) {
     const displayName = String(new FormData(form).get("displayName") ?? "");
-    const { response, error } = await api.POST("/api/account/profile", {
-      body: { displayName },
-    });
-    if (response.status === 401) return navigate({ href: toLogin });
-    setResult(response.ok ? "profile-saved" : (apiErrors[error?.error.code ?? ""] ?? "failed"));
+    try {
+      const { response, error } = await api.POST("/api/account/profile", {
+        body: { displayName },
+      });
+      if (response.status === 401) return navigate({ href: toLogin });
+      // A gateway's HTML page or an empty body arrives as text, without an error code.
+      setResult(response.ok ? "profile-saved" : (apiErrors[error?.error?.code ?? ""] ?? "failed"));
+    } catch {
+      setResult("failed");
+    }
   }
 
   async function changePassword(form: HTMLFormElement) {
@@ -150,10 +155,15 @@ export function SettingsPage() {
 
   async function deleteAccount(form: HTMLFormElement) {
     const password = String(new FormData(form).get("password") ?? "");
-    const { response, error } = await api.POST("/api/account/delete", { body: { password } });
-    if (response.status === 401) return navigate({ href: toLogin });
-    if (!response.ok) {
-      setResult(apiErrors[error?.error.code ?? ""] ?? "failed");
+    try {
+      const { response, error } = await api.POST("/api/account/delete", { body: { password } });
+      if (response.status === 401) return navigate({ href: toLogin });
+      if (!response.ok) {
+        setResult(apiErrors[error?.error?.code ?? ""] ?? "failed");
+        return;
+      }
+    } catch {
+      setResult("failed");
       return;
     }
     // The account is gone, and its sessions with it; this clears what the browser kept.

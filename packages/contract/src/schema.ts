@@ -550,6 +550,7 @@ export interface operations {
         };
       };
       401: components["responses"]["Unauthorized"];
+      503: components["responses"]["NotConfigured"];
     };
   };
   updateProfile: {
@@ -584,6 +585,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       413: components["responses"]["PayloadTooLarge"];
       415: components["responses"]["UnsupportedMediaType"];
+      503: components["responses"]["NotConfigured"];
     };
   };
   deleteAccount: {

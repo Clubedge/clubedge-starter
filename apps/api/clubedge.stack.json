@@ -25,9 +25,6 @@
   "modules": {
     "auth": {
       "none": {},
-      "supabase|firebase|appwrite|better-auth": {
-        "files": ["src/routes/account.test.ts", "src/routes/account.ts", "src/server/account.ts"]
-      },
       "supabase": {
         "replace": {
           "src/server/auth.ts": "src/server/variants/auth.supabase.ts"

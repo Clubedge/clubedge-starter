@@ -82,6 +82,8 @@ paths:
                 $ref: "#/components/schemas/Account"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
   /api/account/profile:
     post:
       operationId: updateProfile
@@ -108,6 +110,8 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
