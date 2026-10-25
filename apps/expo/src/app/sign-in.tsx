@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 
 export default function SignIn() {
-  const { refresh } = useSession();
+  const { setSignedIn } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export default function SignIn() {
     try {
       await authClient.signIn(email.trim(), password);
       // Signed in, the app's screens open in place of this one.
-      await refresh();
+      setSignedIn(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Sign in failed.");
     } finally {

@@ -5,7 +5,7 @@ import { authClient } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 
 export default function SignUp() {
-  const { refresh } = useSession();
+  const { setSignedIn } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,7 @@ export default function SignUp() {
     try {
       const { needsConfirmation } = await authClient.signUp(email.trim(), password);
       if (needsConfirmation) setEmailSent(true);
-      else await refresh();
+      else setSignedIn(true);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Sign up failed.");
     } finally {

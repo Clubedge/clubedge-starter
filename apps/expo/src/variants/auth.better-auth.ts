@@ -28,8 +28,11 @@ const client = createAuthClient({
 export const authClient: AuthClient = {
   configured: true,
   async hasSession() {
-    const { data } = await client.getSession();
-    return Boolean(data?.session);
+    // Better Auth's answer or, when the website cannot be reached or answers with an error, the
+    // session cookie the device keeps.
+    const result = await client.getSession().catch(() => null);
+    if (!result || result.error) return (await client.getCookie()).includes("session_token=");
+    return Boolean(result.data?.session);
   },
   async sessionHeaders(): Promise<Record<string, string>> {
     const cookie = await client.getCookie();
@@ -66,7 +69,8 @@ export const authClient: AuthClient = {
     if (result.error) throw accountError(result.error);
   },
   async signOut() {
-    // The plugin forgets the session on the device, even when the server cannot be reached.
-    await client.signOut();
+    // The plugin forgets the session on the device before it asks the website to end it, so the
+    // device is signed out even when the website cannot be reached.
+    await client.signOut().catch(() => undefined);
   },
 };

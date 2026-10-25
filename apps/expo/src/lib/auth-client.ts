@@ -24,7 +24,10 @@ export class EmailNotVerifiedError extends Error {
 export interface AuthClient {
   /** Whether the provider's settings are in the app's env file. */
   configured: boolean;
-  /** Whether this device holds a session. */
+  /**
+   * Whether this device holds a session: the provider's answer or, when it cannot be reached,
+   * whether the device still keeps one, so a phone offline stays signed in.
+   */
   hasSession(): Promise<boolean>;
   /** Calls back when the provider renews or ends the session by itself; returns how to stop. */
   onChange?(listener: () => void): () => void;

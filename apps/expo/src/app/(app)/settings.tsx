@@ -23,7 +23,7 @@ function failure(error: unknown): Message {
 }
 
 export default function Settings() {
-  const { refresh } = useSession();
+  const { setSignedIn } = useSession();
   const [account, setAccount] = useState<Account | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -70,7 +70,7 @@ export default function Settings() {
   const signOut = () =>
     run("sign-out", async () => {
       await authClient.signOut();
-      await refresh();
+      setSignedIn(false);
       return null;
     });
 
@@ -80,7 +80,7 @@ export default function Settings() {
     });
     if (response.status === 204) {
       await authClient.signOut();
-      await refresh();
+      setSignedIn(false);
       return null;
     }
     const text: Record<string, string> = {

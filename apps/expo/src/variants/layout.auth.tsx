@@ -9,13 +9,19 @@ import { useColors } from "@/lib/theme";
 // The splash screen stays up until the app knows whether this device is signed in.
 void SplashScreen.preventAutoHideAsync();
 
+/** Hides the splash screen once the session is known, whichever screen then shows. */
+function HideSplashScreen() {
+  const { status } = useSession();
+  useEffect(() => {
+    if (status !== "loading") void SplashScreen.hideAsync();
+  }, [status]);
+  return null;
+}
+
 /** The app's screens open signed in, and the sign-in screens signed out. */
 function Routes() {
   const { status } = useSession();
   const colors = useColors();
-  useEffect(() => {
-    if (status !== "loading") void SplashScreen.hideAsync();
-  }, [status]);
   if (status === "loading") return null;
 
   const signedIn = status === "signed-in";
@@ -36,12 +42,15 @@ function Routes() {
 }
 
 export default function RootLayout() {
+  // The session is checked outside the update gate, so the splash screen also hides when the
+  // gate shows its update screen in place of the app.
   return (
-    <UpdateGate>
-      <SessionProvider>
-        <StatusBar style="auto" />
+    <SessionProvider>
+      <StatusBar style="auto" />
+      <HideSplashScreen />
+      <UpdateGate>
         <Routes />
-      </SessionProvider>
-    </UpdateGate>
+      </UpdateGate>
+    </SessionProvider>
   );
 }

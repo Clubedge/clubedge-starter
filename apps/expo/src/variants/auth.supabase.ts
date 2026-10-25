@@ -8,7 +8,10 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 // The session stays in the app's own storage on the device (Supabase's sessions outgrow the
-// secure store's values). Its address never carries one: emailed links open the website.
+// secure store's values), under this key. Its address never carries one: emailed links open the
+// website.
+const storageKey = "supabase-session";
+
 const supabase =
   url && publishableKey
     ? createSupabaseBrowserClient(url, publishableKey, {
@@ -19,6 +22,7 @@ const supabase =
             await deviceStorage.removeItem(key);
           },
         },
+        storageKey,
         detectSessionInUrl: false,
       })
     : null;
@@ -39,7 +43,11 @@ const client = () => {
 export const authClient: AuthClient = {
   configured: Boolean(supabase),
   async hasSession() {
-    const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
+    if (!supabase) return false;
+    const { data, error } = await supabase.auth.getSession();
+    // Supabase could not renew an expired session. Unless it refused it, it keeps the session to
+    // renew once it can be reached, and the device still holds one.
+    if (error) return (await deviceStorage.getItem(storageKey)) !== null;
     return Boolean(data.session);
   },
   onChange(listener) {
@@ -90,7 +98,9 @@ export const authClient: AuthClient = {
     if (signOutError) throw signOutError;
   },
   async signOut() {
-    // "local" forgets the session on this device even when Supabase cannot be reached.
-    await client().auth.signOut({ scope: "local" });
+    // "local" ends this device's session only. When Supabase cannot be reached, it can keep the
+    // session to renew later, so the device forgets it here.
+    const { error } = await client().auth.signOut({ scope: "local" });
+    if (error) await deviceStorage.removeItem(storageKey);
   },
 };
