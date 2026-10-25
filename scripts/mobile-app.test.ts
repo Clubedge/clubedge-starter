@@ -4,9 +4,9 @@ import { createServer, request, type IncomingHttpHeaders, type Server } from "no
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
-import { iconArguments } from "../apps/capacitor/scripts/icons.mjs";
+import { iconArguments, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
 
 // The mobile app (apps/capacitor) calls the API through the website's Node server
 // (apps/vite/server.mjs), from origins of its own. The server runs here from a copy, as the
@@ -201,5 +201,15 @@ describe("apps/capacitor/scripts/icons.mjs", () => {
     const assetPath = args[args.indexOf("--assetPath") + 1]!.replaceAll("\\", "/");
     expect(assetPath).toBe("../web/public/.well-known");
     expect(iconArguments("ios")).toContain("--ios");
+  });
+
+  it("refuses a platform whose native project does not exist yet", () => {
+    // The asset tool would skip it and still succeed, so this fails before running the tool.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(makeIcons("android")).toBe(false);
+    expect(error).toHaveBeenCalledWith(
+      "The app has no android project yet: run pnpm android to create it.",
+    );
+    error.mockRestore();
   });
 });

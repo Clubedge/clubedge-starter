@@ -8,7 +8,7 @@
 // through npx at a fixed version, so the project installs nothing for it; it needs the network
 // the first time.
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -42,18 +42,45 @@ export function iconArguments(platform) {
   ];
 }
 
+// Where each native project keeps its app icons.
+const iconDirectories = {
+  android: ["android/app/src/main/res", (name) => name.startsWith("mipmap")],
+  ios: ["ios/App/App/Assets.xcassets", (name) => name === "AppIcon.appiconset"],
+};
+
+/** When the platform's icon files last changed, so a run that wrote none shows. */
+function iconsChangedAt(platform) {
+  const [directory, isIconFolder] = iconDirectories[platform];
+  const root = join(shellDirectory, directory);
+  if (!existsSync(root)) return 0;
+  let latest = 0;
+  for (const folder of readdirSync(root).filter(isIconFolder)) {
+    for (const file of readdirSync(join(root, folder))) {
+      latest = Math.max(latest, statSync(join(root, folder, file)).mtimeMs);
+    }
+  }
+  return latest;
+}
+
 /**
  * Makes one platform's icons and splash screens. When it cannot, as offline, the app keeps
- * Capacitor's own: it says so and returns false, rather than stopping a build.
+ * Capacitor's own: it says so and returns false, rather than stopping a build. The asset tool
+ * skips a platform without a native project and still succeeds, so success also means that it
+ * wrote the platform's icons.
  */
 export function makeIcons(platform) {
+  if (!existsSync(join(shellDirectory, platform))) {
+    console.error(`The app has no ${platform} project yet: run pnpm ${platform} to create it.`);
+    return false;
+  }
+  const before = iconsChangedAt(platform);
   const windows = process.platform === "win32";
   const { status } = spawnSync(windows ? "npx.cmd" : "npx", iconArguments(platform), {
     cwd: shellDirectory,
     stdio: "inherit",
     shell: windows,
   });
-  if (status === 0) return true;
+  if (status === 0 && iconsChangedAt(platform) > before) return true;
   console.warn(
     `The ${platform} app keeps Capacitor's default icon for now: run pnpm icons to make it from the logo.`,
   );
