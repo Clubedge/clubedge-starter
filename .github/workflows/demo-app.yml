@@ -70,6 +70,8 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @clubedge/shell run sync android --demo
+          # The demo's icon is the Clubedge logo: the script fails if it can't make it.
+          pnpm --filter @clubedge/shell run icons android
           version="${TAG#v}"
           if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             echo "The release tag $TAG is not vMAJOR.MINOR.PATCH."

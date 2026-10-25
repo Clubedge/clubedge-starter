@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "android": "node --env-file-if-exists=.env.local scripts/build.mjs android --open",
+    "icons": "node scripts/icons.mjs",
     "ios": "node --env-file-if-exists=.env.local scripts/build.mjs ios --open",
     "sync": "node --env-file-if-exists=.env.local scripts/build.mjs",
     "typecheck": "tsc --noEmit"

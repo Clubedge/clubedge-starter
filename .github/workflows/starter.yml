@@ -584,6 +584,8 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @clubedge/shell run sync android
+          # The app's icons come from the logo, not Capacitor's own: the script fails if they can't.
+          pnpm --filter @clubedge/shell run icons android
           # Capacitor is in the app's build, and never in the website's; the demo is in neither.
           grep -rqF "plugin is not implemented on" apps/web/dist-app/assets
           if grep -rqF "plugin is not implemented on" apps/web/dist/assets; then
