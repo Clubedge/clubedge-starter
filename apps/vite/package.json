@@ -13,6 +13,7 @@
     "check:env": "pnpm --filter @clubedge/api check:env"
   },
   "dependencies": {
+    "@better-auth/expo": "^1.7.13",
     "@clubedge/auth": "workspace:*",
     "@clubedge/auth-supabase": "workspace:*",
     "@clubedge/contract": "workspace:*",
@@ -24,7 +25,7 @@
     "@clubedge/ui": "workspace:*",
     "@tanstack/react-router": "1.170.42",
     "appwrite": "^29.1.0",
-    "better-auth": "^1.7.7",
+    "better-auth": "^1.7.13",
     "drizzle-orm": "^0.45.4",
     "firebase": "^12.15.0",
     "lucide-react": "^0.468.0",

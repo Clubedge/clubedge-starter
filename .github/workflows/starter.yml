@@ -446,6 +446,18 @@ jobs:
               framework: vite,
               modules: --auth better-auth --api hono --shell capacitor,
             }
+          # The native app: its own screens, signing in with Better Auth through the website, and
+          # with Supabase next to the FastAPI API.
+          - {
+              name: vite-hono-expo,
+              framework: vite,
+              modules: --auth better-auth --api hono --mobile expo,
+            }
+          - {
+              name: vite-fastapi-expo,
+              framework: vite,
+              modules: --auth supabase --api fastapi --mobile expo,
+            }
           - {
               name: vite-hono-resend,
               framework: vite,
@@ -606,6 +618,32 @@ jobs:
         with:
           name: android-debug-${{ matrix.name }}
           path: ${{ runner.temp }}/generated-app/apps/shell/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 3
+      # The native app: its packages against its Expo SDK, its JavaScript bundle for Android and
+      # iOS, and a release APK from the Android project Expo generates. React Native builds with
+      # Java 17; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        if: contains(matrix.modules, '--mobile')
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build the native app for Android
+        if: contains(matrix.modules, '--mobile')
+        working-directory: ${{ runner.temp }}/generated-app/apps/mobile
+        env:
+          EXPO_PUBLIC_API_URL: https://example.com
+        run: |
+          set -euo pipefail
+          pnpm exec expo install --check
+          pnpm exec expo export --platform android --platform ios
+          pnpm exec expo prebuild --platform android
+          (cd android && ./gradlew assembleRelease)
+      - name: Upload the native app's APK
+        if: contains(matrix.modules, '--mobile')
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-release-${{ matrix.name }}
+          path: ${{ runner.temp }}/generated-app/apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 3
       # Pages that need no database must keep working when it is not configured, so a mistake
       # in the environment never takes the whole app down at startup.

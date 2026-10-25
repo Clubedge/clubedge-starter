@@ -5,3 +5,13 @@ pnpm-lock.yaml
 apps/shell/android/
 apps/shell/ios/
 # clubedge:end
+# clubedge:if mobile!=none
+# The native app's Android and iOS projects, which Expo generates, and its working files
+apps/mobile/android/
+apps/mobile/ios/
+.expo/
+# clubedge:end
+# clubedge:if starter-repository
+apps/expo/android/
+apps/expo/ios/
+# clubedge:end

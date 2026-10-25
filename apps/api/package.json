@@ -35,7 +35,7 @@
     "@clubedge/storage-s3": "workspace:*",
     "@clubedge/storage-supabase": "workspace:*",
     "@hono/node-server": "^2.1.5",
-    "better-auth": "^1.7.7",
+    "better-auth": "^1.7.13",
     "firebase-admin": "^14.5.0",
     "hono": "^4.13.13",
     "node-appwrite": "^30.0.1",

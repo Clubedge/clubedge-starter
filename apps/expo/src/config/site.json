@@ -1,0 +1,11 @@
+{
+  "name": "Clubedge Starter",
+  "shortName": "Clubedge",
+  "description": "A production-minded foundation for Clubedge applications.",
+  "serviceId": "clubedge-starter",
+  "workspaceLabel": "Starter workspace",
+  "links": {
+    "repository": "https://github.com/Clubedge/clubedge-starter",
+    "setupGuide": "https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
+  }
+}

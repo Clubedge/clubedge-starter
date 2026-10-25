@@ -798,6 +798,37 @@ Builds without `--demo` contain none of it. The demo replaces the app's build in
 
 <!-- clubedge:end -->
 
+<!-- clubedge:if mobile!=none -->
+
+## The native app
+
+`apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens: sign-in, a dashboard, and settings. <!-- clubedge:only auth!=none -->
+`apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens. <!-- clubedge:only auth=none -->
+It calls the API through your website, as the website does, with the same contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config.
+
+The app runs as a development build, which needs [Android Studio](https://developer.android.com/studio) for Android, and a Mac with [Xcode](https://developer.apple.com/xcode/) for iOS, as Expo's [environment setup](https://docs.expo.dev/get-started/set-up-your-environment/) describes. Expo Go, the store app that runs projects without building them, does not support SDK 58 yet.
+
+1. Set your app's id in `apps/mobile/app.config.ts`: a reverse-domain name you own, such as `com.yourcompany.app`. It becomes permanent once a store lists the app, so set it before the first release build. The app's name and its address scheme come from `apps/mobile/src/config/site.json`.
+2. Start the website and the API with `pnpm dev`. In development, the app calls them at `http://10.0.2.2:3000` from the Android emulator and at `http://localhost:3000` from the iOS simulator; on a phone, set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local` to `http://<your computer's address>:3000`.
+3. Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env.local` to the website's Supabase settings. <!-- clubedge:only auth=supabase -->
+4. Run `pnpm --filter @clubedge/mobile-app android` (or `ios`). The first run generates the native project, builds the app, installs it on a running emulator or a connected phone, and starts Expo's dev server, which reloads the app as you change it. Later, `pnpm --filter @clubedge/mobile-app start` starts the dev server for the installed build; build again after adding a package with native code.
+
+For a release, set `EXPO_PUBLIC_API_URL` to the website's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your website.
+
+How the app works with the website:
+
+- Better Auth runs on the website, which trusts the app's address scheme (made from the site config's `serviceId`). Its Expo plugin keeps the session cookie in the device's secure storage and sends it with the app's calls. <!-- clubedge:only auth=better-auth -->
+- Supabase keeps the app's session in the app's storage on the device, and the app sends its access token to the API, as the website does. <!-- clubedge:only auth=supabase -->
+- The app sends no browser origin, so the website's CORS settings do not apply to it.
+- Emailed links, such as sign-up confirmations and password resets, open the website. After confirming an address or setting a new password, sign in again in the app. <!-- clubedge:only auth!=none -->
+- Deleting the account is in the app's settings, as the App Store requires of apps that let people sign up. <!-- clubedge:only auth!=none -->
+- The app has no billing: app stores require their own in-app purchases for digital goods, so subscriptions stay on the website. <!-- clubedge:only payments!=none -->
+- Its icon, Android's adaptive icon, and its splash screen are the images in `apps/mobile/assets`, which `app.config.ts` names.
+
+Each time it starts, the app compares its version, `version` in `app.config.ts` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)). Below `APP_MINIMUM_VERSION`, it shows only **Update required**, with an **Update** button that opens `APP_UPDATE_URL`; below `APP_LATEST_VERSION`, the dashboard says an update is available.
+
+<!-- clubedge:end -->
+
 ## Before deploying
 
 This project is a starting point; review the security and operational choices for your application before production use:
@@ -819,5 +850,6 @@ This project is a starting point; review the security and operational choices fo
 - **Database connection fails:** check the URL, network access, and whether your provider expects a transaction pooler. Keep `prepare: false` for the current Supabase pooler setup.
 - **Redis cannot connect:** check that the URL uses `redis://` or `rediss://`, credentials are current, and outbound TCP access is allowed. <!-- clubedge:only cache=redis -->
 - **The mobile app cannot reach the API:** check that `WEB_URL` in `apps/shell/.env.local` is the deployed website's address and that the website's `MOBILE_ORIGINS` lists the app's origins, then run `pnpm --filter @clubedge/shell sync` again. <!-- clubedge:only shell!=none -->
+- **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the website's `https://` address, and a phone in development your computer's address on the same network. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none -->
 - **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`.
 - **A package file appears missing after an offline install:** retry with a normal registry-backed `pnpm install`; an incomplete local package cache can satisfy offline resolution while leaving package contents incomplete.

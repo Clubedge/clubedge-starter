@@ -19,7 +19,7 @@
   "dependencies": {
     "@clubedge/auth": "workspace:*",
     "@clubedge/core": "workspace:*",
-    "better-auth": "^1.7.7",
+    "better-auth": "^1.7.13",
     "drizzle-orm": "^0.45.4"
   },
   "devDependencies": {

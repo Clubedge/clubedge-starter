@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "name": "clubedge-starter",
   "packageManager": "pnpm",
   "siteConfig": "apps/web/src/config/site.json",
@@ -33,6 +33,18 @@
       "packages": {
         "@clubedge/contract": "packages/contract"
       }
+    },
+    "mobile": {
+      "name": "Mobile app",
+      "question": "Add a native mobile app?",
+      "path": "apps/mobile",
+      "package": "@clubedge/mobile-app",
+      "env": {
+        "example": "apps/mobile/.env.example",
+        "target": "apps/mobile/.env.local"
+      },
+      "roles": ["mobile"],
+      "siteConfig": "apps/mobile/src/config/site.json"
     },
     "shell": {
       "name": "Mobile shell",
