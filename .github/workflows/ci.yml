@@ -67,6 +67,10 @@ jobs:
           # clubedge:if auth!=none
           curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3000/login
           # clubedge:end
+      # package.json's pnpm.auditConfig ignores two advisories in Expo's development CLI
+      # (@expo/cli, for the native app): node-forge, which has no fixed release yet, and zod 3,
+      # fixed only in zod 4. They concern that tool on developer machines and in CI, not the app
+      # or the website. Remove them once Expo updates it.
       - run: pnpm audit --audit-level high
 
   e2e:
