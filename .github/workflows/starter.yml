@@ -366,7 +366,9 @@ jobs:
   # Generates projects from this checkout with create-clubedge-app and runs their full pipeline.
   generated-project:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The native app's release build takes up to 20 minutes on its own, and the rest of the
+    # project about 10: projects with it get more time.
+    timeout-minutes: ${{ contains(matrix.modules, '--mobile') && 45 || 30 }}
     strategy:
       fail-fast: false
       matrix:
