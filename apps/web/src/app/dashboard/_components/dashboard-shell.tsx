@@ -180,7 +180,7 @@ function Title({ className }: { className?: string }) {
       href="#overview"
       className={cn("inline-flex min-w-0 items-center gap-2.5 font-semibold", className)}
     >
-      <ClubedgeMark alt="" className="size-6 shrink-0 rounded-md" />
+      <ClubedgeMark alt="" className="size-6 shrink-0" />
       <span className="truncate">{siteConfig.shortName}</span>
     </Link>
   );

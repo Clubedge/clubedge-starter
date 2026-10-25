@@ -1,10 +1,9 @@
-// The app's icons and splash screens, made from the web app's logo, apps/web/public/.well-known/
-// logo.svg, by Capacitor's asset tool:
+// The app's icons and splash screens, made from assets/logo.svg by Capacitor's asset tool:
 //
 //   node scripts/icons.mjs [android] [ios]
 //
 // build.mjs runs it when it creates a native project; run it again (pnpm icons) after changing
-// the logo. Without a platform, it makes them for the native projects that exist. The tool runs
+// the art. Without a platform, it makes them for the native projects that exist. The tool runs
 // through npx at a fixed version, so the project installs nothing for it; it needs the network
 // the first time.
 import { spawnSync } from "node:child_process";
@@ -13,11 +12,12 @@ import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const shellDirectory = join(import.meta.dirname, "..");
-const logoDirectory = join(import.meta.dirname, "../../web/public/.well-known");
+const logoDirectory = join(import.meta.dirname, "../assets");
 const platforms = ["android", "ios"];
 
-// The logo fills a blue square, so the icon's background is the same blue; the splash screens
-// show it on the app's light and dark backgrounds. Match these to your own logo.
+// assets/logo.svg is the white mark on a full blue square, so the icon's background is the same
+// blue and the icon fills; the splash screens show it as a tile on the app's light and dark
+// backgrounds. Match these to your own art.
 const iconBackground = "#2563eb";
 const splashBackground = "#ffffff";
 const splashBackgroundDark = "#151515";
