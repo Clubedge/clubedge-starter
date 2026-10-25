@@ -181,6 +181,26 @@ function getAuthServer() {
   });
   const baseURL =
     process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || "http://localhost:3000";
+  const trustedOrigins = [];
+  const plugins = [];
+  // clubedge:if shell!=none
+  // The mobile shell signs in from its own origins (MOBILE_ORIGINS, as server.mjs reads them),
+  // and its WebView keeps no cookie for this server: the bearer plugin answers with the session
+  // token in a header, and takes it back as a bearer token.
+  trustedOrigins.push(
+    ...(process.env.MOBILE_ORIGINS ?? "capacitor://localhost,https://localhost")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+  plugins.push(bearer());
+  // clubedge:end
+  // clubedge:if mobile!=none
+  // The native app signs in with its own scheme, which it sends as expo-origin, and keeps the
+  // session cookie on the device: the expo plugin takes expo-origin as the request's origin.
+  trustedOrigins.push(appScheme);
+  plugins.push(expo());
+  // clubedge:end
   authServer = betterAuth({
     database: drizzleAdapter(database, {
       provider: "pg",
@@ -225,31 +245,8 @@ function getAuthServer() {
       // account deletions per user. The limits are kept in this process, so they cannot fail open.
       customRules: { "/change-password": { window: 60, max: 10 } },
     },
-    trustedOrigins: [
-      // clubedge:if shell!=none
-      // The mobile shell signs in from its own origins, as server.mjs reads them (MOBILE_ORIGINS).
-      ...(process.env.MOBILE_ORIGINS ?? "capacitor://localhost,https://localhost")
-        .split(",")
-        .map((origin) => origin.trim())
-        .filter(Boolean),
-      // clubedge:end
-      // clubedge:if mobile!=none
-      // The native app's scheme, which it sends as expo-origin with each sign-in request.
-      appScheme,
-      // clubedge:end
-    ],
-    plugins: [
-      // clubedge:if shell!=none
-      // The shell's WebView keeps no cookie for this server: the bearer plugin answers with the
-      // session token in a header, and takes it back as a bearer token.
-      bearer(),
-      // clubedge:end
-      // clubedge:if mobile!=none
-      // The native app keeps the session cookie on the device and sends it back in a header; the
-      // expo plugin takes its expo-origin header as the request's origin.
-      expo(),
-      // clubedge:end
-    ],
+    trustedOrigins,
+    plugins,
   });
   return authServer;
 }

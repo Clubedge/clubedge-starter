@@ -46,7 +46,7 @@ export const authClient: AuthClient = {
     const subscription = supabase?.auth.onAuthStateChange(() => listener()).data.subscription;
     return () => subscription?.unsubscribe();
   },
-  async sessionHeaders() {
+  async sessionHeaders(): Promise<Record<string, string>> {
     const { data } = (await supabase?.auth.getSession()) ?? { data: { session: null } };
     const token = data.session?.access_token;
     return token ? { authorization: `Bearer ${token}` } : {};

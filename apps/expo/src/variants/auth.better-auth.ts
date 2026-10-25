@@ -31,7 +31,7 @@ export const authClient: AuthClient = {
     const { data } = await client.getSession();
     return Boolean(data?.session);
   },
-  async sessionHeaders() {
+  async sessionHeaders(): Promise<Record<string, string>> {
     const cookie = await client.getCookie();
     return cookie ? { cookie } : {};
   },
