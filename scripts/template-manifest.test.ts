@@ -190,6 +190,14 @@ describe("stack packs", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain(slot.default);
   });
+
+  it("gives every advisory pnpm audit skips to the stack whose dependencies need it", () => {
+    // The CLI removes a stack's auditIgnores from projects without the stack, so each advisory
+    // package.json skips belongs to a stack, and projects without it audit that advisory again.
+    const skipped: string[] = readJson("package.json").pnpm?.auditConfig?.ignoreGhsas ?? [];
+    const owned = stackDescriptors.flatMap<string>((stack) => stack.auditIgnores ?? []);
+    expect([...skipped].sort()).toEqual([...new Set(owned)].sort());
+  });
 });
 
 describe("clubedge.template.json", () => {
