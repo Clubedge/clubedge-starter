@@ -4,8 +4,9 @@ import { createServer, request, type IncomingHttpHeaders, type Server } from "no
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
+import { iconArguments, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
 
 // The mobile app (apps/capacitor) calls the API through the website's Node server
 // (apps/vite/server.mjs), from origins of its own. The server runs here from a copy, as the
@@ -189,5 +190,26 @@ describe("apps/capacitor/scripts/build.mjs", () => {
     expect(() => webOrigin("http://app.example.com")).toThrow("https://");
     expect(() => webOrigin("https://app.example.com/app")).toThrow("must be an origin");
     expect(() => webOrigin("https://user:secret@app.example.com")).toThrow("must be an origin");
+  });
+});
+
+describe("apps/capacitor/scripts/icons.mjs", () => {
+  it("makes each platform's icons from the web app's logo, with a pinned asset tool", () => {
+    const args = iconArguments("android");
+    expect(args.slice(0, 4)).toEqual(["--yes", "@capacitor/assets@3.0.5", "generate", "--android"]);
+    // The logo is apps/web/public/.well-known/logo.svg in a project, which the tool finds by name.
+    const assetPath = args[args.indexOf("--assetPath") + 1]!.replaceAll("\\", "/");
+    expect(assetPath).toBe("../web/public/.well-known");
+    expect(iconArguments("ios")).toContain("--ios");
+  });
+
+  it("refuses a platform whose native project does not exist yet", () => {
+    // The asset tool would skip it and still succeed, so this fails before running the tool.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(makeIcons("android")).toBe(false);
+    expect(error).toHaveBeenCalledWith(
+      "The app has no android project yet: run pnpm android to create it.",
+    );
+    error.mockRestore();
   });
 });

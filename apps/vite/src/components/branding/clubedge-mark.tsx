@@ -1,3 +1,7 @@
+// Imported, so the build carries the logo in its own files: a folder whose name starts with a dot,
+// such as .well-known, never reaches the mobile app, since Android leaves those out of an app.
+import logo from "../../../public/.well-known/logo.svg";
+
 type ClubedgeMarkProps = {
   alt?: string;
   className?: string;
@@ -17,7 +21,7 @@ export function ClubedgeMark({
       fetchPriority={priority ? "high" : "auto"}
       height={512}
       loading={priority ? "eager" : "lazy"}
-      src="/.well-known/logo.svg"
+      src={logo}
       width={512}
     />
   );

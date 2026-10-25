@@ -11,6 +11,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { makeIcons } from "./icons.mjs";
 
 const shellDirectory = join(import.meta.dirname, "..");
 const webDirectory = join(import.meta.dirname, "../../web");
@@ -87,7 +88,10 @@ function build(args) {
   const capacitor = join(shellDirectory, "node_modules/@capacitor/cli/bin/capacitor");
   for (const platform of targets) {
     // cap add creates the native project and copies the build into it; cap sync updates both.
-    run(capacitor, [exists(platform) ? "sync" : "add", platform], { cwd: shellDirectory });
+    // A new project gets its icons and splash screens from the logo (icons.mjs).
+    const created = !exists(platform);
+    run(capacitor, [created ? "add" : "sync", platform], { cwd: shellDirectory });
+    if (created) makeIcons(platform);
   }
   if (options.includes("--open")) {
     for (const platform of targets) run(capacitor, ["open", platform], { cwd: shellDirectory });
