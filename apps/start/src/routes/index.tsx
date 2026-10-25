@@ -64,7 +64,7 @@ function LandingPage() {
             className="flex shrink-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
             to="/"
           >
-            <ClubedgeMark alt="" className="size-9 rounded-xl" priority />
+            <ClubedgeMark alt="" className="size-9" priority />
             <span className="hidden text-sm font-semibold tracking-tight min-[380px]:inline">
               {siteConfig.name}
             </span>

@@ -71,7 +71,7 @@ function LoginPage() {
             className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             to="/"
           >
-            <ClubedgeMark className="size-12 rounded-xl" />
+            <ClubedgeMark className="size-12" />
           </Link>
           <div className="grid gap-1.5">
             <h1 className="text-2xl font-semibold tracking-tight">
