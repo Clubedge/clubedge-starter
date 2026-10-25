@@ -194,12 +194,12 @@ describe("apps/capacitor/scripts/build.mjs", () => {
 });
 
 describe("apps/capacitor/scripts/icons.mjs", () => {
-  it("makes each platform's icons from the web app's logo, with a pinned asset tool", () => {
+  it("makes each platform's icons from the shell's own art, with a pinned asset tool", () => {
     const args = iconArguments("android");
     expect(args.slice(0, 4)).toEqual(["--yes", "@capacitor/assets@3.0.5", "generate", "--android"]);
-    // The logo is apps/web/public/.well-known/logo.svg in a project, which the tool finds by name.
+    // The art is apps/shell/assets/logo.svg in a project, which the tool finds by name.
     const assetPath = args[args.indexOf("--assetPath") + 1]!.replaceAll("\\", "/");
-    expect(assetPath).toBe("../web/public/.well-known");
+    expect(assetPath).toBe("assets");
     expect(iconArguments("ios")).toContain("--ios");
   });
 
