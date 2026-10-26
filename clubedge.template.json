@@ -110,7 +110,6 @@
     "ROADMAP.md",
     "apps/api/src/server/variants/auth.better-auth.test.ts",
     "apps/vite/src/lib/demo.test.ts",
-    "apps/expo/src/demo",
     "apps/api-fastapi/tests/test_auth_variants.py",
     "clubedge.template.json",
     "scripts/stack-preview-render.mjs",
