@@ -1,12 +1,20 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer, request, type IncomingHttpHeaders, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
-import { iconArguments, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
+import { iconArguments, makeAndroidSplash, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
 
 // The mobile apps call the API through the website's Node server (apps/vite/server.mjs): the
 // shell (apps/capacitor) from origins of its own, and the native app (apps/expo) with no origin,
@@ -240,5 +248,68 @@ describe("apps/capacitor/scripts/icons.mjs", () => {
       "The app has no android project yet: run pnpm android to create it.",
     );
     error.mockRestore();
+  });
+
+  describe("makeAndroidSplash", () => {
+    // Capacitor's launch theme, as cap add writes it.
+    const launchTheme = [
+      '    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">',
+      '        <item name="android:background">@drawable/splash</item>',
+      "    </style>",
+    ];
+    let android = "";
+    const resources = () => join(android, "app/src/main/res");
+    const styles = () => readFileSync(join(resources(), "values/styles.xml"), "utf8");
+
+    function project(theme: string[], newline = "\n") {
+      android = mkdtempSync(join(tmpdir(), "clubedge-android-"));
+      mkdirSync(join(resources(), "values"), { recursive: true });
+      const lines = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        "<resources>",
+        ...theme,
+        "</resources>",
+      ];
+      writeFileSync(join(resources(), "values/styles.xml"), lines.join(newline) + newline);
+    }
+
+    afterEach(() => rmSync(android, { recursive: true, force: true }));
+
+    it("draws the mark in the middle of the background, which nothing stretches", () => {
+      project(launchTheme);
+      expect(makeAndroidSplash(android)).toBe(true);
+      expect(styles()).toContain(
+        [
+          '        <item name="android:background">@drawable/splash_screen</item>',
+          '        <item name="windowSplashScreenBackground">@color/splash_screen_background</item>',
+          '        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_screen_icon</item>',
+        ].join("\n"),
+      );
+      expect(existsSync(join(resources(), "drawable-nodpi/splash_icon.png"))).toBe(true);
+      const icon = readFileSync(join(resources(), "drawable/splash_screen_icon.xml"), "utf8");
+      expect(icon).toContain('android:width="128dp"');
+      expect(readFileSync(join(resources(), "values-night/splash_screen.xml"), "utf8")).toContain(
+        "#151515",
+      );
+    });
+
+    it("changes the launch theme once, keeping its line endings", () => {
+      project(launchTheme, "\r\n");
+      makeAndroidSplash(android);
+      const once = styles();
+      makeAndroidSplash(android);
+      expect(styles()).toBe(once);
+      expect(once.match(/windowSplashScreenAnimatedIcon/g)).toHaveLength(1);
+      expect(once.replaceAll("\r\n", "")).not.toContain("\n");
+    });
+
+    it("leaves a launch theme of the app's own as it is", () => {
+      const own = ['    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen" />'];
+      project(own);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(makeAndroidSplash(android)).toBe(false);
+      expect(styles()).not.toContain("splash_screen");
+      warn.mockRestore();
+    });
   });
 });
