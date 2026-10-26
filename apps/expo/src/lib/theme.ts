@@ -65,12 +65,15 @@ const light = {
   inverse: "#0A0A0A",
   inversePressed: "#262626",
   onInverse: "#FFFFFF",
-  // The tab bar: a capsule of the screen's own color, where the current tab is a pill of the
-  // brand's blue.
-  nav: "#FFFFFF",
+  // The tab bar: frosted glass, nearly opaque where Android blurs less, with a hairline edge; the
+  // current tab is a pill of the brand's blue.
+  nav: "rgba(255, 255, 255, 0.72)",
+  navOpaque: "rgba(255, 255, 255, 0.96)",
+  navBorder: "rgba(0, 0, 0, 0.08)",
+  navPressed: "rgba(0, 0, 0, 0.05)",
   navActive: "#2563EB",
   onNavActive: "#FFFFFF",
-  navInactive: "#6B7280",
+  navInactive: "#4B5563",
   // Behind a sheet.
   scrim: "rgba(0, 0, 0, 0.35)",
 };
@@ -108,10 +111,13 @@ const dark: typeof light = {
   inverse: "#FAFAFA",
   inversePressed: "#E5E5E5",
   onInverse: "#0A0A0A",
-  nav: "#242428",
+  nav: "rgba(36, 36, 40, 0.72)",
+  navOpaque: "rgba(36, 36, 40, 0.96)",
+  navBorder: "rgba(255, 255, 255, 0.08)",
+  navPressed: "rgba(255, 255, 255, 0.08)",
   navActive: "#2563EB",
   onNavActive: "#FFFFFF",
-  navInactive: "#A1A1AA",
+  navInactive: "#D1D5DB",
   scrim: "rgba(0, 0, 0, 0.6)",
 };
 
