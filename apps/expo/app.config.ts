@@ -36,7 +36,9 @@ const config: ExpoConfig = {
       "expo-splash-screen",
       {
         image: "./assets/splash-icon.png",
-        imageWidth: 160,
+        // Android 12 and later show the splash image through a circle 192dp across: at 128dp,
+        // even the mark's corners stay inside it.
+        imageWidth: 128,
         resizeMode: "contain",
         backgroundColor: "#FFFFFF",
         dark: { image: "./assets/splash-icon.png", backgroundColor: "#151515" },
