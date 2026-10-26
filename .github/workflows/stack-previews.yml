@@ -88,7 +88,7 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
           PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
         run: printf '%s\n%s\n' "$PREVIEW_URL" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-${{ matrix.api }}.txt"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: steps.deploy.outputs.url != ''
         with:
           name: stack-preview-${{ matrix.api }}
@@ -102,7 +102,7 @@ jobs:
     needs: [deploy]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: stack-preview-*
