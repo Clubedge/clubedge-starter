@@ -1,8 +1,9 @@
 # Maintainer workflow for the Starter repository: the demo apps for Android, built from each
 # release and attached to it. clubedge-demo.apk is the mobile app (Capacitor), which the website
-# links to through releases/latest/download/clubedge-demo.apk; clubedge-native-demo.apk is the
-# native app (Expo), once its demo modules exist. Each demo keeps sample data on the device and
-# needs no server. Generated projects never get this workflow.
+# links to through releases/latest/download/clubedge-demo.apk; it keeps sample data on the device
+# and needs no server. clubedge-native-demo.apk is the native app (Expo) of a project without a
+# website, which signs in for real against that project's API, deployed by each release to
+# Render's free plan. Generated projects never get this workflow.
 name: Demo app
 on:
   release:
@@ -12,9 +13,6 @@ on:
       tag:
         description: The release to build the demo for and attach it to, such as v0.27.0
         required: true
-      demo-ref:
-        description: Where the native app's demo modules come from, such as main for a release made before them (default the release)
-        required: false
 permissions:
   contents: write
 jobs:
@@ -126,41 +124,48 @@ jobs:
           sha256sum clubedge-demo.apk > clubedge-demo.apk.sha256
           gh release upload "$TAG" clubedge-demo.apk clubedge-demo.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
 
-  # The native app's demo needs its modules in apps/expo/src/demo, which generated projects never
-  # get: api.ts exports the contract client as api, and auth.ts the app's AuthClient as
-  # authClient, answering in place of the API and sign-in. They come from the release, or from
-  # demo-ref in a run by hand, so a release made before them can still get the APK. Without them,
-  # native-android is skipped.
+  # The native app's demo needs two secrets: RENDER_API_KEY, which the stack previews also use, and
+  # NATIVE_DEMO_DATABASE_URL, the connection string of the API's Postgres database, such as Neon's
+  # pooled one. Without them, native-android is skipped.
   native-demo:
     runs-on: ubuntu-24.04
     env:
-      DEMO_REF: ${{ inputs.demo-ref || github.event.release.tag_name || inputs.tag }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      DATABASE_URL: ${{ secrets.NATIVE_DEMO_DATABASE_URL }}
     outputs:
-      found: ${{ steps.check.outputs.found }}
+      enabled: ${{ steps.check.outputs.enabled }}
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEMO_REF }}
-          sparse-checkout: apps/expo/src
       - id: check
         run: |
-          if [ -f apps/expo/src/demo/api.ts ] && [ -f apps/expo/src/demo/auth.ts ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$RENDER_API_KEY" ] && [ -n "$DATABASE_URL" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "$DEMO_REF has no native demo (apps/expo/src/demo): no clubedge-native-demo.apk." >> "$GITHUB_STEP_SUMMARY"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "No native demo: the repository needs the RENDER_API_KEY and NATIVE_DEMO_DATABASE_URL secrets." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  # The native app of a project without a website, built for Android with the demo's modules,
-  # and attached to the release as clubedge-native-demo.apk.
+  # The native app of a project without a website, and its API: the API runs on Render's free
+  # plan, from an image on GitHub's container registry, with Better Auth in it and its tables in
+  # the demo's database. The app signs up and in against it, and is attached to the release as
+  # clubedge-native-demo.apk.
   native-android:
     needs: native-demo
-    if: needs.native-demo.outputs.found == 'true'
+    if: needs.native-demo.outputs.enabled == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      packages: write
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
-      DEMO_REF: ${{ inputs.demo-ref || github.event.release.tag_name || inputs.tag }}
+      # The API's image, whose name GitHub's registry wants in lowercase, and its Render service.
+      IMAGE: ghcr.io/clubedge/clubedge-native-demo-api
+      SERVICE: clubedge-native-demo
+      # The Render account the stack previews use: the key's workspace, or RENDER_OWNER_ID's when
+      # the key reaches several.
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
+      DATABASE_URL: ${{ secrets.NATIVE_DEMO_DATABASE_URL }}
       # The mobile app's demo's signing key. Without it, the APK keeps Expo's debug signature.
       DEMO_KEYSTORE: ${{ secrets.DEMO_KEYSTORE }}
       DEMO_KEYSTORE_PASSWORD: ${{ secrets.DEMO_KEYSTORE_PASSWORD }}
@@ -196,30 +201,125 @@ jobs:
             --framework none --api hono --auth better-auth --mobile expo --storage none \
             --cache memory --email none --payments none --jobs none --observability none \
             --infra none --no-git --no-install --yes
-      # The app's api and auth modules hand over to the demo's, from DEMO_REF. The app's id becomes
-      # permanent with the Android project, which the build creates; it differs from the mobile
-      # app's demo's, so the two install side by side.
-      - name: Put the demo in place and set the app's id
+      # The app's id becomes permanent with the Android project, which the build creates; it
+      # differs from the mobile app's demo's, so the two install side by side.
+      - name: Set the app's id
         working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
         run: |
           set -euo pipefail
-          git -C "$GITHUB_WORKSPACE" fetch --quiet --depth 1 origin "$DEMO_REF"
-          mkdir "$RUNNER_TEMP/demo-source"
-          git -C "$GITHUB_WORKSPACE" archive FETCH_HEAD apps/expo/src/demo | tar -x -C "$RUNNER_TEMP/demo-source"
-          cp -R "$RUNNER_TEMP/demo-source/apps/expo/src/demo" src/demo
-          echo 'export { api } from "@/demo/api";' > src/lib/api.ts
-          echo 'export { authClient } from "@/demo/auth";' > src/lib/auth.ts
           sed -i 's|^const appId = .*|const appId = "live.clubedge.nativedemo";|' app.config.ts
           grep -q 'const appId = "live.clubedge.nativedemo";' app.config.ts
           grep -q '"name": "Clubedge Native Demo"' src/config/site.json
       - name: Install
         working-directory: ${{ runner.temp }}/clubedge-native-demo
         run: pnpm install --frozen-lockfile
-      - name: Check the demo's types
+      # Render pulls the image without credentials, so its package must be public. GitHub makes a
+      # new package private: the first run stops here until the package's settings make it public.
+      - name: Build the API's image and publish it
+        working-directory: ${{ runner.temp }}/clubedge-native-demo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          docker build --file apps/api/Dockerfile --tag "$IMAGE:$TAG" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" .
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$TAG"
+          package=/orgs/clubedge/packages/container/clubedge-native-demo-api
+          if [ "$(gh api "$package" --jq .visibility 2> /dev/null || true)" = private ]; then
+            echo "Render can't pull $IMAGE while it is private: make it public under Danger Zone at"
+            echo "https://github.com/orgs/Clubedge/packages/container/clubedge-native-demo-api/settings,"
+            echo "then run this workflow again."
+            exit 1
+          fi
+      # Migrations take Neon's direct host, without -pooler: a transaction pooler can break DDL.
+      - name: Migrate the demo's database
+        run: |
+          set -euo pipefail
+          direct="${DATABASE_URL/-pooler./.}"
+          echo "::add-mask::$direct"
+          docker run --rm --env DATABASE_URL_DIRECT="$direct" "$IMAGE:$TAG" node /app/migrate.mjs
+      # The service is created on the first run, in Frankfurt; each release then deploys its own
+      # image. Render generates Better Auth's secret once, so sessions outlive deploys. A free
+      # service sleeps after 15 minutes without requests, and takes about a minute to wake.
+      - name: Deploy the API to Render
+        id: render
+        run: |
+          set -euo pipefail
+          render() {
+            curl --fail-with-body --silent --show-error --header "Authorization: Bearer $RENDER_API_KEY" \
+              --header "Accept: application/json" --header "Content-Type: application/json" "$@"
+          }
+          api=https://api.render.com/v1
+          owner="$RENDER_OWNER_ID"
+          if [ -z "$owner" ]; then
+            owners=$(render "$api/owners?limit=100" | jq -c '[.[] | (.owner // .).id] | unique')
+            if [ "$(jq length <<< "$owners")" != 1 ]; then
+              echo "RENDER_API_KEY reaches several workspaces: set the intended one's ID as the RENDER_OWNER_ID variable."
+              exit 1
+            fi
+            owner=$(jq -r '.[0]' <<< "$owners")
+          fi
+          service=$(render "$api/services?name=$SERVICE&type=web_service&ownerId=$owner&limit=100" |
+            jq -c --arg name "$SERVICE" 'first(.[] | (.service // .) | select(.name == $name)) // empty')
+          if [ -z "$service" ]; then
+            body=$(jq -n --arg owner "$owner" --arg name "$SERVICE" --arg image "$IMAGE:$TAG" '{
+              type: "web_service", name: $name, ownerId: $owner,
+              image: {ownerId: $owner, imagePath: $image},
+              serviceDetails: {runtime: "image", plan: "free", region: "frankfurt", healthCheckPath: "/api/health"}
+            }')
+            service=$(render --request POST "$api/services" --data "$body" | jq -c .service)
+          fi
+          id=$(jq -r .id <<< "$service")
+          url=$(jq -r .serviceDetails.url <<< "$service")
+          variable() {
+            render --request PUT "$api/services/$id/env-vars/$1" --data "$2" > /dev/null
+          }
+          variable DATABASE_URL "$(jq -n --arg value "$DATABASE_URL" '{value: $value}')"
+          variable BETTER_AUTH_URL "$(jq -n --arg value "$url" '{value: $value}')"
+          variable CLIENT_IP_HEADER '{"value": "cf-connecting-ip"}'
+          variable PORT '{"value": "3001"}'
+          if ! render "$api/services/$id/env-vars?limit=100" | jq -e 'any(.[]; (.envVar.key // .key) == "BETTER_AUTH_SECRET")' > /dev/null; then
+            variable BETTER_AUTH_SECRET '{"generateValue": true}'
+          fi
+          image=$(jq -n --arg owner "$owner" --arg image "$IMAGE:$TAG" '{image: {ownerId: $owner, imagePath: $image}}')
+          render --request PATCH "$api/services/$id" --data "$image" > /dev/null
+          since=$(($(date +%s) - 1))
+          deploy=$(render --request POST "$api/services/$id/deploys" --data "$(jq -n --arg image "$IMAGE:$TAG" '{imageUrl: $image}')" | jq -r '.id // empty')
+          status=queued
+          for attempt in $(seq 1 90); do
+            sleep 10
+            if [ -z "$deploy" ]; then
+              # Behind a deploy in progress, such as the one creating the service starts, Render
+              # queues this one and answers without its id: it is the newest once it shows.
+              newest=$(render "$api/services/$id/deploys?limit=1" | jq -c '.[0].deploy')
+              [ "$(date -d "$(jq -r .createdAt <<< "$newest")" +%s)" -ge "$since" ] || continue
+              deploy=$(jq -r .id <<< "$newest")
+            fi
+            status=$(render "$api/services/$id/deploys/$deploy" | jq -r .status)
+            case "$status" in
+              live) break ;;
+              build_failed | update_failed | canceled | deactivated | pre_deploy_failed)
+                echo "Render's deploy $deploy ended $status: its logs are at $(jq -r .dashboardUrl <<< "$service")."
+                exit 1
+                ;;
+            esac
+          done
+          if [ "$status" != live ]; then
+            echo "Render's deploy ${deploy:-(queued)} is still $status after 15 minutes."
+            exit 1
+          fi
+          # The API answers, reaches its database, and runs Better Auth.
+          for check in health ready auth/ok; do
+            curl --fail --silent --show-error --output /dev/null --retry 12 --retry-delay 10 --retry-all-errors "$url/api/$check"
+          done
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "The demo's API: $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build the app against the demo's API and number it after the release
         working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
-        run: pnpm run typecheck
-      - name: Build the demo and number it after the release
-        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
+        env:
+          # Built into the app: the API it signs in at and calls.
+          EXPO_PUBLIC_API_URL: ${{ steps.render.outputs.url }}
         run: |
           set -euo pipefail
           version="${TAG#v}"
