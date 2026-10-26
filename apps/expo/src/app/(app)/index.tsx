@@ -6,7 +6,7 @@ import site from "@/config/site.json";
 import { Body, Button, Card, Screen, Title } from "@/components/ui";
 import { useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
-import { installedVersion } from "@/lib/app-update";
+import { installedVersion, updates } from "@/lib/app-update";
 import { authEnabled } from "@/lib/auth-enabled";
 import { apiUrl } from "@/lib/config";
 
@@ -52,6 +52,7 @@ export default function Dashboard() {
           {updateUrl ? (
             <Button title="Update" onPress={() => void Linking.openURL(updateUrl)} />
           ) : null}
+          <Button title="Not now" variant="secondary" onPress={updates.notNow} />
         </Card>
       ) : null}
       {update?.status === "available" ? (
@@ -60,6 +61,7 @@ export default function Dashboard() {
           {updateUrl ? (
             <Button title="Update" onPress={() => void Linking.openURL(updateUrl)} />
           ) : null}
+          <Button title="Not now" variant="secondary" onPress={updates.notNow} />
         </Card>
       ) : null}
       <Card title="Account">

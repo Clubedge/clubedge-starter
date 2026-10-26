@@ -1,16 +1,13 @@
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import {
-  UPDATE_CHECK_INTERVAL,
   appPlatform,
   appVersionMiddleware,
-  checkForUpdate,
-  dismiss,
-  isDismissed,
-  rememberedUpdate,
+  createUpdateChecks,
   type ApiClient,
   type AppUpdate,
+  type UpdateChecks,
 } from "@clubedge/contract";
 import { Button, buttonVariants } from "@clubedge/ui/components/button";
 import { showAbovePage } from "./above-page";
@@ -71,71 +68,35 @@ export function UpdateScreen({ update, onDismiss }: { update: AppUpdate; onDismi
   );
 }
 
-/** The API's refusals of this app's version (426 update_required), from any request. */
-const refusals = new EventTarget();
-
-/**
- * Shows what the versions the API serves call for, from a check when the app starts, on each
- * return to it (at most every UPDATE_CHECK_INTERVAL), and whenever the API refuses this version.
- * Offline, a block the API answered before holds, and anything else waits for the API.
- */
-export function UpdateNotice({ api }: { api: ApiClient }) {
-  const [update, setUpdate] = useState<AppUpdate | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    let checkedAt = 0;
-    const check = async () => {
-      checkedAt = Date.now();
-      const installed = await appVersion();
-      const versions = () => api.GET("/api/app-version").then(({ data }) => data ?? null);
-      const next = await checkForUpdate(installed, versions, storage);
-      if (next && active) setUpdate((await isDismissed(next, storage)) ? null : next);
-    };
-
-    void appVersion()
-      .then((installed) => rememberedUpdate(installed, storage))
-      .then((remembered) => {
-        if (remembered && active) setUpdate((current) => current ?? remembered);
-      });
-    void check();
-
-    const refused = () => {
-      setUpdate((current) => ({ status: "required", versions: current?.versions ?? null }));
-      void check();
-    };
-    refusals.addEventListener("refused", refused);
-    const resumed = App.addListener("resume", () => {
-      if (Date.now() - checkedAt >= UPDATE_CHECK_INTERVAL) void check();
-    });
-    return () => {
-      active = false;
-      refusals.removeEventListener("refused", refused);
-      void resumed.then((listener) => listener.remove());
-    };
-  }, [api]);
-
+/** Draws what the app's update checks (packages/contract, app-update.ts) call for. */
+export function UpdateNotice({ updates }: { updates: UpdateChecks }) {
+  const update = useSyncExternalStore(updates.subscribe, updates.current);
   if (!update || update.status === "current") return null;
-  const dismissed = () => {
-    void dismiss(update, storage);
-    setUpdate(null);
-  };
-  return <UpdateScreen onDismiss={dismissed} update={update} />;
+  return <UpdateScreen onDismiss={updates.notNow} update={update} />;
 }
 
 /**
- * Starts the checks above the app's page, and has each of `api`'s requests from then on say
- * which version and platform the app is, so the API can refuse one it no longer serves. Requests
- * the app made before carry neither: the check it starts covers them.
+ * Starts the app's update checks above its page: when the app starts, on each return to it, and
+ * whenever the API refuses this version. Each of `api`'s requests from then on says which version
+ * and platform the app is, so the API can refuse one it no longer serves; requests the app made
+ * before carry neither, and the check it starts covers them.
  */
 export function showUpdateNotice(api: ApiClient) {
-  const installed = appVersion();
+  // A device that can't say its version still reaches the API, without the version.
+  const installed = appVersion().catch(() => "");
+  const updates = createUpdateChecks({
+    installed,
+    versions: async () => (await api.GET("/api/app-version")).data ?? null,
+    storage,
+  });
   api.use(
     appVersionMiddleware({
       version: () => installed,
       platform: appPlatform(Capacitor.getPlatform()),
-      onRefused: () => refusals.dispatchEvent(new Event("refused")),
+      onRefused: updates.refused,
     }),
   );
-  showAbovePage(<UpdateNotice api={api} />);
+  void App.addListener("resume", updates.resume);
+  updates.start();
+  showAbovePage(<UpdateNotice updates={updates} />);
 }
