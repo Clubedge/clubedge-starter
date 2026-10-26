@@ -949,7 +949,7 @@ Builds without `--demo` contain none of it. The demo replaces the app's build in
 
 ## The native app
 
-`apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens: sign-in, a dashboard, and settings. <!-- clubedge:only auth!=none -->
+`apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens: a welcome screen and sign-in, then two tabs, a dashboard and the user's profile with its settings. <!-- clubedge:only auth!=none -->
 `apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens. <!-- clubedge:only auth=none -->
 It calls the API through your website, as the website does, with the same contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config. <!-- clubedge:only framework!=none -->
 It calls the API directly, with the contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config. <!-- clubedge:only framework=none -->
@@ -996,6 +996,8 @@ How the app works with the API: <!-- clubedge:only framework=none -->
 - Deleting the account is in the app's settings, as the App Store requires of apps that let people sign up. <!-- clubedge:only auth!=none -->
 - The app has no billing: app stores require their own in-app purchases for digital goods, so subscriptions stay on the website. <!-- clubedge:only payments!=none -->
 - Its icon, Android's adaptive icon, and its splash screen are the images in `apps/mobile/assets`, which `app.config.ts` names.
+- Its look is in `apps/mobile/src/lib/theme.ts`: its colors, in light and dark, and its type scale, in Inter, which loads while the splash screen shows.
+- The welcome screen shows the brand's blue and the app's mark. For a photo of your own there, add it to `apps/mobile/assets` and set `heroPhoto` in `apps/mobile/src/app/welcome.tsx`. <!-- clubedge:only auth!=none -->
 
 The app compares its version, `version` in `app.config.ts` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)) when it starts, when it comes back to the foreground (at most every 15 minutes), and whenever the API answers one of its requests `426 update_required`. Below `APP_MINIMUM_VERSION`, it shows only **Update required**, with an **Update** button that opens `APP_UPDATE_URL`, and remembers it, so it holds when the app next starts offline, until it is updated. Below `APP_NEXT_MINIMUM_VERSION`, the dashboard says the date it stops working; below `APP_LATEST_VERSION`, that an update is available. The logic is shared with the API in `packages/contract` (`app-version.ts` and `app-update.ts`).
 
