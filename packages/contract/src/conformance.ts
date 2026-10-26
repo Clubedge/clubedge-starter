@@ -7,7 +7,7 @@
 // server with API_URL set. It runs in Vitest, which is why it is a separate entry
 // (`@clubedge/contract/conformance`) that only tests import.
 import { describe, expect, it } from "vitest";
-import { APP_PLATFORM_HEADER, APP_VERSION_HEADER } from "./app-version";
+import { APP_VERSION_HEADER } from "./app-version";
 import type { components } from "./schema";
 
 export interface ApiHarness {
@@ -199,7 +199,7 @@ export function describeApiConformance(
     it("serves the apps it doesn't require to update", async () => {
       const harness = await setup();
       const response = await harness.request("/api/session", {
-        headers: { [APP_VERSION_HEADER]: "999999.0.0", [APP_PLATFORM_HEADER]: "android" },
+        headers: { [APP_VERSION_HEADER]: "999999.0.0" },
       });
       expect(response.status).toBe(200);
     });
