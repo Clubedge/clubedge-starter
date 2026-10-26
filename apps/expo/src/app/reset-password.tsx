@@ -1,7 +1,7 @@
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Body, Button, Field, Notice, Screen, TextLink, Title } from "@/components/ui";
+import { Button, Field, Heading, Notice, Requirement, Screen } from "@/components/ui";
 import { authClient } from "@/lib/auth";
 import { AccountError } from "@/lib/auth-client";
 import { useSession } from "@/lib/session";
@@ -47,17 +47,16 @@ export default function ResetPassword() {
 
   if (done) {
     return (
-      <Screen>
-        <Title>Password changed</Title>
+      <Screen footer={<Button title="Continue" onPress={() => router.replace("/")} />}>
+        <Heading title="Password changed" />
         <Notice tone="success">Your new password is set.</Notice>
-        <TextLink title="Continue" onPress={() => router.replace("/")} />
       </Screen>
     );
   }
 
   return (
-    <Screen>
-      <Title>Set a new password</Title>
+    <Screen back>
+      <Heading title="Set a new password" />
       {error ? <Notice tone="error">{error}</Notice> : null}
       <Field
         label="New password"
@@ -67,14 +66,13 @@ export default function ResetPassword() {
         autoComplete="new-password"
         textContentType="newPassword"
       />
-      <Body muted>At least 8 characters.</Body>
+      <Requirement met={password.length >= 8}>At least 8 characters</Requirement>
       <Button
         title="Set password"
         busy={busy}
         disabled={!link || password.length < 8}
         onPress={reset}
       />
-      <TextLink title="Back to sign in" onPress={() => router.replace("/sign-in")} />
     </Screen>
   );
 }

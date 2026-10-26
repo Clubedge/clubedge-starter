@@ -24,13 +24,17 @@
           "src/app/sign-up.tsx",
           "src/app/forgot-password.tsx",
           "src/app/reset-password.tsx",
-          "src/app/(app)/settings.tsx",
+          "src/app/(app)/you",
+          "src/components/sign-out-sheet.tsx",
+          "src/components/tab-bar.tsx",
+          "src/lib/account.ts",
           "src/lib/auth.ts",
           "src/lib/auth-client.ts",
           "src/lib/session.tsx"
         ],
         "replace": {
           "src/app/_layout.tsx": "src/variants/layout.auth.tsx",
+          "src/app/(app)/_layout.tsx": "src/variants/app-layout.auth.tsx",
           "src/lib/api.ts": "src/variants/api.auth.ts",
           "src/lib/auth-enabled.ts": "src/variants/auth-enabled.auth.ts"
         }

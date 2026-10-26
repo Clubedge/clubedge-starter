@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
+import { StyleSheet, View } from "react-native";
 import site from "@/config/site.json";
-import { Body, Button, Field, Notice, Screen, TextLink, Title } from "@/components/ui";
+import { Button, Field, Heading, LinkPrompt, Notice, Screen, TextLink } from "@/components/ui";
 import { authClient } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 
@@ -27,8 +28,17 @@ export default function SignIn() {
   };
 
   return (
-    <Screen>
-      <Title>Sign in to {site.shortName}</Title>
+    <Screen
+      back
+      footer={
+        <LinkPrompt
+          text={`New to ${site.shortName}?`}
+          link="Create account"
+          onPress={() => router.replace("/sign-up")}
+        />
+      }
+    >
+      <Heading title="Welcome back">Sign in to your {site.shortName} account.</Heading>
       {!authClient.configured ? (
         <Notice tone="error">
           Sign-in is not configured yet. Add your auth provider's settings to
@@ -53,15 +63,22 @@ export default function SignIn() {
         autoComplete="current-password"
         textContentType="password"
       />
-      <Button
-        title="Sign in"
-        busy={busy}
-        disabled={!authClient.configured || !email || !password}
-        onPress={signIn}
-      />
-      <TextLink title="Forgot your password?" onPress={() => router.push("/forgot-password")} />
-      <Body muted>No account yet?</Body>
-      <TextLink title="Create one" onPress={() => router.push("/sign-up")} />
+      <View style={styles.forgot}>
+        <TextLink title="Forgot password?" onPress={() => router.push("/forgot-password")} />
+      </View>
+      <View style={styles.submit}>
+        <Button
+          title="Sign in"
+          busy={busy}
+          disabled={!authClient.configured || !email || !password}
+          onPress={signIn}
+        />
+      </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  forgot: { alignSelf: "flex-end", paddingHorizontal: 4, paddingTop: 4 },
+  submit: { marginTop: 12 },
+});

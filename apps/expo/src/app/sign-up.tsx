@@ -1,7 +1,7 @@
 import * as Linking from "expo-linking"; // clubedge:only framework=none
 import { router } from "expo-router";
 import { useState } from "react";
-import { Body, Button, Field, Notice, Screen, TextLink, Title } from "@/components/ui";
+import { Button, Field, Heading, LinkPrompt, Notice, Requirement, Screen } from "@/components/ui";
 import { authClient } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 
@@ -34,19 +34,44 @@ export default function SignUp() {
 
   if (emailSent) {
     return (
-      <Screen>
-        <Title>Check your email</Title>
+      <Screen
+        back
+        footer={
+          <Button
+            title="Back to sign in"
+            variant="secondary"
+            onPress={() => router.replace("/sign-in")}
+          />
+        }
+      >
+        <Heading title="Check your email" />
         <Notice tone="success">
           We sent a link to {email.trim()}. Open it to confirm your address, then sign in here.
         </Notice>
-        <TextLink title="Back to sign in" onPress={() => router.replace("/sign-in")} />
       </Screen>
     );
   }
 
   return (
-    <Screen>
-      <Title>Create your account</Title>
+    <Screen
+      back
+      footer={
+        <>
+          <Button
+            title="Create account"
+            busy={busy}
+            disabled={!authClient.configured || !email || password.length < 8}
+            onPress={signUp}
+          />
+          <LinkPrompt
+            text="Already have an account?"
+            link="Sign in"
+            onPress={() => router.replace("/sign-in")}
+          />
+        </>
+      }
+    >
+      <Heading title="Create your account" />
       {error ? <Notice tone="error">{error}</Notice> : null}
       <Field
         label="Email"
@@ -65,14 +90,7 @@ export default function SignUp() {
         autoComplete="new-password"
         textContentType="newPassword"
       />
-      <Body muted>At least 8 characters.</Body>
-      <Button
-        title="Create account"
-        busy={busy}
-        disabled={!authClient.configured || !email || password.length < 8}
-        onPress={signUp}
-      />
-      <TextLink title="I already have an account" onPress={() => router.replace("/sign-in")} />
+      <Requirement met={password.length >= 8}>At least 8 characters</Requirement>
     </Screen>
   );
 }

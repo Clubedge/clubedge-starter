@@ -4,17 +4,21 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { UpdateGate } from "@/components/update-gate";
 import { SessionProvider, useSession } from "@/lib/session";
-import { useColors } from "@/lib/theme";
+import { useColors, useFontsReady } from "@/lib/theme";
 
-// The splash screen stays up until the app knows whether this device is signed in.
+// The splash screen stays up until the app's fonts are loaded and it knows whether this device
+// is signed in.
 void SplashScreen.preventAutoHideAsync();
 
-/** Hides the splash screen once the session is known, whichever screen then shows. */
-function HideSplashScreen() {
+/**
+ * Hides the splash screen once the fonts are loaded and the session is known, whichever screen
+ * then shows.
+ */
+function HideSplashScreen({ fontsReady }: { fontsReady: boolean }) {
   const { status } = useSession();
   useEffect(() => {
-    if (status !== "loading") void SplashScreen.hideAsync();
-  }, [status]);
+    if (fontsReady && status !== "loading") void SplashScreen.hideAsync();
+  }, [fontsReady, status]);
   return null;
 }
 
@@ -42,15 +46,18 @@ function Routes() {
 }
 
 export default function RootLayout() {
+  const fontsReady = useFontsReady();
   // The session is checked outside the update gate, so the splash screen also hides when the
-  // gate shows its update screen in place of the app.
+  // gate shows its update screen in place of the app. Both wait for the fonts.
   return (
     <SessionProvider>
       <StatusBar style="auto" />
-      <HideSplashScreen />
-      <UpdateGate>
-        <Routes />
-      </UpdateGate>
+      <HideSplashScreen fontsReady={fontsReady} />
+      {fontsReady ? (
+        <UpdateGate>
+          <Routes />
+        </UpdateGate>
+      ) : null}
     </SessionProvider>
   );
 }

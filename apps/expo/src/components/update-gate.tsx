@@ -1,9 +1,11 @@
 import * as Linking from "expo-linking";
+import { ArrowCircleUpIcon } from "phosphor-react-native/src/icons/ArrowCircleUp";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
-import { AppState } from "react-native";
+import { AppState, StyleSheet, View } from "react-native";
 import site from "@/config/site.json";
-import { Body, Button, Screen, Title } from "@/components/ui";
+import { Body, Button, Heading, Screen } from "@/components/ui";
 import { updates } from "@/lib/app-update";
+import { radius, useColors } from "@/lib/theme";
 
 /** What the versions the API serves call for, for the dashboard to say so: null until known. */
 export const useUpdate = () => useSyncExternalStore(updates.subscribe, updates.current);
@@ -15,6 +17,7 @@ export const useUpdate = () => useSyncExternalStore(updates.subscribe, updates.c
  * announced minimum's date, and below the latest, the dashboard says so.
  */
 export function UpdateGate({ children }: { children: ReactNode }) {
+  const colors = useColors();
   const update = useUpdate();
 
   useEffect(() => {
@@ -29,11 +32,15 @@ export function UpdateGate({ children }: { children: ReactNode }) {
     const updateUrl = update.versions?.updateUrl;
     return (
       <Screen>
-        <Title>Update required</Title>
-        <Body>
-          This version of {site.name} is no longer supported. Install the latest version to
-          continue.
-        </Body>
+        <View style={styles.message}>
+          <View style={[styles.badge, { backgroundColor: colors.primaryTint }]}>
+            <ArrowCircleUpIcon size={30} color={colors.accent} weight="duotone" />
+          </View>
+          <Heading title="Update required">
+            This version of {site.name} is no longer supported. Install the latest version to
+            continue.
+          </Heading>
+        </View>
         {updateUrl ? (
           <Button title="Update" onPress={() => void Linking.openURL(updateUrl)} />
         ) : (
@@ -44,3 +51,14 @@ export function UpdateGate({ children }: { children: ReactNode }) {
   }
   return <>{children}</>;
 }
+
+const styles = StyleSheet.create({
+  message: { flexGrow: 1, justifyContent: "center", gap: 18 },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
