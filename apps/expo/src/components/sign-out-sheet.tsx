@@ -43,11 +43,13 @@ export function SignOutSheet({
       transparent
       visible={visible}
     >
+      {/* The scrim fills the screen, behind the sheet too, so its rounded corners show. */}
       <Pressable
         accessibilityLabel="Close"
         onPress={onClose}
-        style={[styles.scrim, { backgroundColor: colors.scrim }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]}
       />
+      <View style={styles.above} />
       <View
         style={[
           styles.sheet,
@@ -103,7 +105,8 @@ export function SignOutSheet({
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1 },
+  // The room above the sheet, where a tap reaches the scrim and closes it.
+  above: { flex: 1, pointerEvents: "none" },
   sheet: {
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
