@@ -303,9 +303,9 @@ export interface components {
       email: string;
       displayName: string | null;
     };
-    /** @description Versions are MAJOR.MINOR.PATCH, such as 1.4.0. */
+    /** @description Versions are MAJOR.MINOR.PATCH, such as 1.4.0. Each is the one for the platform the request names in X-App-Platform, where the API sets that platform its own. */
     AppVersion: {
-      /** @description The oldest app version the API still serves: apps below it must update before continuing. */
+      /** @description The oldest app version the API still serves: apps below it must update before continuing. Once nextMinimumFrom passes, it is nextMinimumVersion. */
       minimumVersion: string | null;
       /** @description The newest released version: apps below it may show an optional update notice. */
       latestVersion: string | null;
@@ -314,6 +314,13 @@ export interface components {
        * @description Where to get the update, such as a store listing or a download page.
        */
       updateUrl: string | null;
+      /** @description A minimum the API has announced but does not require yet: apps below it keep working until nextMinimumFrom, and can tell their users to update before then. Null when none is announced, and once its date passes, when it becomes minimumVersion. */
+      nextMinimumVersion: string | null;
+      /**
+       * Format: date-time
+       * @description When nextMinimumVersion becomes the minimum; null with it.
+       */
+      nextMinimumFrom: string | null;
     };
     Account: {
       email: string;
@@ -481,8 +488,22 @@ export interface components {
         "application/json": components["schemas"]["Error"];
       };
     };
+    /** @description The app's version (X-App-Version) is below the minimum the API serves (code update_required): it must update before it continues. Any operation but getHealth, getReady, and getAppVersion can answer it. */
+    UpdateRequired: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
   };
-  parameters: never;
+  parameters: {
+    /** @description The installed app's version, such as 1.4.0. Below the minimum getAppVersion serves, the request gets 426 update_required (UpdateRequired). */
+    AppVersionHeader: string;
+    /** @description The platform the app runs on, for that platform's versions and update link. Any other value counts as none. */
+    AppPlatformHeader: "ios" | "android";
+  };
   requestBodies: never;
   headers: never;
   pathItems: never;
@@ -561,7 +582,10 @@ export interface operations {
   getAppVersion: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The platform the app runs on, for that platform's versions and update link. Any other value counts as none. */
+        "X-App-Platform"?: components["parameters"]["AppPlatformHeader"];
+      };
       path?: never;
       cookie?: never;
     };
