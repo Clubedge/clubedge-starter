@@ -8,7 +8,6 @@ import {
   Heading,
   LegalLink,
   LegalNote,
-  LinkPrompt,
   Notice,
   Requirement,
   Screen,
@@ -79,11 +78,6 @@ export default function SignUp() {
             <LegalLink title="Terms" url={site.links.terms} /> and acknowledge our{" "}
             <LegalLink title="Privacy Policy" url={site.links.privacy} />.
           </LegalNote>
-          <LinkPrompt
-            text="Already have an account?"
-            link="Sign in"
-            onPress={() => router.replace("/sign-in")}
-          />
         </>
       }
     >

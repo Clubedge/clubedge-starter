@@ -170,7 +170,7 @@ function UpdateDeadline({
 
 /**
  * Below the latest version: an update is out, inline where the dashboard puts it. Not now hides it
- * until a newer one is out. A dark capsule in both appearances, like the tab bar.
+ * until a newer one is out. The brand's light blue, like the notices on the dashboard.
  */
 export function UpdateBanner({
   version,
@@ -181,14 +181,17 @@ export function UpdateBanner({
 }) {
   const colors = useColors();
   return (
-    <View accessibilityRole="summary" style={[styles.banner, { backgroundColor: colors.nav }]}>
+    <View
+      accessibilityRole="summary"
+      style={[styles.banner, { backgroundColor: colors.primaryTint }]}
+    >
       <View style={[styles.bannerBadge, { backgroundColor: colors.primary }]}>
         <ArrowDownIcon size={20} color={colors.onPrimary} weight="bold" />
       </View>
       <View style={styles.bannerText}>
-        <Text style={[styles.bannerTitle, { color: colors.navActive }]}>Update available</Text>
+        <Text style={[styles.bannerTitle, { color: colors.onPrimaryTint }]}>Update available</Text>
         {version ? (
-          <Text numberOfLines={1} style={[styles.bannerVersion, { color: colors.navInactive }]}>
+          <Text numberOfLines={1} style={[styles.bannerVersion, { color: colors.onPrimaryTint }]}>
             Version {version}
           </Text>
         ) : null}
@@ -199,10 +202,10 @@ export function UpdateBanner({
           onPress={() => openUpdate(updateUrl)}
           style={({ pressed }) => [
             styles.bannerUpdate,
-            { backgroundColor: colors.navActive, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: pressed ? colors.primaryPressed : colors.primary },
           ]}
         >
-          <Text style={[styles.bannerUpdateText, { color: colors.onNavActive }]}>Update</Text>
+          <Text style={[styles.bannerUpdateText, { color: colors.onPrimary }]}>Update</Text>
         </Pressable>
       ) : null}
       <Pressable
@@ -212,7 +215,7 @@ export function UpdateBanner({
         onPress={updates.notNow}
         style={styles.bannerClose}
       >
-        <XIcon size={18} color={colors.navInactive} weight="bold" />
+        <XIcon size={18} color={colors.onPrimaryTint} weight="bold" />
       </Pressable>
     </View>
   );
@@ -280,7 +283,7 @@ const styles = StyleSheet.create({
   },
   bannerText: { flex: 1, gap: 2 },
   bannerTitle: { fontFamily: font.semibold, fontSize: 15 },
-  bannerVersion: { fontFamily: font.regular, fontSize: 13 },
+  bannerVersion: { fontFamily: font.regular, fontSize: 13, opacity: 0.8 },
   bannerUpdate: {
     height: 34,
     paddingHorizontal: 14,

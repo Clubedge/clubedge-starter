@@ -1,12 +1,8 @@
 import type { Health, User } from "@clubedge/contract";
-import type { Icon } from "phosphor-react-native";
-import { DeviceMobileIcon } from "phosphor-react-native/src/icons/DeviceMobile";
-import { PulseIcon } from "phosphor-react-native/src/icons/Pulse";
-import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 import site from "@/config/site.json";
-import { Avatar, Mark, Screen } from "@/components/ui";
+import { Avatar, Mark, Notice, Screen } from "@/components/ui";
 import { UpdateBanner, useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
 import { installedVersion } from "@/lib/app-update";
@@ -16,6 +12,7 @@ import { font, radius, type, useColors } from "@/lib/theme";
 
 type Overview = { health: Health | null; user: User | null };
 
+/** The first screen signed in: a greeting, what the app is, and how the app and its API are. */
 export default function Dashboard() {
   const colors = useColors();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -42,22 +39,36 @@ export default function Dashboard() {
   };
 
   const user = overview?.user;
+  const firstName = user?.displayName?.trim().split(/\s+/)[0];
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const health = overview?.health;
   return (
     <Screen
       layout="dashboard"
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
     >
       <View style={styles.header}>
-        <Text accessibilityRole="header" style={[type.largeTitle, { color: colors.text }]}>
-          Home
-        </Text>
-        {user ? <Avatar name={user.displayName || user.email} size={40} primary /> : null}
+        {user ? (
+          <Avatar name={user.displayName || user.email} size={40} primary />
+        ) : (
+          <View style={[styles.headerMark, { backgroundColor: colors.primary }]}>
+            <Mark size={20} color={colors.onPrimary} />
+          </View>
+        )}
+        <View style={styles.headerText}>
+          <Text style={[type.footnote, { color: colors.textMuted }]}>{today}</Text>
+          <Text accessibilityRole="header" style={[styles.hello, { color: colors.text }]}>
+            {firstName ? `Hey ${firstName}` : "Hey there"}
+          </Text>
+        </View>
       </View>
       <View style={[styles.hero, { backgroundColor: colors.primary }]}>
         <View style={styles.heroText}>
-          <Text style={[styles.greeting, { color: colors.onPrimary }]}>
-            {user?.displayName ? `Welcome back, ${user.displayName}` : "Welcome to"}
-          </Text>
+          <Text style={[styles.heroLabel, { color: colors.onPrimary }]}>WELCOME TO</Text>
           <Text style={[styles.heroTitle, { color: colors.onPrimary }]}>{site.name}</Text>
           <Text style={[styles.heroBody, { color: colors.onPrimary }]}>{site.description}</Text>
         </View>
@@ -71,55 +82,78 @@ export default function Dashboard() {
           updateUrl={update.versions?.updateUrl}
         />
       ) : null}
-      <View style={styles.tiles}>
-        <Tile icon={UserCircleIcon} title="Account">
-          {!authEnabled
-            ? "This app has no sign-in."
-            : user
-              ? `Signed in as ${user.displayName || user.email}`
-              : overview
-                ? "The API did not find your session."
-                : "Loading…"}
-        </Tile>
-        <Tile icon={PulseIcon} title="API">
-          {overview?.health
-            ? `Available (${overview.health.service})`
-            : overview
-              ? `The app cannot reach ${apiUrl || "the API"}.`
-              : "Loading…"}
-        </Tile>
-        <Tile icon={DeviceMobileIcon} title="App">
-          Version {installedVersion || "unknown"}
-        </Tile>
+      {authEnabled && overview && !user ? (
+        <Notice tone="error">The API did not find your session. Pull down to try again.</Notice>
+      ) : null}
+      <View style={styles.stats}>
+        <Stat
+          label="API"
+          value={overview ? (health ? "Online" : "Offline") : "…"}
+          tone={overview ? (health ? "good" : "bad") : "neutral"}
+        >
+          {overview ? (health ? health.service : `No answer from ${apiUrl || "the API"}`) : ""}
+        </Stat>
+        <Stat
+          label="App version"
+          value={installedVersion || "—"}
+          tone={update?.status === "current" ? "good" : update ? "notice" : "neutral"}
+        >
+          {update?.status === "current"
+            ? "Up to date"
+            : update?.status === "available"
+              ? "Update available"
+              : update?.status === "upcoming"
+                ? "Update required soon"
+                : ""}
+        </Stat>
       </View>
     </Screen>
   );
 }
 
-/** One fact about the app, such as who is signed in. */
-function Tile({
-  icon: TileIcon,
-  title,
+/** One figure about the app, large, with its label above and its status below. */
+function Stat({
+  label,
+  value,
+  tone,
   children,
 }: {
-  icon: Icon;
-  title: string;
+  label: string;
+  value: string;
+  tone: "good" | "bad" | "notice" | "neutral";
   children: ReactNode;
 }) {
   const colors = useColors();
+  const dot = { good: colors.success, bad: colors.danger, notice: colors.accent, neutral: null }[
+    tone
+  ];
   return (
-    <View style={[styles.tile, { backgroundColor: colors.surfaceTint }]}>
-      <TileIcon size={26} color={colors.accent} weight="duotone" />
-      <View style={styles.tileText}>
-        <Text style={[styles.tileTitle, { color: colors.onSurfaceTint }]}>{title}</Text>
-        <Text style={[styles.tileBody, { color: colors.onSurfaceTintMuted }]}>{children}</Text>
+    <View style={[styles.stat, { backgroundColor: colors.surfaceTint }]}>
+      <Text style={[type.footnote, { color: colors.onSurfaceTintMuted }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.statValue, { color: colors.onSurfaceTint }]}>
+        {value}
+      </Text>
+      <View style={styles.statStatus}>
+        {dot && children ? <View style={[styles.dot, { backgroundColor: dot }]} /> : null}
+        <Text numberOfLines={1} style={[styles.statText, { color: colors.onSurfaceTintMuted }]}>
+          {children}
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 4 },
+  headerMark: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerText: { flex: 1, gap: 1 },
+  hello: { fontFamily: font.bold, fontSize: 20, letterSpacing: -0.3 },
   hero: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -128,8 +162,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   heroText: { flex: 1, gap: 4 },
-  greeting: { fontFamily: font.medium, fontSize: 14 },
-  heroTitle: { fontFamily: font.semibold, fontSize: 24, letterSpacing: -0.4 },
+  heroLabel: { fontFamily: font.semibold, fontSize: 13, letterSpacing: 0.8 },
+  heroTitle: { fontFamily: font.bold, fontSize: 24, letterSpacing: -0.4 },
   heroBody: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
   heroBadge: {
     width: 48,
@@ -139,9 +173,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  tile: { width: "48.5%", flexGrow: 1, borderRadius: radius.xl, padding: 16, gap: 12 },
-  tileText: { gap: 2 },
-  tileTitle: { fontFamily: font.semibold, fontSize: 15 },
-  tileBody: { fontFamily: font.regular, fontSize: 13, lineHeight: 18 },
+  stats: { flexDirection: "row", gap: 10 },
+  stat: { flex: 1, borderRadius: radius.card, padding: 16, gap: 4 },
+  statValue: { fontFamily: font.bold, fontSize: 28, letterSpacing: -0.6 },
+  statStatus: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  statText: { flex: 1, fontFamily: font.regular, fontSize: 13 },
 });
