@@ -124,9 +124,9 @@ jobs:
           sha256sum clubedge-demo.apk > clubedge-demo.apk.sha256
           gh release upload "$TAG" clubedge-demo.apk clubedge-demo.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
 
-  # The native app's demo needs two secrets: RENDER_API_KEY, the API key of the Render account its
-  # API runs in, and NATIVE_DEMO_DATABASE_URL, the connection string of the API's Postgres
-  # database, such as Neon's pooled one. Without them, native-android is skipped.
+  # The native app's demo needs two secrets: RENDER_API_KEY, which the stack previews also use, and
+  # NATIVE_DEMO_DATABASE_URL, the connection string of the API's Postgres database, such as Neon's
+  # pooled one. Without them, native-android is skipped.
   native-demo:
     runs-on: ubuntu-24.04
     env:
@@ -161,7 +161,10 @@ jobs:
       # The API's image, whose name GitHub's registry wants in lowercase, and its Render service.
       IMAGE: ghcr.io/clubedge/clubedge-native-demo-api
       SERVICE: clubedge-native-demo
+      # The Render account the stack previews use: the key's workspace, or RENDER_OWNER_ID's when
+      # the key reaches several.
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_OWNER_ID: ${{ vars.RENDER_OWNER_ID }}
       DATABASE_URL: ${{ secrets.NATIVE_DEMO_DATABASE_URL }}
       # The mobile app's demo's signing key. Without it, the APK keeps Expo's debug signature.
       DEMO_KEYSTORE: ${{ secrets.DEMO_KEYSTORE }}
@@ -248,8 +251,17 @@ jobs:
               --header "Accept: application/json" --header "Content-Type: application/json" "$@"
           }
           api=https://api.render.com/v1
-          owner=$(render "$api/owners?limit=1" | jq -r '.[0].owner.id')
-          service=$(render "$api/services?name=$SERVICE&type=web_service&limit=1" | jq -c '.[0].service // empty')
+          owner="$RENDER_OWNER_ID"
+          if [ -z "$owner" ]; then
+            owners=$(render "$api/owners?limit=100" | jq -c '[.[] | (.owner // .).id] | unique')
+            if [ "$(jq length <<< "$owners")" != 1 ]; then
+              echo "RENDER_API_KEY reaches several workspaces: set the intended one's ID as the RENDER_OWNER_ID variable."
+              exit 1
+            fi
+            owner=$(jq -r '.[0]' <<< "$owners")
+          fi
+          service=$(render "$api/services?name=$SERVICE&type=web_service&ownerId=$owner&limit=100" |
+            jq -c --arg name "$SERVICE" 'first(.[] | (.service // .) | select(.name == $name)) // empty')
           if [ -z "$service" ]; then
             body=$(jq -n --arg owner "$owner" --arg name "$SERVICE" --arg image "$IMAGE:$TAG" '{
               type: "web_service", name: $name, ownerId: $owner,
