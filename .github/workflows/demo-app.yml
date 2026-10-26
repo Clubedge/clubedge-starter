@@ -1,8 +1,8 @@
 # Maintainer workflow for the Starter repository: the demo apps for Android, built from each
 # release and attached to it. clubedge-demo.apk is the mobile app (Capacitor), which the website
 # links to through releases/latest/download/clubedge-demo.apk; clubedge-native-demo.apk is the
-# native app (Expo), once the release has its demo modules. Each demo keeps sample data on the
-# device and needs no server. Generated projects never get this workflow.
+# native app (Expo), once its demo modules exist. Each demo keeps sample data on the device and
+# needs no server. Generated projects never get this workflow.
 name: Demo app
 on:
   release:
@@ -12,6 +12,9 @@ on:
       tag:
         description: The release to build the demo for and attach it to, such as v0.27.0
         required: true
+      demo-ref:
+        description: Where the native app's demo modules come from, such as main for a release made before them (default the release)
+        required: false
 permissions:
   contents: write
 jobs:
@@ -125,18 +128,19 @@ jobs:
 
   # The native app's demo needs its modules in apps/expo/src/demo, which generated projects never
   # get: api.ts exports the contract client as api, and auth.ts the app's AuthClient as
-  # authClient, answering in place of the API and sign-in. A release without them skips
-  # native-android.
+  # authClient, answering in place of the API and sign-in. They come from the release, or from
+  # demo-ref in a run by hand, so a release made before them can still get the APK. Without them,
+  # native-android is skipped.
   native-demo:
     runs-on: ubuntu-24.04
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      DEMO_REF: ${{ inputs.demo-ref || github.event.release.tag_name || inputs.tag }}
     outputs:
       found: ${{ steps.check.outputs.found }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ env.TAG }}
+          ref: ${{ env.DEMO_REF }}
           sparse-checkout: apps/expo/src
       - id: check
         run: |
@@ -144,7 +148,7 @@ jobs:
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
-            echo "$TAG has no native demo (apps/expo/src/demo): no clubedge-native-demo.apk." >> "$GITHUB_STEP_SUMMARY"
+            echo "$DEMO_REF has no native demo (apps/expo/src/demo): no clubedge-native-demo.apk." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # The native app of a project without a website, built for Android with the demo's modules,
@@ -156,6 +160,7 @@ jobs:
     timeout-minutes: 45
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      DEMO_REF: ${{ inputs.demo-ref || github.event.release.tag_name || inputs.tag }}
       # The mobile app's demo's signing key. Without it, the APK keeps Expo's debug signature.
       DEMO_KEYSTORE: ${{ secrets.DEMO_KEYSTORE }}
       DEMO_KEYSTORE_PASSWORD: ${{ secrets.DEMO_KEYSTORE_PASSWORD }}
@@ -191,14 +196,17 @@ jobs:
             --framework none --api hono --auth better-auth --mobile expo --storage none \
             --cache memory --email none --payments none --jobs none --observability none \
             --infra none --no-git --no-install --yes
-      # The app's api and auth modules hand over to the demo's. The app's id becomes permanent with
-      # the Android project, which the build creates; it differs from the mobile app's demo's, so
-      # the two install side by side.
+      # The app's api and auth modules hand over to the demo's, from DEMO_REF. The app's id becomes
+      # permanent with the Android project, which the build creates; it differs from the mobile
+      # app's demo's, so the two install side by side.
       - name: Put the demo in place and set the app's id
         working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
         run: |
           set -euo pipefail
-          cp -R "$GITHUB_WORKSPACE/apps/expo/src/demo" src/demo
+          git -C "$GITHUB_WORKSPACE" fetch --quiet --depth 1 origin "$DEMO_REF"
+          mkdir "$RUNNER_TEMP/demo-source"
+          git -C "$GITHUB_WORKSPACE" archive FETCH_HEAD apps/expo/src/demo | tar -x -C "$RUNNER_TEMP/demo-source"
+          cp -R "$RUNNER_TEMP/demo-source/apps/expo/src/demo" src/demo
           echo 'export { api } from "@/demo/api";' > src/lib/api.ts
           echo 'export { authClient } from "@/demo/auth";' > src/lib/auth.ts
           sed -i 's|^const appId = .*|const appId = "live.clubedge.nativedemo";|' app.config.ts
