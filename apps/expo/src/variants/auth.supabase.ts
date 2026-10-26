@@ -102,10 +102,18 @@ export const authClient: AuthClient = {
     });
     if (error) throw error;
     const { error: updateError } = await auth.updateUser({ password: newPassword });
-    if (updateError?.code === "weak_password" || updateError?.code === "same_password") {
-      throw new AccountError("invalid-input");
+    if (updateError) {
+      // Without its new password, the link's session goes too, so this device is not left signed
+      // in. Supabase took the link, so the user asks for a new one.
+      const { error: signOutError } = await auth.signOut({ scope: "local" });
+      if (signOutError) await deviceStorage.removeItem(storageKey);
+      if (updateError.code === "weak_password" || updateError.code === "same_password") {
+        throw new Error(
+          "Choose a password of 8 to 128 characters, different from your current one, then ask for a new link: this one has been used.",
+        );
+      }
+      throw updateError;
     }
-    if (updateError) throw updateError;
     return { signedIn: true };
   },
   // clubedge:end

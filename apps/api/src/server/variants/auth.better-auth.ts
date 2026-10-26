@@ -33,7 +33,7 @@ function betterAuthServer(): BetterAuthServer | null {
     secret,
     baseUrl: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
     sendEmail: (message) => email.send(message), // clubedge:only email!=none
-    requireEmailVerification: process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION === "true",
+    requireEmailVerification: process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION === "true", // clubedge:only email!=none
     appName: siteConfig.name,
     emailLinks: "endpoints",
     // The app's requests and its links' addresses use its scheme.

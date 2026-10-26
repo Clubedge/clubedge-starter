@@ -121,6 +121,13 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
     invalid.push("INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it");
   }
   // clubedge:end
+  // clubedge:if auth=better-auth && framework=none
+  // Better Auth signs session cookies with it, and only warns about a short one.
+  const authSecret = env.BETTER_AUTH_SECRET?.trim();
+  if (authSecret && authSecret.length < 32) {
+    invalid.push("BETTER_AUTH_SECRET is shorter than 32 characters: use openssl rand -hex 32");
+  }
+  // clubedge:end
   // clubedge:if auth=firebase
   // The emulator only runs on a developer's machine.
   if (env.FIREBASE_AUTH_EMULATOR_HOST?.trim()) {

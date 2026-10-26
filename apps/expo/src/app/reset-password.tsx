@@ -3,7 +3,20 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Body, Button, Field, Notice, Screen, TextLink, Title } from "@/components/ui";
 import { authClient } from "@/lib/auth";
+import { AccountError } from "@/lib/auth-client";
 import { useSession } from "@/lib/session";
+
+/** The words for a reset the provider refused. */
+function failureMessage(failure: unknown): string {
+  if (failure instanceof AccountError) {
+    return {
+      "invalid-password": "The password could not be reset.",
+      "invalid-input": "Choose a password of 8 to 128 characters, different from your current one.",
+      "rate-limited": "Too many attempts. Wait a minute, then try again.",
+    }[failure.code];
+  }
+  return failure instanceof Error ? failure.message : "The password could not be reset.";
+}
 
 /**
  * The emailed reset link opens this screen through the app's address scheme, once the server has
@@ -26,7 +39,7 @@ export default function ResetPassword() {
       setDone(true);
       if (signedIn) setSignedIn(true);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "The password could not be reset.");
+      setError(failureMessage(failure));
     } finally {
       setBusy(false);
     }
