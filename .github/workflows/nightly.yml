@@ -1,0 +1,96 @@
+# The nightly validation: every conformance suite against its real service, beyond the pull
+# requests' Redis and Firebase emulator. Maintainer checks for the Starter repository — generated
+# projects only receive ci.yml, which skips what needs these services.
+name: Nightly
+on:
+  schedule:
+    # Daily, well before clubedge-upgrade's Monday morning run.
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  conformance:
+    name: every provider, real services
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+      # Catches the SMTP provider's messages, for the suite's delivery assertions.
+      mail:
+        image: axllent/mailpit:v1
+        ports:
+          - 1025:1025
+          - 8025:8025
+      # An S3-compatible server, for the S3 storage provider's suite.
+      storage:
+        image: adobe/s3mock:5
+        ports:
+          - 9090:9090
+      # Speaks Stripe's API, so a verified webhook event can be normalized all the way.
+      stripe:
+        image: stripe/stripe-mock:latest
+        ports:
+          - 12111:12111
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/app
+      REDIS_URL: redis://127.0.0.1:6379
+      SMTP_URL: smtp://127.0.0.1:1025
+      SMTP_INBOX_URL: http://127.0.0.1:8025
+      STORAGE_BUCKET: conformance
+      STORAGE_REGION: us-east-1
+      STORAGE_ENDPOINT: http://127.0.0.1:9090
+      STORAGE_ACCESS_KEY_ID: local
+      STORAGE_SECRET_ACCESS_KEY: local-secret
+      STRIPE_API_BASE: http://127.0.0.1:12111
+      STRIPE_SECRET_KEY: sk_test_conformance
+      STRIPE_WEBHOOK_SECRET: whsec_conformance
+      STRIPE_PRICE_PRO: price_conformance
+      SUPABASE_INBOX_URL: http://127.0.0.1:54324
+      SUPABASE_STORAGE_BUCKET: app
+      # The Resend suite needs the real API; without the secret it skips, as everywhere else.
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # The FastAPI app's pytest and contract check run with the same uv setup as ci.yml.
+      - uses: astral-sh/setup-uv@v10.3.0
+        if: ${{ hashFiles('apps/*/pyproject.toml') != '' }}
+      - run: pnpm install --frozen-lockfile
+      - name: Start the local Supabase stack
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2 start
+          eval "$(npx --yes supabase@2 status -o env)"
+          key="${PUBLISHABLE_KEY:-$ANON_KEY}"
+          {
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_PUBLISHABLE_KEY=$key"
+            echo "SUPABASE_SECRET_KEY=${SECRET_KEY:-${SERVICE_ROLE_KEY:-}}"
+          } >> "$GITHUB_ENV"
+      - name: Run every suite against its service
+        run: |
+          pnpm exec vitest run --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest-results.json"
+          pnpm exec turbo run test
+      - name: Publish the conformance report
+        if: always()
+        run: node scripts/conformance-report.mjs "$RUNNER_TEMP/vitest-results.json" >> "$GITHUB_STEP_SUMMARY"
