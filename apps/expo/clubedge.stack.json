@@ -3,7 +3,17 @@
   "name": "Expo",
   "role": "mobile",
   "envExample": ".env.example",
-  "conditional": [".env.example"],
+  "conditional": [
+    ".env.example",
+    "src/app/forgot-password.tsx",
+    "src/app/sign-up.tsx",
+    "src/lib/api.ts",
+    "src/lib/auth-client.ts",
+    "src/lib/config.ts",
+    "src/variants/api.auth.ts",
+    "src/variants/auth.better-auth.ts",
+    "src/variants/auth.supabase.ts"
+  ],
   "auditIgnores": ["GHSA-86w9-cpqp-85rv", "GHSA-mrhx-c7xc-m3w5"],
   "modules": {
     "auth": {
@@ -13,6 +23,7 @@
           "src/app/sign-in.tsx",
           "src/app/sign-up.tsx",
           "src/app/forgot-password.tsx",
+          "src/app/reset-password.tsx",
           "src/app/(app)/settings.tsx",
           "src/lib/auth.ts",
           "src/lib/auth-client.ts",

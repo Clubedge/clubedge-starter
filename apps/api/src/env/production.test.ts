@@ -10,11 +10,16 @@ describe("production env check", () => {
     expect(checkProductionEnv(complete())).toEqual({ missing: [], local: [], invalid: [] });
   });
 
-  it("always requires the database and the frontend's URL", () => {
+  it("always requires the database", () => {
     const keys = checkProductionEnv({}).missing.map(({ key }) => key);
     expect(keys).toContain("DATABASE_URL");
-    expect(keys).toContain("FRONTEND_URL");
   });
+
+  // clubedge:if framework!=none
+  it("requires the frontend's URL", () => {
+    expect(checkProductionEnv({}).missing.map(({ key }) => key)).toContain("FRONTEND_URL");
+  });
+  // clubedge:end
 
   it("counts empty values as unset", () => {
     const env = { ...complete(), DATABASE_URL: "  " };
@@ -22,8 +27,11 @@ describe("production env check", () => {
   });
 
   it("rejects URLs to this machine", () => {
-    const env = { ...complete(), FRONTEND_URL: "http://localhost:3000" };
-    expect(checkProductionEnv(env).local).toEqual(["FRONTEND_URL"]);
+    const env = {
+      ...complete(),
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/app",
+    };
+    expect(checkProductionEnv(env).local).toEqual(["DATABASE_URL"]);
   });
 
   it("checks the optional direct database URL", () => {

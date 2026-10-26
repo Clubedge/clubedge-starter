@@ -1,6 +1,6 @@
 import { useColorScheme } from "react-native";
 
-// The brand's blue on the neutrals the website uses, in light and dark. Screens take their
+// The brand's blue on the Starter's neutrals, in light and dark. Screens take their
 // colors from here, so a rebrand changes this file only.
 const light = {
   background: "#FFFFFF",

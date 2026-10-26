@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking"; // clubedge:only framework=none
 import { router } from "expo-router";
 import { useState } from "react";
 import { Body, Button, Field, Notice, Screen, TextLink, Title } from "@/components/ui";
@@ -16,7 +17,12 @@ export default function SignUp() {
     setBusy(true);
     setError(null);
     try {
-      const { needsConfirmation } = await authClient.signUp(email.trim(), password);
+      const { needsConfirmation } = await authClient.signUp({
+        email: email.trim(),
+        password,
+        // The emailed link opens this app's sign-in once it has confirmed the address. // clubedge:only framework=none
+        redirectTo: Linking.createURL("/sign-in"), // clubedge:only framework=none
+      });
       if (needsConfirmation) setEmailSent(true);
       else setSignedIn(true);
     } catch (failure) {

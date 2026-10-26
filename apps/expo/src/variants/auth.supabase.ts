@@ -8,8 +8,9 @@ const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 // The session stays in the app's own storage on the device (Supabase's sessions outgrow the
-// secure store's values), under this key. Its address never carries one: emailed links open the
-// website.
+// secure store's values), under this key.
+// Its address never carries one: emailed links open the website. // clubedge:only framework!=none
+// Only the reset screen takes one from an address, an emailed link's. // clubedge:only framework=none
 const storageKey = "supabase-session";
 
 const supabase =
@@ -63,20 +64,51 @@ export const authClient: AuthClient = {
     const { error } = await client().auth.signInWithPassword({ email, password });
     if (error) throw error;
   },
-  async signUp(email, password) {
-    // The confirmation link opens the website (Supabase's Site URL), which signs in there.
-    const { data, error } = await client().auth.signUp({ email, password });
+  async signUp({ email, password, redirectTo }) {
+    // The confirmation link confirms the address, then opens redirectTo; Supabase's Site URL
+    // without it. Supabase only follows redirect URLs it allows: add it to Redirect URLs.
+    const { data, error } = await client().auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo },
+    });
     if (error) throw error;
     return { needsConfirmation: !data.session };
   },
-  async requestPasswordReset(email) {
-    // The link opens the website's reset page. Supabase only follows redirect URLs it allows:
-    // add the website's to Redirect URLs, as for the website itself.
+  async requestPasswordReset({ email, redirectTo }) {
+    // The link opens redirectTo; the website's reset page without it. Supabase only follows
+    // redirect URLs it allows: add it to Redirect URLs.
     const { error } = await client().auth.resetPasswordForEmail(email, {
-      redirectTo: `${apiUrl}/reset-password`,
+      redirectTo: redirectTo ?? `${apiUrl}/reset-password`,
     });
     if (error) throw error;
   },
+  // clubedge:if framework=none
+  async resetPassword(link, newPassword) {
+    // Supabase checked the emailed link, then opened this app with a session in the address's
+    // fragment, or with an error: this device signs in with it, then sets the new password.
+    const params = new URLSearchParams(link.split("#")[1] ?? "");
+    const failure = params.get("error_description");
+    if (failure) throw new Error(failure);
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (!accessToken || !refreshToken) {
+      throw new Error("This link has expired or was already used: ask for a new one.");
+    }
+    const auth = client().auth;
+    const { error } = await auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    const { error: updateError } = await auth.updateUser({ password: newPassword });
+    if (updateError?.code === "weak_password" || updateError?.code === "same_password") {
+      throw new AccountError("invalid-input");
+    }
+    if (updateError) throw updateError;
+    return { signedIn: true };
+  },
+  // clubedge:end
   async changePassword(currentPassword, newPassword) {
     const auth = client().auth;
     const { data } = await auth.getUser();

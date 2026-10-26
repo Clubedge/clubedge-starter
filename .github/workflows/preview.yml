@@ -65,11 +65,14 @@ jobs:
           set -euo pipefail
           if [ -f apps/web/package.json ]; then
             framework=$(node -e 'const p=require("./apps/web/package.json"); const d={...p.dependencies,...p.devDependencies}; console.log(d.vite ? "React + Vite" : d["@tanstack/react-start"] ? "TanStack Start" : "Next.js")')
+          elif [ -f apps/api/package.json ]; then
+            # A project without a website: its API, for the mobile app.
+            framework="API"
           else
             framework="Next.js"
           fi
           api=""
-          if [ "$framework" = "React + Vite" ]; then
+          if [ "$framework" = "React + Vite" ] || [ "$framework" = "API" ]; then
             if [ -f apps/api/pyproject.toml ] || { [ -f apps/api-fastapi/pyproject.toml ] && [ ! -f apps/api/package.json ]; }; then
               api=" + FastAPI (Python)"
             elif [ -f apps/api/package.json ]; then
@@ -131,9 +134,10 @@ jobs:
           set -euo pipefail
           railway() { npx --yes @railway/cli@5 "$@"; }
           railway environment new "$RAILWAY_ENVIRONMENT" --duplicate production --json || true
-          # The image listens on PORT, and the domain below sends traffic to 3000: set it here
+          # The image listens on PORT, and the domain below sends traffic to it: set it here
           # rather than rely on production having it, since Railway otherwise assigns its own.
-          PORT=3000
+          PORT=3000 # clubedge:only framework!=none
+          PORT=3001 # clubedge:only framework=none
           for key in DATABASE_URL DATABASE_URL_DIRECT PORT; do
             printf '%s' "${!key}" | railway variable set "$key" --stdin \
               --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
@@ -141,10 +145,14 @@ jobs:
           domain=$(railway domain list --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" \
             | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1 || true)
           if [ -z "$domain" ]; then
-            domain=$(railway domain --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --port 3000 --json \
+            domain=$(railway domain --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --port "$PORT" --json \
               | grep -o -E '[a-z0-9.-]+\.up\.railway\.app' | head -n 1)
           fi
-          for key in APP_URL NEXT_PUBLIC_APP_URL; do
+          # The preview's own public URL, which the app's links use.
+          urls="APP_URL NEXT_PUBLIC_APP_URL" # clubedge:only framework!=none
+          urls="" # clubedge:only framework=none && auth!=better-auth
+          urls="BETTER_AUTH_URL" # clubedge:only framework=none && auth=better-auth
+          for key in $urls; do
             printf 'https://%s' "$domain" | railway variable set "$key" --stdin \
               --service "$RAILWAY_SERVICE" --environment "$RAILWAY_ENVIRONMENT" --skip-deploys
           done

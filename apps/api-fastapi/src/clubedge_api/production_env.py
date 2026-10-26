@@ -26,7 +26,7 @@ def required_variables() -> list[Requirement]:
     """What every production deploy of this API needs."""
     return [
         Requirement("DATABASE_URL", "the database", url=True),
-        Requirement("FRONTEND_URL", "the frontend's origin, for CORS and links", url=True),
+        Requirement("FRONTEND_URL", "the frontend's origin, for CORS and links", url=True),  # clubedge:only framework!=none
         # clubedge:if auth=supabase
         Requirement("SUPABASE_URL", "Supabase Auth", url=True),
         Requirement("SUPABASE_PUBLISHABLE_KEY", "Supabase Auth"),

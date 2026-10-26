@@ -29,7 +29,7 @@ export interface RateLimitOptions {
 }
 
 /** The connection's own address, from the Node.js server; app.request in tests has none. */
-function socketAddress(c: Context): string | undefined {
+export function socketAddress(c: Context): string | undefined {
   return c.env?.incoming ? getConnInfo(c).remote.address : undefined;
 }
 

@@ -49,9 +49,17 @@ jobs:
             || { cat "$RUNNER_TEMP/firebase.log"; exit 1; }
       # clubedge:end
       - run: pnpm test
+      # clubedge:if framework!=none
       # Build the way the app is developed: with the env example copied into place.
       - run: cp .env.example apps/web/.env.local
+      # clubedge:end
+      # clubedge:if framework=none
+      # Build the way the API is developed: with its env example copied into place.
+      - run: cp apps/api/.env.example apps/api/.env.local
+        if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+      # clubedge:end
       - run: pnpm build
+      # clubedge:if framework!=none
       - name: Serve the production build
         run: |
           set -euo pipefail
@@ -64,9 +72,22 @@ jobs:
           for path in / /dashboard /api/health; do
             curl --fail --silent --show-error --output /dev/null "http://127.0.0.1:3000$path"
           done
-          # clubedge:if auth!=none
-          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3000/login
-          # clubedge:end
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3000/login # clubedge:only auth!=none
+      # clubedge:end
+      # clubedge:if framework=none
+      # The Starter's own pnpm start serves its website, so only projects without one run this.
+      - name: Serve the API's production build
+        if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+        run: |
+          set -euo pipefail
+          pnpm start > "$RUNNER_TEMP/api.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/api.log"' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:3001/api/health && break
+            sleep 1
+          done
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3001/api/health
+      # clubedge:end
       # clubedge:if mobile!=none
       # package.json's pnpm.auditConfig skips two high advisories in Expo's development CLI
       # (@expo/cli), which builds and serves the native app but is not part of it: node-forge's,
@@ -76,6 +97,7 @@ jobs:
       # clubedge:end
       - run: pnpm audit --audit-level high
 
+  # clubedge:if framework!=none
   e2e:
     runs-on: ubuntu-24.04
     steps:
@@ -88,6 +110,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+  # clubedge:end
 
   docker:
     runs-on: ubuntu-24.04
@@ -109,7 +132,7 @@ jobs:
         # A public URL of its own, to check that it reaches the build.
         run: docker build --build-arg NEXT_PUBLIC_APP_URL=https://app.ci.invalid --tag app:ci .
       # clubedge:end
-      # clubedge:if api!=none
+      # clubedge:if api!=none && framework!=none
       # The frontend's image, and the API's, which owns the database and carries the migrator.
       # Their own tags: the Starter repository runs every block of this file.
       - name: Build the production images
@@ -117,6 +140,12 @@ jobs:
           set -euo pipefail
           docker build --tag web:ci .
           docker build --file apps/api/Dockerfile --tag api:ci .
+      # clubedge:end
+      # clubedge:if framework=none
+      # The API's image, which owns the database and carries the migrator.
+      - name: Build the production image
+        if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+        run: docker build --file apps/api/Dockerfile --tag api:ci .
       # clubedge:end
       # clubedge:if framework=next
       - name: Check that the public URL is compiled into the build
@@ -149,7 +178,7 @@ jobs:
           echo "The container did not become healthy."
           exit 1
       # clubedge:end
-      # clubedge:if api!=none
+      # clubedge:if api!=none && framework!=none
       # On the host's network, like the migrations: the API on port 3001, and the frontend on
       # 3000, which forwards /api to it. Both must answer: the API itself, and through the frontend.
       - name: Start the images and check health through the frontend
@@ -167,6 +196,25 @@ jobs:
             sleep 2
           done
           echo "The containers did not become healthy."
+          exit 1
+      # clubedge:end
+      # clubedge:if framework=none
+      # On the host's network, like the migrations: the API on port 3001, where the mobile app
+      # calls it.
+      - name: Start the API's image and check health
+        if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+        run: |
+          set -euo pipefail
+          docker run --detach --name api --network host \
+            --env DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/app api:ci
+          trap 'docker logs api; docker rm --force api' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/api/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The container did not become healthy."
           exit 1
       # clubedge:end
 
@@ -264,7 +312,8 @@ jobs:
       run:
         working-directory: apps/mobile
     env:
-      # The website the app calls: set an EXPO_PUBLIC_API_URL repository variable for an APK that works.
+      # The website the app calls: set an EXPO_PUBLIC_API_URL repository variable for an APK that works. # clubedge:only framework!=none
+      # The API the app calls: set an EXPO_PUBLIC_API_URL repository variable for an APK that works. # clubedge:only framework=none
       EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://example.com' }}
     steps:
       - uses: actions/checkout@v7

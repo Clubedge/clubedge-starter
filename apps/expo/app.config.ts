@@ -6,7 +6,7 @@ import site from "./src/config/site.json";
 // com.yourcompany.app, before the first release build.
 const appId = `com.example.${site.serviceId.replace(/[^a-z0-9]/gi, "").replace(/^[0-9]+/, "") || "app"}`;
 
-// The app's own address scheme, such as my-product://. The website's Better Auth trusts the
+// The app's own address scheme, such as my-product://. Better Auth, on the server, trusts the
 // scheme it derives from its own site config the same way, so keep the two in step.
 const scheme =
   site.serviceId

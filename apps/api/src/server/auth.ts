@@ -30,3 +30,11 @@ export async function deleteAccount(_input: {
   return "not-supported" as const;
 }
 // clubedge:end
+
+// clubedge:if auth=better-auth
+// Better Auth's file replaces this one; without a website, its endpoints run in this API.
+export async function handleAuthRequest(_request: Request): Promise<Response> {
+  void _request;
+  return new Response(null, { status: 404 });
+}
+// clubedge:end
