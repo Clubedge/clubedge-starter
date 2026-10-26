@@ -54,10 +54,12 @@ export default function Welcome() {
           onPress={() => router.push("/sign-in")}
         />
         <Button title="Create account" variant="outline" onPress={() => router.push("/sign-up")} />
-        <LegalNote>
-          By continuing, you agree to the <LegalLink title="Terms" url={site.links.terms} /> and the{" "}
-          <LegalLink title="Privacy Policy" url={site.links.privacy} />.
-        </LegalNote>
+        <View style={styles.legal}>
+          <LegalNote>
+            By continuing, you agree to the <LegalLink title="Terms" url={site.links.terms} /> and
+            the <LegalLink title="Privacy Policy" url={site.links.privacy} />.
+          </LegalNote>
+        </View>
       </View>
     </>
   );
@@ -92,4 +94,6 @@ const styles = StyleSheet.create({
   },
   title: { fontFamily: font.bold, fontSize: 28, letterSpacing: -0.7 },
   description: { marginBottom: 14 },
+  // The design's 10 points above the note, with the note's own 2.
+  legal: { marginTop: 8 },
 });
