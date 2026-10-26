@@ -40,7 +40,7 @@ To try the mobile app on an Android phone, download [clubedge-demo.apk](https://
 
 <!-- In generated projects, the block below supplies the title that create-clubedge-app replaces with the project's name; its comment keeps it hidden here. -->
 <!-- clubedge:end -->
-<!-- clubedge:if framework=next|tanstack-start
+<!-- clubedge:if framework=next|tanstack-start|none
 # Clubedge Starter
 <!-- clubedge:end -->
 
@@ -52,27 +52,38 @@ To try the mobile app on an Android phone, download [clubedge-demo.apk](https://
 - TanStack Start with React, TypeScript, Vite, Tailwind CSS 4, and shadcn/ui using Base UI primitives. <!-- clubedge:only framework=tanstack-start -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a Hono API in TypeScript in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=hono -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a FastAPI API in Python in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=fastapi -->
+- A Hono API in TypeScript in `apps/api`, implementing the OpenAPI contract in `packages/contract`. <!-- clubedge:only framework=none && api=hono -->
+- A FastAPI API in Python in `apps/api`, implementing the OpenAPI contract in `packages/contract`. <!-- clubedge:only framework=none && api=fastapi -->
 - An Android and iOS app in `apps/shell`, made from the web app with Capacitor: it calls the API through the website, keeps its session on the device, and asks for an update when the API serves newer versions. A demo build has sample data and needs no server. See [The mobile app](SETUP.md#the-mobile-app). <!-- clubedge:only shell!=none -->
-- A native Android and iOS app in `apps/mobile`, built with Expo and React Native: its own screens call the API through the website with the same contract client, and it asks for an update when the API serves newer versions. See [The native app](SETUP.md#the-native-app). <!-- clubedge:only mobile!=none -->
-- pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
+- A native Android and iOS app in `apps/mobile`, built with Expo and React Native: its own screens call the API through the website with the same contract client, and it asks for an update when the API serves newer versions. See [The native app](SETUP.md#the-native-app). <!-- clubedge:only mobile!=none && framework!=none -->
+- A native Android and iOS app in `apps/mobile`, built with Expo and React Native: its own screens call the API directly with the contract client, and it asks for an update when the API serves newer versions. See [The native app](SETUP.md#the-native-app). <!-- clubedge:only mobile!=none && framework=none -->
+- pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`. <!-- clubedge:only framework!=none -->
+- pnpm workspaces and Turborepo, with the API in `apps/api` and framework-agnostic packages under `packages/`. <!-- clubedge:only framework=none -->
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
-- Zod environment validation, security headers, structured errors, and `/api/health`.
-- A landing page and a working dashboard built from the shared UI package.
+- Zod environment validation, security headers, structured errors, and `/api/health`. <!-- clubedge:only framework!=none -->
+- Environment validation, structured errors, and `/api/health`. <!-- clubedge:only framework=none -->
+- A landing page and a working dashboard built from the shared UI package. <!-- clubedge:only framework!=none -->
 
 **Modules**
 
-- Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase && framework!=vite -->
-- Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework!=vite -->
-- Firebase Authentication through the app's own pages, with server-side session cookies, a protected dashboard, and rate-limited sign-in; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework!=vite -->
-- Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite && framework!=vite -->
+- Supabase Auth with server-verified sessions in secure cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=supabase && framework=next|tanstack-start -->
+- Better Auth with users and sessions in your own PostgreSQL, secure session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework=next|tanstack-start -->
+- Firebase Authentication through the app's own pages, with server-side session cookies, a protected dashboard, and rate-limited sign-in; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework=next|tanstack-start -->
+- Appwrite accounts through the app's own pages, on Appwrite Cloud or your own server, with server-side session cookies, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=appwrite && framework=next|tanstack-start -->
 - Supabase Auth in the browser, with access tokens that the API verifies on each request, and a protected dashboard. <!-- clubedge:only auth=supabase && framework=vite -->
 - Better Auth in the frontend's server, with users and sessions in your own PostgreSQL, a secure session cookie that the API checks, a protected dashboard, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework=vite -->
 - Firebase Authentication in the browser, with ID tokens that the API verifies on each request, and a protected dashboard; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework=vite -->
 - Appwrite accounts in the browser, on Appwrite Cloud or your own server, with JWTs that the API verifies on each request, and a protected dashboard. <!-- clubedge:only auth=appwrite && framework=vite -->
+- Supabase Auth, with access tokens that the API verifies on each request. <!-- clubedge:only auth=supabase && framework=none -->
+- Better Auth in the API, with users and sessions in your own PostgreSQL, and rate-limited sign-in. <!-- clubedge:only auth=better-auth && framework=none -->
+- Firebase Authentication, with ID tokens that the API verifies on each request; the Auth Emulator in development. <!-- clubedge:only auth=firebase && framework=none -->
+- Appwrite accounts, on Appwrite Cloud or your own server, with JWTs that the API verifies on each request. <!-- clubedge:only auth=appwrite && framework=none -->
 - Password reset by email, and email verification that can be required before sign-in. <!-- clubedge:only auth=better-auth && email!=none -->
 - Password reset by email, sent by Supabase. <!-- clubedge:only auth=supabase -->
-- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework!=vite -->
+- An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework=next|tanstack-start -->
 - An account settings page: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework=vite && api=hono|fastapi -->
+- Account settings in the native app: display name, password change, and account deletion. <!-- clubedge:only auth!=none && framework=none && mobile!=none -->
+- Account endpoints in the API: display name and account deletion. <!-- clubedge:only auth!=none && framework=none && mobile=none -->
 - Email over SMTP, for any provider or a local inbox; development prints emails to the server log until SMTP is configured. <!-- clubedge:only email=smtp -->
 - Email through Resend; development prints emails to the server log until the API key is set. <!-- clubedge:only email=resend -->
 - S3-compatible storage adapter for AWS S3, Cloudflare R2, and MinIO. <!-- clubedge:only storage=s3 -->
@@ -91,7 +102,8 @@ To try the mobile app on an Android phone, download [clubedge-demo.apk](https://
 **Production**
 
 - A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release. <!-- clubedge:only api=none -->
-- Production images for the frontend, served by Node, and for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only api!=none -->
+- Production images for the frontend, served by Node, and for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only api!=none && framework!=none -->
+- A production image for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only framework=none -->
 - A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database.
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `.railway/railway.ts`: migrations run before each release, and `pnpm clubedge deploy` sets up the project. <!-- clubedge:only deploy=railway -->
@@ -101,7 +113,8 @@ To try the mobile app on an Android phone, download [clubedge-demo.apk](https://
 
 **Quality**
 
-- GitHub Actions CI with Vitest, Playwright, ESLint, and Prettier.
+- GitHub Actions CI with Vitest, Playwright, ESLint, and Prettier. <!-- clubedge:only framework!=none -->
+- GitHub Actions CI with Vitest, ESLint, and Prettier, and a check that the API's production build and its image answer `/api/health`. <!-- clubedge:only framework=none -->
 - `pnpm check:services`, which proves the app can reach every configured service with a real round trip.
 
 <!-- clubedge:if starter-repository -->
@@ -148,6 +161,8 @@ corepack enable
 pnpm install
 ```
 
+<!-- clubedge:if framework!=none -->
+
 Copy the example environment file to the web app's local environment file.
 
 PowerShell:
@@ -162,6 +177,24 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
+<!-- clubedge:end -->
+<!-- clubedge:if framework=none -->
+
+Copy the API's example environment file to its local environment file.
+
+PowerShell:
+
+```powershell
+Copy-Item apps/api/.env.example apps/api/.env.local
+```
+
+macOS/Linux:
+
+```sh
+cp apps/api/.env.example apps/api/.env.local
+```
+
+<!-- clubedge:end -->
 <!-- clubedge:if infra=docker -->
 
 Start PostgreSQL and the other local services with Docker, apply the migrations, and check that the app can reach every service. The example environment already points at them.
@@ -175,7 +208,8 @@ pnpm check:services
 <!-- clubedge:end -->
 <!-- clubedge:if infra=supabase -->
 
-Start the local Supabase stack (it needs Docker), copy the publishable key that `pnpm infra:status` prints into `apps/web/.env.local`, and apply the migrations.
+Start the local Supabase stack (it needs Docker), copy the publishable key that `pnpm infra:status` prints into `apps/web/.env.local`, and apply the migrations. <!-- clubedge:only framework!=none -->
+Start the local Supabase stack (it needs Docker), copy the Supabase API URL and publishable key that `pnpm infra:status` prints into `apps/api/.env.local`, and apply the migrations. <!-- clubedge:only framework=none -->
 
 ```sh
 pnpm infra:up
@@ -192,7 +226,8 @@ Nothing else to install: `pnpm dev` starts a local PostgreSQL database (PGlite, 
 <!-- clubedge:end -->
 <!-- clubedge:if infra=neon -->
 
-Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/web/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations:
+Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/web/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework!=none -->
+Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/api/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework=none -->
 
 ```sh
 pnpm db:migrate
@@ -202,17 +237,22 @@ pnpm clubedge neon claim   # when you want to keep the database
 <!-- clubedge:end -->
 <!-- clubedge:if infra=none -->
 
-Set `DATABASE_URL` and your providers' settings in `apps/web/.env.local`, then run `pnpm db:migrate` and `pnpm check:services`.
+Set `DATABASE_URL` and your providers' settings in `apps/web/.env.local`, then run `pnpm db:migrate` and `pnpm check:services`. <!-- clubedge:only framework!=none -->
+Set `DATABASE_URL` and your providers' settings in `apps/api/.env.local`, then run `pnpm db:migrate` and `pnpm check:services`. <!-- clubedge:only framework=none -->
 
 <!-- clubedge:end -->
 
-Then start the app. [SETUP.md](SETUP.md) describes every variable and provider.
+Then start the app. [SETUP.md](SETUP.md) describes every variable and provider. <!-- clubedge:only framework!=none -->
+Then start the API. [SETUP.md](SETUP.md) describes every variable and provider. <!-- clubedge:only framework=none -->
 
 ```sh
 pnpm dev
 ```
 
-Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashboard> for the dashboard, or <http://localhost:3000/api/health> for the liveness endpoint. The pages render without connecting to providers; database and provider operations require their configuration.
+Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashboard> for the dashboard, or <http://localhost:3000/api/health> for the liveness endpoint. The pages render without connecting to providers; database and provider operations require their configuration. <!-- clubedge:only framework!=none -->
+Open <http://localhost:3001/api/health> for the API's liveness endpoint. The API starts without connecting to providers; database and provider operations require their configuration. <!-- clubedge:only framework=none -->
+
+To run the native app on an emulator or a phone, see [The native app](SETUP.md#the-native-app). <!-- clubedge:only framework=none && mobile!=none -->
 
 > [!NOTE]
 > This is a foundation and a reference implementation. Review its security and deployment choices for your application before you go to production; [SETUP.md](SETUP.md#before-deploying) has a checklist.
@@ -221,6 +261,12 @@ Open <http://localhost:3000> for the landing page, <http://localhost:3000/dashbo
 
 ```mermaid
 flowchart TB
+  %% clubedge:if framework=none && mobile!=none
+  Mobile[Native app] --> App[API]
+  %% clubedge:end
+  %% clubedge:if framework=none && mobile=none
+  App[API]
+  %% clubedge:end
   %% clubedge:if framework=next
   Browser --> App[Next.js application]
   %% clubedge:end
@@ -284,12 +330,16 @@ flowchart TB
 - **Authentication stays separate from application data.** The auth provider owns credentials and sessions; application tables are managed by Drizzle. <!-- clubedge:only auth!=none -->
 - **Providers sit behind interfaces.** Each interface lives in its own package under `packages/`, and each provider in another, so replacing a provider does not touch application code.
 - **Shared packages are framework-agnostic.** Packages under `packages/` receive configuration and request cookies as arguments and never import a web framework. ESLint enforces these boundaries.
-- **One composition root.** `apps/web/src/server/` is the only place that reads environment variables and chooses providers. Routes and components call it rather than a provider SDK.
+- **One composition root.** `apps/web/src/server/` is the only place that reads environment variables and chooses providers. Routes and components call it rather than a provider SDK. <!-- clubedge:only framework!=none -->
+- **One composition root.** `apps/api/src/server/` is the only place that reads environment variables and chooses providers. Routes receive what they need from it rather than calling a provider SDK. <!-- clubedge:only framework=none && api=hono -->
+- **One composition root.** `apps/api/src/clubedge_api/server.py` is the only place that chooses providers. Routes receive what they need from it rather than calling a provider SDK. <!-- clubedge:only framework=none && api=fastapi -->
 - **Keep the baseline focused.** Additional providers and tooling should be added when a real use case calls for them.
 
 ## Common commands
 
 Run these from the repository root:
+
+<!-- clubedge:if framework!=none -->
 
 | Command             | Purpose                                        |
 | ------------------- | ---------------------------------------------- |
@@ -309,7 +359,32 @@ Run these from the repository root:
 | `pnpm db:check`     | Check migration consistency.                   |
 | `pnpm db:seed`      | Seed the configured database.                  |
 
-Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically.
+<!-- clubedge:end -->
+<!-- clubedge:if starter-repository -->
+<!-- In generated projects without a website, the block below supplies the commands table; its comment keeps it hidden here. -->
+<!-- clubedge:end -->
+<!-- clubedge:if framework=none
+
+| Command             | Purpose                                        |
+| ------------------- | ---------------------------------------------- |
+| `pnpm dev`          | Start the API in development mode.             |
+| `pnpm build`        | Create a production build.                     |
+| `pnpm start`        | Start the production build.                    |
+| `pnpm lint`         | Run ESLint.                                    |
+| `pnpm typecheck`    | Typecheck the workspaces.                      |
+| `pnpm test`         | Run Vitest.                                    |
+| `pnpm format`       | Format supported repository files.             |
+| `pnpm format:check` | Check formatting without writing files.        |
+| `pnpm db:generate`  | Generate Drizzle migrations from the schemas.  |
+| `pnpm db:migrate`   | Apply checked-in Drizzle migrations.           |
+| `pnpm db:push`      | Push schema directly (local development only). |
+| `pnpm db:studio`    | Open Drizzle Studio.                           |
+| `pnpm db:check`     | Check migration consistency.                   |
+| `pnpm db:seed`      | Seed the configured database.                  |
+
+<!-- clubedge:end -->
+
+Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically. <!-- clubedge:only framework!=none -->
 
 Local services:
 
@@ -319,7 +394,8 @@ Local services:
 - `pnpm infra:reset`: stop them and delete their data. `pnpm infra:logs` follows their logs. <!-- clubedge:only infra=docker -->
 - `pnpm infra:up` and `pnpm infra:down`: start and stop the local Supabase stack. <!-- clubedge:only infra=supabase -->
 - `pnpm infra:status`: print its URLs and keys. `pnpm infra:reset` stops it and deletes its data. <!-- clubedge:only infra=supabase -->
-- `pnpm infra:up`: run only the local database, for example for `pnpm check:services` or browser tests. <!-- clubedge:only infra=local -->
+- `pnpm infra:up`: run only the local database, for example for `pnpm check:services` or browser tests. <!-- clubedge:only infra=local && framework!=none -->
+- `pnpm infra:up`: run only the local database, for example for `pnpm check:services`. <!-- clubedge:only infra=local && framework=none -->
 - `pnpm infra:reset`: delete the local database and files in `.data/` (stop `pnpm dev` first). <!-- clubedge:only infra=local -->
 - `pnpm clubedge neon`: the Neon database's status and expiry; `pnpm clubedge neon claim` keeps it, `pnpm clubedge neon create` makes a new one. <!-- clubedge:only infra=neon -->
 
@@ -347,11 +423,13 @@ The native app ([setup](SETUP.md#the-native-app)):
 Check the project:
 
 - `pnpm clubedge status`: the project's Starter release, modules, and Git state, whether a newer Starter release exists, and the command to run next.
-- `pnpm clubedge doctor`: check Node.js, pnpm, the dependencies, the lockfile, and `apps/web/.env.local` against the example, then run `pnpm check:services`. It changes nothing and exits with an error when a check fails.
+- `pnpm clubedge doctor`: check Node.js, pnpm, the dependencies, the lockfile, and `apps/web/.env.local` against the example, then run `pnpm check:services`. It changes nothing and exits with an error when a check fails. <!-- clubedge:only framework!=none -->
+- `pnpm clubedge doctor`: check Node.js, pnpm, the dependencies, the lockfile, and `apps/api/.env.local` against the example, then run `pnpm check:services`. It changes nothing and exits with an error when a check fails. <!-- clubedge:only framework=none -->
 
 Change the project later:
 
-- `pnpm clubedge add <module> <option>`: add a module or switch its option, for example `pnpm clubedge add auth better-auth` or `pnpm clubedge add infra local`. Name several to change them together, as in `pnpm clubedge add email resend payments stripe`. Run `pnpm clubedge add` without arguments to choose from a list.
+- `pnpm clubedge add <module> <option>`: add a module or switch its option, for example `pnpm clubedge add auth better-auth` or `pnpm clubedge add infra local`. Name several to change them together, as in `pnpm clubedge add email resend payments stripe`. Run `pnpm clubedge add` without arguments to choose from a list. <!-- clubedge:only framework!=none -->
+- `pnpm clubedge add <module> <option>`: add a module or switch its option, for example `pnpm clubedge add auth supabase` or `pnpm clubedge add infra local`. Name several to change them together, as in `pnpm clubedge add email resend observability sentry`. Run `pnpm clubedge add` without arguments to choose from a list. <!-- clubedge:only framework=none -->
 - `pnpm clubedge remove <module>`: remove one or more modules, for example `pnpm clubedge remove storage`.
 - `pnpm clubedge upgrade`: move the project to the newest Starter release. It first lists the releases in between.
 
@@ -384,10 +462,13 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 
 ## Repository structure
 
-- `apps/web/`: the web app, with routes, UI, and the composition root in `src/server/`
+- `apps/web/`: the web app, with routes, UI, and the composition root in `src/server/` <!-- clubedge:only framework!=none -->
+- `apps/api/`: the API, with its routes and the composition root in `src/server/` <!-- clubedge:only framework=none && api=hono -->
+- `apps/api/`: the API, with its routes and the composition root in `src/clubedge_api/server.py` <!-- clubedge:only framework=none && api=fastapi -->
 - `apps/shell/`: the mobile app, which packages the web app for Android and iOS with Capacitor, and its native projects once created <!-- clubedge:only shell!=none -->
 - `apps/mobile/`: the native app, built with Expo and React Native, whose Android and iOS projects Expo generates <!-- clubedge:only mobile!=none -->
-- `e2e/`: Playwright browser checks
+- `e2e/`: Playwright browser checks <!-- clubedge:only framework!=none -->
+- `packages/contract/`: the API's OpenAPI contract (`openapi.yaml`), the client generated from it, and the conformance suite every API passes <!-- clubedge:only framework=none -->
 - `packages/core/`: errors, `Result` type, HTTP helpers, and the error reporting and tracing hooks (no dependencies)
 - `packages/db/`: Drizzle schema, client factory, migrations, and seed script
 - `packages/auth/`: `AuthProvider` and `CookieStore` interfaces <!-- clubedge:only auth!=none -->
@@ -413,11 +494,16 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/observability-otel/`: OpenTelemetry provider (OTLP/HTTP traces and error logs) <!-- clubedge:only observability=otel -->
 - `packages/observability-sentry/`: Sentry provider <!-- clubedge:only observability=sentry -->
 - `packages/mobile/`: the mobile app's native helpers (device storage and the app's version), which the web app loads only in its build for the app <!-- clubedge:only shell!=none -->
-- `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles
+- `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles <!-- clubedge:only framework!=none -->
 - `.github/`: CI workflow, issue forms, and pull request template
 - `SETUP.md`, `CONTRIBUTING.md`, `SECURITY.md`: setup, contribution, and security guides
 
-The project name, description, service identifier, and documentation links live in `apps/web/src/config/site.json`. Edit that file to rename the app; `create-clubedge-app` writes it for generated projects.
+The project name, description, service identifier, and documentation links live in `apps/web/src/config/site.json`. Edit that file to rename the app; `create-clubedge-app` writes it for generated projects. <!-- clubedge:only framework!=none -->
+The project name, description, service identifier, and documentation links live in `apps/api/src/config/site.json`. Edit that file to rename the project; `create-clubedge-app` writes it for generated projects. <!-- clubedge:only framework=none && mobile=none -->
+The project name, description, service identifier, and documentation links live in `apps/api/src/config/site.json`, and the native app's copy in `apps/mobile/src/config/site.json`. Edit both to rename the project; `create-clubedge-app` writes both for generated projects. <!-- clubedge:only framework=none && mobile!=none -->
+Keep their `serviceId` the same: the native app's address scheme is made from it, and Better Auth, in the API, trusts the scheme it makes from the API's copy. <!-- clubedge:only framework=none && mobile!=none && auth=better-auth -->
+
+<!-- clubedge:if framework!=none -->
 
 ## Shared UI components
 
@@ -431,6 +517,7 @@ pnpm dlx shadcn@latest add badge -c apps/web
 
 Shared components are generated under `packages/ui/src/components` and can be imported from `@clubedge/ui/components/<component>`. The app and `packages/ui` `components.json` files intentionally share the `base-nova` style, neutral color base, Lucide icons, Tailwind v4 stylesheet, and RTL-aware generation setting. The app currently renders English in LTR; set the root document's `lang` and `dir` for the locale used by your application. Put app-only components in `apps/web/src/components`.
 
+<!-- clubedge:end -->
 <!-- clubedge:if starter-repository -->
 
 ## Roadmap
