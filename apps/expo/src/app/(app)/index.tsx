@@ -1,17 +1,15 @@
 import type { Health, User } from "@clubedge/contract";
-import * as Linking from "expo-linking";
 import type { Icon } from "phosphor-react-native";
-import { ArrowCircleUpIcon } from "phosphor-react-native/src/icons/ArrowCircleUp";
 import { DeviceMobileIcon } from "phosphor-react-native/src/icons/DeviceMobile";
 import { PulseIcon } from "phosphor-react-native/src/icons/Pulse";
 import { UserCircleIcon } from "phosphor-react-native/src/icons/UserCircle";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 import site from "@/config/site.json";
-import { Avatar, Mark, PillButton, Screen } from "@/components/ui";
-import { useUpdate } from "@/components/update-gate";
+import { Avatar, Mark, Screen } from "@/components/ui";
+import { UpdateBanner, useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
-import { installedVersion, updates } from "@/lib/app-update";
+import { installedVersion } from "@/lib/app-update";
 import { authEnabled } from "@/lib/auth-enabled";
 import { apiUrl } from "@/lib/config";
 import { font, radius, type, useColors } from "@/lib/theme";
@@ -23,8 +21,6 @@ export default function Dashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const update = useUpdate();
-  const updateUrl = update?.versions?.updateUrl;
-  const deadline = update?.versions?.nextMinimumFrom;
 
   // The API's health and the signed-in user, from the API's contract (packages/contract).
   const load = useCallback(async () => {
@@ -69,17 +65,11 @@ export default function Dashboard() {
           <Mark size={26} color={colors.onPrimary} />
         </View>
       </View>
-      {update?.status === "upcoming" && deadline ? (
-        <UpdateNotice title="Update required soon" updateUrl={updateUrl}>
-          This version of the app stops working on{" "}
-          {new Date(deadline).toLocaleDateString(undefined, { dateStyle: "long" })}. Update it
-          before then.
-        </UpdateNotice>
-      ) : null}
       {update?.status === "available" ? (
-        <UpdateNotice title="Update available" updateUrl={updateUrl}>
-          A newer version of the app is out.
-        </UpdateNotice>
+        <UpdateBanner
+          version={update.versions?.latestVersion}
+          updateUrl={update.versions?.updateUrl}
+        />
       ) : null}
       <View style={styles.tiles}>
         <Tile icon={UserCircleIcon} title="Account">
@@ -103,41 +93,6 @@ export default function Dashboard() {
         </Tile>
       </View>
     </Screen>
-  );
-}
-
-/** What the versions the API serves call for, with the update's link and Not now. */
-function UpdateNotice({
-  title,
-  updateUrl,
-  children,
-}: {
-  title: string;
-  updateUrl: string | null | undefined;
-  children: ReactNode;
-}) {
-  const colors = useColors();
-  return (
-    <View style={[styles.notice, { backgroundColor: colors.primaryTint }]}>
-      <View style={styles.noticeRow}>
-        <ArrowCircleUpIcon size={26} color={colors.accent} weight="duotone" />
-        <View style={styles.noticeText}>
-          <Text
-            accessibilityRole="header"
-            style={[styles.noticeTitle, { color: colors.onPrimaryTint }]}
-          >
-            {title}
-          </Text>
-          <Text style={[styles.noticeBody, { color: colors.onPrimaryTint }]}>{children}</Text>
-        </View>
-      </View>
-      <View style={styles.noticeActions}>
-        {updateUrl ? (
-          <PillButton title="Update" onPress={() => void Linking.openURL(updateUrl)} />
-        ) : null}
-        <PillButton title="Not now" variant="outline" onPress={updates.notNow} />
-      </View>
-    </View>
   );
 }
 
@@ -184,12 +139,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  notice: { borderRadius: radius.card, padding: 18, gap: 14 },
-  noticeRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
-  noticeText: { flex: 1, gap: 4 },
-  noticeTitle: { fontFamily: font.semibold, fontSize: 16 },
-  noticeBody: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
-  noticeActions: { flexDirection: "row", gap: 8 },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   tile: { width: "48.5%", flexGrow: 1, borderRadius: radius.xl, padding: 16, gap: 12 },
   tileText: { gap: 2 },
