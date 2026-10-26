@@ -102,13 +102,16 @@ export function createApp(dependencies: ApiDependencies) {
   // clubedge:if framework=none && auth=better-auth
   // Without a website, the mobile app signs in here. Better Auth limits requests per client
   // address, which it reads from X-Forwarded-For: it gets the one this API finds, never a copy the
-  // client sent.
+  // client sent. The app, which sends no browser Origin, sends its own address (its scheme) as
+  // expo-origin, which Better Auth checks as the origin, as Better Auth's Expo plugin would.
   const { authHandler } = dependencies;
   if (authHandler) {
     app.on(["GET", "POST"], "/api/auth/*", (c) => {
       const headers = new Headers(c.req.raw.headers);
       const settings = { ...dependencies.clientIpSettings, socketAddress: socketAddress(c) };
       headers.set("x-forwarded-for", getClientIp(c.req.raw.headers, settings));
+      const appOrigin = headers.get("expo-origin");
+      if (appOrigin && !headers.has("origin")) headers.set("origin", appOrigin);
       return authHandler(new Request(c.req.raw, { headers }));
     });
   }

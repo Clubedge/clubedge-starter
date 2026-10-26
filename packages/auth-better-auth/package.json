@@ -17,7 +17,6 @@
     "db:check": "drizzle-kit check"
   },
   "dependencies": {
-    "@better-auth/expo": "^1.7.13",
     "@clubedge/auth": "workspace:*",
     "@clubedge/core": "workspace:*",
     "better-auth": "^1.7.13",

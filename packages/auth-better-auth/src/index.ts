@@ -1,4 +1,3 @@
-import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { parseSetCookieHeader, splitSetCookieHeader, toCookieOptions } from "better-auth/cookies";
@@ -49,10 +48,10 @@ export interface BetterAuthServerConfig {
    */
   emailLinks?: "pages" | "endpoints";
   /**
-   * A native app's address scheme, such as my-product: its requests, which carry the scheme, are
-   * trusted, and Better Auth's Expo plugin lets it keep the session cookie on the device.
+   * Origins Better Auth accepts besides `baseUrl`, such as a mobile app's address scheme
+   * (`my-product://`), which its requests and its links' addresses use.
    */
-  mobileAppScheme?: string;
+  trustedOrigins?: string[];
   /** Better Auth's own delete-user endpoint; turn it off where the app deletes accounts itself. */
   deleteUser?: boolean;
 }
@@ -81,7 +80,7 @@ export function createBetterAuthServer({
   requireEmailVerification = false,
   appName = "App",
   emailLinks = "pages",
-  mobileAppScheme,
+  trustedOrigins = [],
   deleteUser = true,
 }: BetterAuthServerConfig) {
   const link = (path: string, params: Record<string, string>) => {
@@ -141,8 +140,7 @@ export function createBetterAuthServer({
     // Keep Better Auth's provider-level throttling enabled for every host, including the
     // decoupled Vite auth endpoint. Frameworks may add stricter per-client limits as well.
     rateLimit: { enabled: true },
-    trustedOrigins: mobileAppScheme ? [`${mobileAppScheme}://`] : [],
-    plugins: mobileAppScheme ? [expo()] : [],
+    trustedOrigins,
   });
 }
 

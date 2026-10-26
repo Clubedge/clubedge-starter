@@ -44,6 +44,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@clubedge/auth-better-auth':
+        specifier: workspace:*
+        version: link:../../packages/auth-better-auth
       '@clubedge/auth-supabase':
         specifier: workspace:*
         version: link:../../packages/auth-supabase

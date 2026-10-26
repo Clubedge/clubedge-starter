@@ -87,7 +87,7 @@ describe("Better Auth in the API, without a website", () => {
     expect(createBetterAuthServer).toHaveBeenCalledWith(
       expect.objectContaining({
         emailLinks: "endpoints",
-        mobileAppScheme: expect.stringMatching(/^[a-z][a-z0-9+.-]*$/),
+        trustedOrigins: [expect.stringMatching(/^[a-z][a-z0-9+.-]*:\/\/$/)],
         deleteUser: false,
       }),
     );

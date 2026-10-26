@@ -36,7 +36,8 @@ function betterAuthServer(): BetterAuthServer | null {
     requireEmailVerification: process.env.BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION === "true",
     appName: siteConfig.name,
     emailLinks: "endpoints",
-    mobileAppScheme: appScheme,
+    // The app's requests and its links' addresses use its scheme.
+    trustedOrigins: [`${appScheme}://`],
     // The API deletes accounts (POST /api/account/delete), removing the app's data with them.
     deleteUser: false,
   });
