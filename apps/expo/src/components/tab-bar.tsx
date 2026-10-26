@@ -20,7 +20,10 @@ export function TabBar({ state, descriptors, emitter, navigateToTab, insets }: B
 
   return (
     <View style={[styles.bar, { bottom: Math.max(insets.bottom - 4, 16) }]}>
-      <View accessibilityRole="tablist" style={[styles.capsule, { backgroundColor: colors.nav }]}>
+      <View
+        accessibilityRole="tablist"
+        style={[styles.capsule, { backgroundColor: colors.nav, borderColor: colors.divider }]}
+      >
         {state.routes.map((route, index) => {
           const focused = index === state.index;
           const title = descriptors[route.key]?.options.title ?? route.name;
@@ -90,11 +93,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    borderWidth: 1,
     shadowColor: "#000000",
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.12,
     shadowRadius: 15,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 14,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
   tab: {
     height: 48,

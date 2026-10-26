@@ -65,11 +65,12 @@ const light = {
   inverse: "#0A0A0A",
   inversePressed: "#262626",
   onInverse: "#FFFFFF",
-  // The tab bar: a dark capsule, where the current tab is a white pill.
-  nav: "#0A0A0A",
-  navActive: "#FFFFFF",
-  onNavActive: "#0A0A0A",
-  navInactive: "#A1A1AA",
+  // The tab bar: a capsule of the screen's own color, where the current tab is a pill of the
+  // brand's blue.
+  nav: "#FFFFFF",
+  navActive: "#2563EB",
+  onNavActive: "#FFFFFF",
+  navInactive: "#6B7280",
   // Behind a sheet.
   scrim: "rgba(0, 0, 0, 0.35)",
 };
@@ -107,9 +108,9 @@ const dark: typeof light = {
   inverse: "#FAFAFA",
   inversePressed: "#E5E5E5",
   onInverse: "#0A0A0A",
-  nav: "#262626",
-  navActive: "#FFFFFF",
-  onNavActive: "#0A0A0A",
+  nav: "#242428",
+  navActive: "#2563EB",
+  onNavActive: "#FFFFFF",
   navInactive: "#A1A1AA",
   scrim: "rgba(0, 0, 0, 0.6)",
 };

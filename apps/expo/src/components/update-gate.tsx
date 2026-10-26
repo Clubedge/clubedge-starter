@@ -5,7 +5,6 @@ import { ArrowCircleDownIcon } from "phosphor-react-native/src/icons/ArrowCircle
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
-import { SparkleIcon } from "phosphor-react-native/src/icons/Sparkle";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
@@ -163,7 +162,7 @@ function UpdateSheet({ versions, deadline }: { versions: AppVersion; deadline: s
         <View style={[styles.grabber, { backgroundColor: colors.border }]} />
         <View style={styles.sheetHeader}>
           <View style={[styles.sheetBadge, { backgroundColor: colors.primary }]}>
-            <SparkleIcon size={26} color={colors.onPrimary} weight="fill" />
+            <ArrowCircleDownIcon size={30} color={colors.onPrimary} weight="fill" />
           </View>
           <View style={styles.sheetTitles}>
             <Text accessibilityRole="header" style={[styles.sheetTitle, { color: colors.text }]}>
