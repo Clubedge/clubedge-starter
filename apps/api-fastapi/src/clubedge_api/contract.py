@@ -21,6 +21,10 @@ class AppVersion(TypedDict):
     latestVersion: str | None
     # Where apps get the update, such as their store listing.
     updateUrl: str | None
+    # A minimum announced for a date: older apps keep working until then, and warn their users.
+    nextMinimumVersion: str | None
+    # When it becomes the minimum, in UTC, such as 2026-11-01T00:00:00.000Z.
+    nextMinimumFrom: str | None
 
 
 class ErrorDetail(TypedDict):

@@ -35,7 +35,13 @@ const queue = createMemoryJobs([sampleJob]);
 const capabilities = ["account"];
 
 // Neither app below is given versions, so /api/app-version answers null for each.
-const appVersion = { minimumVersion: null, latestVersion: null, updateUrl: null };
+const appVersion = {
+  minimumVersion: null,
+  latestVersion: null,
+  updateUrl: null,
+  nextMinimumVersion: null,
+  nextMinimumFrom: null,
+};
 
 // The shared contract suite, in process: the same checks any API stack passes over HTTP.
 describe("the API without a database", () => {
@@ -70,5 +76,22 @@ describe("the API with a database", () => {
       modules,
       capabilities,
     },
+  );
+});
+
+// With a minimum version, the suite also checks that apps below it get 426 update_required.
+describe("the API with a minimum app version", () => {
+  const versions = { ...appVersion, minimumVersion: "1.2.0", latestVersion: "1.4.0" };
+  const app = createApp({
+    serviceId: "my-product",
+    isReady: async () => true,
+    getCurrentUser: async () => null,
+    appVersion: () => versions,
+    jobs: { runner: () => "worker", queue: () => queue }, // clubedge:only jobs!=none
+  });
+  describeApiConformance(
+    "hono (minimum app version)",
+    () => ({ request: (path, init) => app.request(path, init) }),
+    { ready: true, appVersion: versions, modules, capabilities },
   );
 });

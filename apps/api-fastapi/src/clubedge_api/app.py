@@ -4,7 +4,7 @@ They receive what they need from the composition root (server.py), so tests can 
 """
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -14,8 +14,16 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 from clubedge_api import telemetry  # clubedge:only observability!=none
+from clubedge_api.app_version import (
+    APP_PLATFORM_HEADER,
+    APP_VERSION_HEADER,
+    app_platform,
+    update_status,
+)
 from clubedge_api.contract import AppVersion, GetCurrentUser
 from clubedge_api.http import NO_STORE, ApiError, api_error
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
@@ -42,8 +50,9 @@ class ApiDependencies:
     frontend_origin: str = "http://localhost:3000"
     # Makes the limits for routes anyone can call: in process memory unless server.py says where.
     create_rate_limiter: CreateRateLimiter = create_memory_limiter
-    # The app versions installed apps check (app_version.py); every one None when absent.
-    app_version: Callable[[], AppVersion] | None = None
+    # The app versions installed apps check, for their platform (app_version.py); every one None
+    # when absent, and then no app is refused.
+    app_version: Callable[[str | None], AppVersion] | None = None
     # Where those limits find the client's address: the connection's own unless server.py says.
     client_ip_settings: ClientIpSettings = ClientIpSettings()
     # clubedge:if auth!=none
@@ -66,6 +75,10 @@ class ApiDependencies:
     # clubedge:end
 
 
+# What an app below the minimum version can still ask: whether the API runs, and where to update.
+_SERVED_WHILE_OUTDATED = frozenset({"/api/health", "/api/ready", "/api/app-version"})
+
+
 def create_app(dependencies: ApiDependencies) -> FastAPI:
     """The API. Each module's routes come from routes/, included after the session route for the
     modules this project uses, with what they need from `dependencies`."""
@@ -83,6 +96,31 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
 
     # The contract is openapi.yaml, so FastAPI's generated schema and docs are not served.
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None, lifespan=lifespan)
+
+    async def refuse_outdated_apps(
+        request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        """Apps installed on phones send their version with each request: one below the minimum
+        gets 426 update_required on every route but those it needs to learn that, and where to
+        update, so it shows its update screen whatever it asked."""
+        installed = request.headers.get(APP_VERSION_HEADER)
+        app_version = dependencies.app_version
+        if not installed or app_version is None or request.url.path in _SERVED_WHILE_OUTDATED:
+            return await call_next(request)
+        versions: AppVersion | None = None
+        # A mistake in the APP_* variables refuses no app: /api/app-version reports it.
+        with suppress(ValueError):
+            versions = app_version(app_platform(request.headers.get(APP_PLATFORM_HEADER)))
+        if update_status(installed, versions) == "required":
+            return api_error(
+                426,
+                "update_required",
+                "This version of the app is no longer supported: update it to continue.",
+            )
+        return await call_next(request)
+
+    # Added before CORS, so CORS runs first, as in the Hono API.
+    app.add_middleware(BaseHTTPMiddleware, dispatch=refuse_outdated_apps)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[dependencies.frontend_origin],
