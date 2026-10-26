@@ -36,22 +36,30 @@ const served = (versions: {
 
 describe("appVersionMiddleware", () => {
   it("says which version and platform each request comes from", async () => {
-    const fetch = vi.fn(async (_request: Request) => Response.json({ user: null }));
+    let request: Request | undefined;
+    const fetch = async (input: RequestInfo | URL) => {
+      request = input as Request;
+      return Response.json({ user: null });
+    };
     const api = createApiClient({ baseUrl: "https://api.example.com", fetch });
-    api.use(appVersionMiddleware({ version: async () => "1.4.0", platform: "ios", onRefused() {} }));
+    api.use(
+      appVersionMiddleware({ version: async () => "1.4.0", platform: "ios", onRefused() {} }),
+    );
     await api.GET("/api/session");
-    const request = fetch.mock.calls[0]![0];
-    expect(request.headers.get("X-App-Version")).toBe("1.4.0");
-    expect(request.headers.get("X-App-Platform")).toBe("ios");
+    expect(request?.headers.get("X-App-Version")).toBe("1.4.0");
+    expect(request?.headers.get("X-App-Platform")).toBe("ios");
   });
 
   it("tells the app when the API refuses its version", async () => {
     const refused = vi.fn();
     const answers = [426, 200];
     const fetch = async () =>
-      Response.json({ error: { code: "update_required", message: "Update." } }, {
-        status: answers.shift(),
-      });
+      Response.json(
+        { error: { code: "update_required", message: "Update." } },
+        {
+          status: answers.shift(),
+        },
+      );
     const api = createApiClient({ baseUrl: "https://api.example.com", fetch });
     api.use(appVersionMiddleware({ version: () => "1.0.0", platform: null, onRefused: refused }));
     await api.GET("/api/session");
@@ -74,7 +82,10 @@ describe("checkForUpdate", () => {
     const storage = deviceStorage();
     const versions = served({ minimumVersion: "1.3.0" });
     await checkForUpdate("1.2.0", async () => versions, storage);
-    expect(await rememberedUpdate("1.2.0", storage)).toEqual({ status: "required", versions: null });
+    expect(await rememberedUpdate("1.2.0", storage)).toEqual({
+      status: "required",
+      versions: null,
+    });
     expect(await rememberedUpdate("1.3.0", storage)).toBeNull();
   });
 
@@ -111,7 +122,10 @@ describe("dismissed notices", () => {
 
   it("bring a warning before a minimum's date back each day", async () => {
     const storage = deviceStorage();
-    const update = { status: "upcoming" as const, versions: served({ nextMinimumVersion: "1.3.0" }) };
+    const update = {
+      status: "upcoming" as const,
+      versions: served({ nextMinimumVersion: "1.3.0" }),
+    };
     await dismiss(update, storage, morning);
     expect(await isDismissed(update, storage, evening)).toBe(true);
     expect(await isDismissed(update, storage, tomorrow)).toBe(false);

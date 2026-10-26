@@ -5,8 +5,15 @@ import { UpdateScreen } from "./update-notice";
 
 const url = "https://example.com/app";
 
-function render(kind: "required" | "available", updateUrl: string | null) {
-  const update = { kind, url: updateUrl };
+function render(status: "required" | "available", updateUrl: string | null) {
+  const versions = {
+    minimumVersion: "1.2.0",
+    latestVersion: "1.3.0",
+    updateUrl,
+    nextMinimumVersion: null,
+    nextMinimumFrom: null,
+  };
+  const update = { status, versions };
   return renderToStaticMarkup(createElement(UpdateScreen, { update, onDismiss: () => {} }));
 }
 
