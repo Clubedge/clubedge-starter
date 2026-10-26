@@ -5,7 +5,27 @@ import { Inter_500Medium } from "@expo-google-fonts/inter/500Medium";
 import { Inter_600SemiBold } from "@expo-google-fonts/inter/600SemiBold";
 import { Inter_700Bold } from "@expo-google-fonts/inter/700Bold";
 import { useFonts } from "expo-font";
-import { useColorScheme } from "react-native";
+import deviceStorage from "expo-sqlite/kv-store";
+import { Appearance, useColorScheme } from "react-native";
+
+// The appearance chosen in You (useDarkMode), over the phone's own: kept on the device, and set
+// before the first screen draws.
+const appearanceKey = "appearance";
+const chosenAppearance = deviceStorage.getItemSync(appearanceKey);
+if (chosenAppearance === "light" || chosenAppearance === "dark") {
+  Appearance.setColorScheme?.(chosenAppearance);
+}
+
+/** Whether the app is dark, and the user's choice of it, which holds over the phone's. */
+export function useDarkMode(): [boolean, (dark: boolean) => void] {
+  const dark = useColorScheme() === "dark";
+  const choose = (next: boolean) => {
+    const appearance = next ? "dark" : "light";
+    Appearance.setColorScheme?.(appearance);
+    deviceStorage.setItemSync(appearanceKey, appearance);
+  };
+  return [dark, choose];
+}
 
 // The brand's blue on cool grays, in light and dark. Screens take their colors from here, so a
 // rebrand changes this file only.

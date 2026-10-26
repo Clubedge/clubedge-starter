@@ -26,9 +26,9 @@ export function SignOutSheet({
   const { busy, message, run } = useAccountAction();
   const name = account ? account.displayName || account.email : null;
 
-  const signOut = () =>
+  const signOut = (everywhere = false) =>
     run(async () => {
-      await authClient.signOut();
+      await authClient.signOut({ everywhere });
       // Signed out, the welcome screen opens in place of the app's screens.
       setSignedIn(false);
       return null;
@@ -84,8 +84,19 @@ export function SignOutSheet({
           variant="danger"
           icon={SignOutIcon}
           busy={busy}
-          onPress={signOut}
+          onPress={() => signOut()}
         />
+        {/* The user's sessions on their other devices end too, as after a lost phone. */}
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy}
+          onPress={() => signOut(true)}
+          style={styles.everywhere}
+        >
+          <Text style={[styles.everywhereText, { color: colors.danger }]}>
+            Sign out of all devices
+          </Text>
+        </Pressable>
       </View>
     </Modal>
   );
@@ -119,4 +130,6 @@ const styles = StyleSheet.create({
   name: { fontFamily: font.semibold, fontSize: 16 },
   email: { fontFamily: font.regular, fontSize: 14 },
   divider: { height: 1, marginVertical: 8 },
+  everywhere: { paddingTop: 10, alignItems: "center" },
+  everywhereText: { fontFamily: font.semibold, fontSize: 15 },
 });

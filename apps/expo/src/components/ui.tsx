@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { BottomTabBarHeightContext } from "expo-router/js-tabs";
 import type { Icon } from "phosphor-react-native";
@@ -20,6 +21,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -255,7 +257,7 @@ export function PillButton({
   );
 }
 
-/** A round button with an icon, such as the profile's settings button. */
+/** A round button with an icon, such as a sheet's close button. */
 export function IconButton({
   icon: ButtonIcon,
   label,
@@ -295,6 +297,31 @@ export function TextLink({ title, onPress }: { title: string; onPress: () => voi
     <Pressable accessibilityRole="link" hitSlop={8} onPress={onPress}>
       <Text style={[type.callout, type.link, { color: colors.accent }]}>{title}</Text>
     </Pressable>
+  );
+}
+
+/**
+ * A link to one of the app's legal pages, such as its Terms, inside a sentence. It opens in the
+ * browser, at the address in config/site.json.
+ */
+export function LegalLink({ title, url }: { title: string; url: string }) {
+  const colors = useColors();
+  return (
+    <Text
+      accessibilityRole="link"
+      onPress={() => void Linking.openURL(url)}
+      style={[type.link, { color: colors.accent }]}
+    >
+      {title}
+    </Text>
+  );
+}
+
+/** The small print under an action, such as agreeing to the Terms: centered, with LegalLinks. */
+export function LegalNote({ children }: { children: ReactNode }) {
+  const colors = useColors();
+  return (
+    <Text style={[type.caption, styles.legalNote, { color: colors.textMuted }]}>{children}</Text>
   );
 }
 
@@ -507,29 +534,45 @@ export function ListSection({ title, children }: { title: string; children: Reac
   );
 }
 
-/** A row that opens another screen, with its icon and its label. */
+/**
+ * A row with its icon and its label, that opens another screen, or with `toggle`, a switch that
+ * turns a setting on and off.
+ */
 export function ListRow({
   icon: RowIcon,
   label,
   onPress,
+  toggle,
 }: {
   icon: Icon;
   label: string;
-  onPress: () => void;
+  onPress?: () => void;
+  toggle?: { value: boolean; onChange: (value: boolean) => void };
 }) {
   const colors = useColors();
   return (
     <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
+      accessibilityRole={toggle ? "switch" : "button"}
+      accessibilityState={toggle ? { checked: toggle.value } : undefined}
+      onPress={toggle ? () => toggle.onChange(!toggle.value) : onPress}
       style={({ pressed }) => [
         styles.row,
-        { borderBottomColor: colors.hairline, opacity: pressed ? 0.6 : 1 },
+        { borderBottomColor: colors.hairline, opacity: pressed && !toggle ? 0.6 : 1 },
       ]}
     >
       <RowIcon size={22} color={colors.text} />
       <Text style={[styles.rowLabel, { color: colors.text }]}>{label}</Text>
-      <CaretRightIcon size={14} color={colors.chevron} weight="bold" />
+      {toggle ? (
+        <Switch
+          ios_backgroundColor={colors.divider}
+          onValueChange={toggle.onChange}
+          thumbColor={colors.background}
+          trackColor={{ true: colors.inverse, false: colors.divider }}
+          value={toggle.value}
+        />
+      ) : (
+        <CaretRightIcon size={14} color={colors.chevron} weight="bold" />
+      )}
     </Pressable>
   );
 }
@@ -582,6 +625,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  legalNote: { textAlign: "center", marginTop: 2 },
   prompt: {
     flexDirection: "row",
     flexWrap: "wrap",

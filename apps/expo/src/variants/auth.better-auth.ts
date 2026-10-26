@@ -3,7 +3,12 @@ import { createAuthClient } from "better-auth/react";
 import * as Linking from "expo-linking"; // clubedge:only framework=none
 import * as SecureStore from "expo-secure-store";
 import site from "@/config/site.json";
-import { AccountError, EmailNotVerifiedError, type AuthClient } from "@/lib/auth-client";
+import {
+  AccountError,
+  EmailNotVerifiedError,
+  signOutEverywhereFailed,
+  type AuthClient,
+} from "@/lib/auth-client";
 import { apiUrl } from "@/lib/config";
 
 type BetterAuthError = { status: number; code?: string; message?: string };
@@ -90,7 +95,12 @@ export const authClient: AuthClient = {
     });
     if (result.error) throw accountError(result.error);
   },
-  async signOut() {
+  async signOut(options) {
+    if (options?.everywhere) {
+      // Every session of the user ends on the server first, this one included.
+      const result = await client.revokeSessions().catch(() => null);
+      if (!result || result.error) throw new Error(signOutEverywhereFailed);
+    }
     // The plugin forgets the session on the device before it asks the server to end it, so the
     // device is signed out even when the server cannot be reached.
     await client.signOut().catch(() => undefined);

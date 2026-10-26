@@ -1,6 +1,10 @@
 /** Why an account action failed, as the settings screen words it. */
 export type AccountErrorCode = "invalid-password" | "invalid-input" | "rate-limited";
 
+/** Why signing out everywhere failed: the user is still signed in on their other devices. */
+export const signOutEverywhereFailed =
+  "Your other devices could not be signed out. Check your connection, then try again.";
+
 /** An account action the provider refused, for a reason the user can act on. */
 export class AccountError extends Error {
   override name = "AccountError";
@@ -67,6 +71,10 @@ export interface AuthClient {
    * or the provider's rate limit.
    */
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
-  /** Ends the session; the device forgets it even when the server could not be reached. */
-  signOut(): Promise<void>;
+  /**
+   * Ends the session; the device forgets it even when the server could not be reached.
+   * `everywhere` also ends the user's sessions on their other devices, and throws when the server
+   * cannot be reached, so the user knows they are still signed in there.
+   */
+  signOut(options?: { everywhere?: boolean }): Promise<void>;
 }

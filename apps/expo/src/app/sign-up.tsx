@@ -1,7 +1,18 @@
 import * as Linking from "expo-linking"; // clubedge:only framework=none
 import { router } from "expo-router";
 import { useState } from "react";
-import { Button, Field, Heading, LinkPrompt, Notice, Requirement, Screen } from "@/components/ui";
+import site from "@/config/site.json";
+import {
+  Button,
+  Field,
+  Heading,
+  LegalLink,
+  LegalNote,
+  LinkPrompt,
+  Notice,
+  Requirement,
+  Screen,
+} from "@/components/ui";
 import { authClient } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 
@@ -63,6 +74,11 @@ export default function SignUp() {
             disabled={!authClient.configured || !email || password.length < 8}
             onPress={signUp}
           />
+          <LegalNote>
+            By creating an account, you agree to our{" "}
+            <LegalLink title="Terms" url={site.links.terms} /> and acknowledge our{" "}
+            <LegalLink title="Privacy Policy" url={site.links.privacy} />.
+          </LegalNote>
           <LinkPrompt
             text="Already have an account?"
             link="Sign in"

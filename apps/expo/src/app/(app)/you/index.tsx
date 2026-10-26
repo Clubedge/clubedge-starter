@@ -1,53 +1,90 @@
+import * as Application from "expo-application";
 import { router } from "expo-router";
-import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
-import { StyleSheet, Text, View } from "react-native";
-import { Avatar, IconButton, PillButton, Screen } from "@/components/ui";
+import { LockSimpleIcon } from "phosphor-react-native/src/icons/LockSimple";
+import { MoonIcon } from "phosphor-react-native/src/icons/Moon";
+import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import site from "@/config/site.json";
+import { SignOutSheet } from "@/components/sign-out-sheet";
+import { Avatar, ListRow, ListSection, PillButton, Screen } from "@/components/ui";
 import { useAccount } from "@/lib/account";
-import { font, type, useColors } from "@/lib/theme";
+import { installedVersion } from "@/lib/app-update";
+import { font, type, useColors, useDarkMode } from "@/lib/theme";
 
-/** The signed-in user: their name and email address, with the way to their settings. */
-export default function Profile() {
+/**
+ * The signed-in user and their settings: the name and email address, the app's appearance, the
+ * password and the account's deletion, signing out, and the app's version.
+ */
+export default function You() {
   const colors = useColors();
   const account = useAccount();
+  const [dark, setDark] = useDarkMode();
+  const [signingOut, setSigningOut] = useState(false);
   const name = account ? account.displayName || account.email : null;
+  const build = Application.nativeBuildVersion;
   return (
-    <Screen layout="list">
-      <View style={styles.header}>
+    <>
+      <Screen layout="list">
         <Text accessibilityRole="header" style={[type.largeTitle, { color: colors.text }]}>
           You
         </Text>
-        <IconButton
-          icon={GearSixIcon}
-          label="Settings"
-          onPress={() => router.push("/you/settings")}
-        />
-      </View>
-      <View style={styles.identity}>
-        <Avatar name={name ?? ""} size={64} />
-        <View style={styles.names}>
-          <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-            {name ?? "Loading…"}
-          </Text>
-          {account?.displayName ? (
-            <Text numberOfLines={1} style={[type.callout, { color: colors.textMuted }]}>
-              {account.email}
+        <View style={styles.identity}>
+          <Avatar name={name ?? ""} size={64} />
+          <View style={styles.names}>
+            <Text numberOfLines={1} style={[styles.name, { color: colors.text }]}>
+              {name ?? "Loading…"}
             </Text>
-          ) : null}
+            {account?.displayName ? (
+              <Text numberOfLines={1} style={[type.callout, { color: colors.textMuted }]}>
+                {account.email}
+              </Text>
+            ) : null}
+          </View>
+          <PillButton
+            title="Edit"
+            variant="outline"
+            small
+            onPress={() => router.push("/you/edit-profile")}
+          />
         </View>
-        <PillButton
-          title="Edit"
-          variant="outline"
-          small
-          onPress={() => router.push("/you/edit-profile")}
-        />
-      </View>
-    </Screen>
+        <ListSection title="Preferences">
+          <ListRow icon={MoonIcon} label="Dark mode" toggle={{ value: dark, onChange: setDark }} />
+        </ListSection>
+        <ListSection title="Account">
+          <ListRow
+            icon={LockSimpleIcon}
+            label="Password & security"
+            onPress={() => router.push("/you/password")}
+          />
+          <ListRow
+            icon={TrashIcon}
+            label="Delete account"
+            onPress={() => router.push("/you/delete-account")}
+          />
+        </ListSection>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => setSigningOut(true)}
+          style={styles.signOut}
+        >
+          <Text style={[type.headline, { color: colors.danger }]}>Sign out</Text>
+        </Pressable>
+        <Text style={[type.footnote, { color: colors.textFaint }]}>
+          {installedVersion
+            ? `${site.name} ${installedVersion}${build ? ` (${build})` : ""}`
+            : site.name}
+        </Text>
+      </Screen>
+      <SignOutSheet account={account} visible={signingOut} onClose={() => setSigningOut(false)} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   identity: { flexDirection: "row", alignItems: "center", gap: 14 },
   names: { flex: 1, gap: 2 },
   name: { fontFamily: font.semibold, fontSize: 20, letterSpacing: -0.2 },
+  signOut: { alignSelf: "flex-start" },
 });

@@ -4,7 +4,7 @@ import { EnvelopeSimpleIcon } from "phosphor-react-native/src/icons/EnvelopeSimp
 import { ImageBackground, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import site from "@/config/site.json";
-import { Button, Mark } from "@/components/ui";
+import { Button, LegalLink, LegalNote, Mark } from "@/components/ui";
 import { font, radius, type, useColors } from "@/lib/theme";
 
 /**
@@ -54,6 +54,10 @@ export default function Welcome() {
           onPress={() => router.push("/sign-in")}
         />
         <Button title="Create account" variant="outline" onPress={() => router.push("/sign-up")} />
+        <LegalNote>
+          By continuing, you agree to the <LegalLink title="Terms" url={site.links.terms} /> and the{" "}
+          <LegalLink title="Privacy Policy" url={site.links.privacy} />.
+        </LegalNote>
       </View>
     </>
   );

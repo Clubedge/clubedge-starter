@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { useColors } from "@/lib/theme";
 
-// The You tab: the profile, then the settings and the forms they open.
+// The You tab: the profile and its settings, then the forms they open.
 export default function YouLayout() {
   const colors = useColors();
   return (
