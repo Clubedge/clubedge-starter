@@ -145,8 +145,7 @@ def app_version_problems(env: Mapping[str, str]) -> list[str]:
                 problems.append(f"{key} is not MAJOR.MINOR.PATCH, such as 1.4.0")
             elif kind == "date" and _parse_date(value) is None:
                 problems.append(
-                    f"{key} is not a date and time with its time zone,"
-                    " such as 2026-11-01T00:00:00Z"
+                    f"{key} is not a date and time with its time zone, such as 2026-11-01T00:00:00Z"
                 )
             elif kind == "url" and not _is_https_url(value):
                 problems.append(f"{key} is not an https:// URL")

@@ -187,7 +187,8 @@ export function describeApiConformance(
           ),
           nextMinimumVersion: version,
           nextMinimumFrom: expect.toSatisfy(
-            (date) => date === null || (typeof date === "string" && !Number.isNaN(Date.parse(date))),
+            (date) =>
+              date === null || (typeof date === "string" && !Number.isNaN(Date.parse(date))),
             "a date-time or null",
           ),
         },
