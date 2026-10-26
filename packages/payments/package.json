@@ -8,6 +8,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./conformance": "./src/conformance.ts",
     "./schema": "./src/schema.ts"
   },
   "scripts": {
