@@ -28,6 +28,13 @@ UpdateStatus = Literal["current", "available", "upcoming", "required"]
 _VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 # An installed app's version, whose missing parts count as 0: Android and iOS often say "1.0".
 _INSTALLED = re.compile(r"([0-9]+)(?:\.([0-9]+))?(?:\.([0-9]+))?")
+# A date and time in the one form the TypeScript API reads (zod's z.iso.datetime with offsets): a
+# date, T, a time to the second or finer, and Z or an offset such as +01:00.
+_DATE_TIME = re.compile(
+    r"\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?"
+    r"(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)",
+    re.ASCII,
+)
 
 # Each variable, in the order `pnpm check:env` lists their mistakes, and what it holds.
 _FIELDS = (
@@ -90,11 +97,12 @@ def _is_https_url(value: str) -> bool:
 
 def _parse_date(value: str) -> datetime | None:
     """A date and time with its time zone, such as 2026-11-01T00:00:00Z, or None."""
+    if _DATE_TIME.fullmatch(value) is None:
+        return None
     try:
-        parsed = datetime.fromisoformat(value)
+        return datetime.fromisoformat(value)
     except ValueError:
         return None
-    return parsed if parsed.tzinfo is not None else None
 
 
 def _utc(moment: datetime) -> str:

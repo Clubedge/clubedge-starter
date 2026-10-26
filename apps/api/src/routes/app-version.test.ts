@@ -63,6 +63,18 @@ describe("apps below the minimum", () => {
     });
   });
 
+  it("are refused by the minimum of the platform they name", async () => {
+    const byPlatform = app((platform) => ({
+      ...versions,
+      minimumVersion: platform === "ios" ? "1.3.0" : "1.2.0",
+    }));
+    const on = (platform: string) => ({
+      headers: { "X-App-Version": "1.2.5", "X-App-Platform": platform },
+    });
+    expect((await byPlatform.request("/api/session", on("ios"))).status).toBe(426);
+    expect((await byPlatform.request("/api/session", on("android"))).status).toBe(200);
+  });
+
   it("can still learn whether to update, and where", async () => {
     for (const path of ["/api/health", "/api/ready", "/api/app-version"]) {
       expect((await api.request(path, from("1.1.9"))).status).toBe(200);

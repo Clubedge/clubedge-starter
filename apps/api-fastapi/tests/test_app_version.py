@@ -242,6 +242,29 @@ def test_checks_an_announced_minimum() -> None:
     assert beyond == ["APP_LATEST_VERSION is older than APP_NEXT_MINIMUM_VERSION"]
 
 
+def test_reads_dates_in_the_one_form_the_typescript_api_reads() -> None:
+    def problems(start: str) -> list[str]:
+        return problems_for(APP_NEXT_MINIMUM_VERSION="1.3.0", APP_NEXT_MINIMUM_VERSION_FROM=start)
+
+    assert problems("2026-11-01T00:00:00Z") == []
+    assert problems("2026-11-01T01:00:00.000+01:00") == []
+    assert problems("2028-02-29T00:00:00Z") == []
+    not_a_date = (
+        "APP_NEXT_MINIMUM_VERSION_FROM is not a date and time with its time zone,"
+        " such as 2026-11-01T00:00:00Z"
+    )
+    for start in (
+        "2026-11-01 00:00:00Z",
+        "2026-W44-7T00:00:00Z",
+        "2026-11-01T00:00:00",
+        "2026-11-01T01:00+01:00",
+        "2026-11-01T00:00:00+0100",
+        "2026-11-01T24:00:00Z",
+        "2026-02-30T00:00:00Z",
+    ):
+        assert problems(start) == [not_a_date]
+
+
 def outdated(path: str, version: str = "1.1.9") -> int:
     api = client(app_version=served, is_ready=ready)
     status: int = api.get(path, headers={"X-App-Version": version}).status_code
@@ -252,6 +275,23 @@ def test_answers_an_app_below_the_minimum_426_update_required() -> None:
     response = client(app_version=served).get("/api/session", headers={"X-App-Version": "1.1.9"})
     assert response.status_code == 426
     assert response.json()["error"]["code"] == "update_required"
+
+
+def test_refuses_an_app_by_the_minimum_of_its_platform() -> None:
+    def by_platform(platform: str | None) -> AppVersion:
+        versions = VERSIONS.copy()
+        versions["minimumVersion"] = "1.3.0" if platform == "ios" else "1.2.0"
+        return versions
+
+    api = client(app_version=by_platform)
+
+    def status(platform: str) -> int:
+        headers = {"X-App-Version": "1.2.5", "X-App-Platform": platform}
+        code: int = api.get("/api/session", headers=headers).status_code
+        return code
+
+    assert status("ios") == 426
+    assert status("android") == 200
 
 
 def test_still_tells_an_app_below_the_minimum_whether_and_where_to_update() -> None:
