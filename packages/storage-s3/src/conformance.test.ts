@@ -2,8 +2,9 @@ import { CreateBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { describeStorage } from "@clubedge/storage/conformance";
 import { createS3Storage } from "./index";
 
-// Against a real S3-compatible service (AWS S3, MinIO, s3mock, R2): the STORAGE_* variables from
-// .env.example, as docker-compose.dev.yml and CI provide them.
+// Against a real S3-compatible service (AWS S3, MinIO, s3mock, R2): the
+// STORAGE_* variables from .env.example, as docker-compose.dev.yml and CI
+// provide them.
 const bucket = process.env.STORAGE_BUCKET;
 const endpoint = process.env.STORAGE_ENDPOINT;
 const region = process.env.STORAGE_REGION || "auto";
