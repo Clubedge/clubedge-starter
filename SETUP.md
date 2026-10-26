@@ -873,9 +873,9 @@ Each can be set for one platform by adding `_IOS` or `_ANDROID` to its name, suc
 
 Versions are `MAJOR.MINOR.PATCH`, such as `1.4.0`. The latest may not be older than the minimum, nor the announced minimum, and the announced minimum must be newer than the current one. Other values fail the request rather than reach the apps, and `pnpm check:env` lists them before a deploy.
 
-The apps also send their version (`X-App-Version`) and platform (`X-App-Platform`) with every request. Below the minimum, the API answers every request but `/api/health`, `/api/ready`, and `/api/app-version` with `426 update_required`, so an app left open for days shows its update screen at its next request, not only when it starts again. The version is what the app says it is, so this keeps old apps from calling an API they no longer match; it is not a security control.
+The apps also send their version (`X-App-Version`) and platform (`X-App-Platform`) with every request. To a request whose version is below the minimum, the API answers `426 update_required`, on every route but `/api/health`, `/api/ready`, and `/api/app-version`, so an app left open for days shows its update screen at its next request, not only when it starts again. Apps built from a Starter before v0.29.0 send no version: the API serves them, and they find the new minimum at their next start. The version is what the app says it is, so this keeps old apps from calling an API they no longer match; it is not a security control.
 
-For an urgent fix, raise `APP_MINIMUM_VERSION` itself: the apps below it stop at their next request. Once a security fix is out, don't lower the minimum again, even to roll back a broken release: ship a fixed version instead.
+For an urgent fix, raise `APP_MINIMUM_VERSION` itself: the apps below it stop at their next request (older builds, at their next start). Once a security fix is out, don't lower the minimum again, even to roll back a broken release: ship a fixed version instead.
 
 Installed apps keep calling the contract they shipped with, so change `openapi.yaml` only in ways they survive: add fields and operations, but never remove or rename them, and never make an optional request field required. The CI workflow's `contract` job compares each pull request's contract with its base branch's using [oasdiff](https://github.com/oasdiff/oasdiff), and fails on a change that breaks existing clients. For a deliberate break before any app has shipped, label the pull request `breaking-contract` and run the job again. Once apps have shipped, a break also needs `APP_MINIMUM_VERSION` raised to the first version that handles it, so older apps ask for an update instead of failing.
 
@@ -923,7 +923,7 @@ The app compares its version with the versions the API serves ([Apps installed o
 - Below `APP_MINIMUM_VERSION`, it shows **Update required**, a screen that keeps the app closed, with an **Update** button that opens `APP_UPDATE_URL` in the phone's browser. The app remembers it, so it holds when the app next starts offline, until it is updated.
 - Below `APP_NEXT_MINIMUM_VERSION`, a notice above the page says the date it stops working, with the same button. **Not now** hides it until the next day.
 - Below `APP_LATEST_VERSION` only, a notice offers the update, and **Not now** hides it until a newer version is out.
-- When the API cannot be reached, or does not know `/api/app-version` yet, nothing new shows and the app works as usual.
+- When the API cannot be reached, or does not know `/api/app-version` yet, nothing new shows: a remembered **Update required** still holds, and otherwise the app works as usual.
 
 The app's version is its `versionName` in `apps/shell/android/app/build.gradle`, and its version (`MARKETING_VERSION`) in Xcode. Give it as `MAJOR.MINOR.PATCH`, such as `1.4.0`, and raise it with each release; `1.0` counts as `1.0.0`, and a version in another form never sees a notice.
 
