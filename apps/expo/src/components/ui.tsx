@@ -312,7 +312,8 @@ export function LegalLink({ title, url }: { title: string; url: string }) {
       onPress={() => void Linking.openURL(url)}
       style={[type.link, { color: colors.accent }]}
     >
-      {title}
+      {/* Its words stay on one line, so a link such as Privacy Policy never breaks in two. */}
+      {title.replaceAll(" ", " ")}
     </Text>
   );
 }
