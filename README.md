@@ -38,6 +38,8 @@ Every combination in the CI matrix is generated as a real project and runs its f
 
 To try the mobile app on an Android phone, download [clubedge-demo.apk](https://github.com/Clubedge/clubedge-starter/releases/latest/download/clubedge-demo.apk) from the latest release and open it, allowing installs from unknown sources when Android asks. It is the app's demo build, with sample data that stays on the phone and no server behind it. iPhones install apps only from the App Store or TestFlight, so there is no file for them.
 
+To try the native app, download [clubedge-native-demo.apk](https://github.com/Clubedge/clubedge-starter/releases/latest/download/clubedge-native-demo.apk) the same way. It is the native app of a project without a website, and you sign up and sign in for real against that project's API. The API runs on Render's free plan, so after a quiet spell its first answer takes about a minute. Use a password you don't use elsewhere: the demo's accounts can be deleted at any time.
+
 <!-- In generated projects, the block below supplies the title that create-clubedge-app replaces with the project's name; its comment keeps it hidden here. -->
 <!-- clubedge:end -->
 <!-- clubedge:if framework=next|tanstack-start|none
