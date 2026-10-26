@@ -25,7 +25,9 @@ export interface S3StorageConfig {
 }
 
 /** The SDK hashes bodies in memory with its default checksums and cannot hash a flowing
- *  stream (Blob.stream() or a ReadableStream), so every body is read into bytes first. */
+ *  stream (Blob.stream() or a ReadableStream), so every body is read into bytes first. That
+ *  buffers large uploads in memory; S3Client's requestChecksumCalculation: "WHEN_REQUIRED"
+ *  would let streams through instead. */
 async function bodyForS3(body: UploadInput["body"]): Promise<Uint8Array> {
   if (body instanceof Uint8Array) return body;
   if (body instanceof ArrayBuffer) return new Uint8Array(body);
