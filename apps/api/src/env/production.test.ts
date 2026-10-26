@@ -72,10 +72,12 @@ describe("production env check", () => {
     ]);
   });
 
+  // clubedge:if framework!=none
   it("rejects a URL that isn't absolute", () => {
     const env = { ...complete(), FRONTEND_URL: "my-app.example.com" };
     expect(checkProductionEnv(env).invalid).toEqual(["FRONTEND_URL is not an absolute URL"]);
   });
+  // clubedge:end
 
   it("checks where rate limits find the client's address", () => {
     const env = { ...complete(), TRUSTED_PROXY_HOPS: "1" };
