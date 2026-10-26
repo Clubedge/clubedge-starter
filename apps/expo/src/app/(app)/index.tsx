@@ -7,10 +7,10 @@ import { UpdateBanner, useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
 import { installedVersion } from "@/lib/app-update";
 import { authEnabled } from "@/lib/auth-enabled";
-import { apiUrl } from "@/lib/config";
 import { font, radius, type, useColors } from "@/lib/theme";
 
-type Overview = { health: Health | null; user: User | null };
+// user is undefined when the API did not answer, and null when it found no session.
+type Overview = { health: Health | null; user: User | null | undefined };
 
 /** The first screen signed in: a greeting, what the app is, and how the app and its API are. */
 export default function Dashboard() {
@@ -25,7 +25,10 @@ export default function Dashboard() {
       api.GET("/api/health").catch(() => null),
       api.GET("/api/session").catch(() => null),
     ]);
-    setOverview({ health: health?.data ?? null, user: session?.data?.user ?? null });
+    setOverview({
+      health: health?.data ?? null,
+      user: session?.data ? session.data.user : undefined,
+    });
   }, []);
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function Dashboard() {
           updateUrl={update.versions?.updateUrl}
         />
       ) : null}
-      {authEnabled && overview && !user ? (
+      {authEnabled && user === null ? (
         <Notice tone="error">The API did not find your session. Pull down to try again.</Notice>
       ) : null}
       <View style={styles.stats}>
@@ -91,7 +94,7 @@ export default function Dashboard() {
           value={overview ? (health ? "Online" : "Offline") : "…"}
           tone={overview ? (health ? "good" : "bad") : "neutral"}
         >
-          {overview ? (health ? health.service : `No answer from ${apiUrl || "the API"}`) : ""}
+          {overview ? (health ? health.service : "No answer") : ""}
         </Stat>
         <Stat
           label="App version"
