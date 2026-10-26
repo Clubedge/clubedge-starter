@@ -1,7 +1,8 @@
-# Maintainer workflow for the Starter repository: the demo app for Android, built from each
-# release and attached to it as clubedge-demo.apk, which the website links to through
-# releases/latest/download/clubedge-demo.apk. The demo keeps sample data on the device and needs
-# no server. Generated projects never get this workflow.
+# Maintainer workflow for the Starter repository: the demo apps for Android, built from each
+# release and attached to it. clubedge-demo.apk is the mobile app (Capacitor), which the website
+# links to through releases/latest/download/clubedge-demo.apk; clubedge-native-demo.apk is the
+# native app (Expo), once the release has its demo modules. Each demo keeps sample data on the
+# device and needs no server. Generated projects never get this workflow.
 name: Demo app
 on:
   release:
@@ -121,3 +122,150 @@ jobs:
           set -euo pipefail
           sha256sum clubedge-demo.apk > clubedge-demo.apk.sha256
           gh release upload "$TAG" clubedge-demo.apk clubedge-demo.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
+
+  # The native app's demo needs its modules in apps/expo/src/demo, which generated projects never
+  # get: api.ts exports the contract client as api, and auth.ts the app's AuthClient as
+  # authClient, answering in place of the API and sign-in. A release without them skips
+  # native-android.
+  native-demo:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    outputs:
+      found: ${{ steps.check.outputs.found }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          sparse-checkout: apps/expo/src
+      - id: check
+        run: |
+          if [ -f apps/expo/src/demo/api.ts ] && [ -f apps/expo/src/demo/auth.ts ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "$TAG has no native demo (apps/expo/src/demo): no clubedge-native-demo.apk." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # The native app of a project without a website, built for Android with the demo's modules,
+  # and attached to the release as clubedge-native-demo.apk.
+  native-android:
+    needs: native-demo
+    if: needs.native-demo.outputs.found == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      # The mobile app's demo's signing key. Without it, the APK keeps Expo's debug signature.
+      DEMO_KEYSTORE: ${{ secrets.DEMO_KEYSTORE }}
+      DEMO_KEYSTORE_PASSWORD: ${{ secrets.DEMO_KEYSTORE_PASSWORD }}
+      DEMO_KEY_ALIAS: ${{ secrets.DEMO_KEY_ALIAS }}
+      DEMO_KEY_PASSWORD: ${{ secrets.DEMO_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # React Native builds with Java 17; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch main https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      # The folder's name names the project, and so the app: Clubedge Native Demo. The app only
+      # signs in and calls the API's account routes, so every other module is left out, or takes
+      # its lightest option.
+      - name: Generate the project
+        run: |
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/clubedge-native-demo" --template-dir "$GITHUB_WORKSPACE" \
+            --framework none --api hono --auth better-auth --mobile expo --storage none \
+            --cache memory --email none --payments none --jobs none --observability none \
+            --infra none --no-git --no-install --yes
+      # The app's api and auth modules hand over to the demo's. The app's id becomes permanent with
+      # the Android project, which the build creates; it differs from the mobile app's demo's, so
+      # the two install side by side.
+      - name: Put the demo in place and set the app's id
+        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
+        run: |
+          set -euo pipefail
+          cp -R "$GITHUB_WORKSPACE/apps/expo/src/demo" src/demo
+          echo 'export { api } from "@/demo/api";' > src/lib/api.ts
+          echo 'export { authClient } from "@/demo/auth";' > src/lib/auth.ts
+          sed -i 's|^const appId = .*|const appId = "live.clubedge.nativedemo";|' app.config.ts
+          grep -q 'const appId = "live.clubedge.nativedemo";' app.config.ts
+          grep -q '"name": "Clubedge Native Demo"' src/config/site.json
+      - name: Install
+        working-directory: ${{ runner.temp }}/clubedge-native-demo
+        run: pnpm install --frozen-lockfile
+      - name: Check the demo's types
+        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
+        run: pnpm run typecheck
+      - name: Build the demo and number it after the release
+        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          if ! [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "The release tag $TAG is not vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+          code=$((BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3]))
+          pnpm exec expo prebuild --platform android
+          sed -i -E "s/versionCode [0-9]+/versionCode $code/; s/versionName \"[^\"]*\"/versionName \"$version\"/" \
+            android/app/build.gradle
+          grep -q "versionCode $code" android/app/build.gradle
+          grep -q "versionName \"$version\"" android/app/build.gradle
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          # Expo signs the release build with its debug key.
+          (cd android && ./gradlew assembleRelease)
+      - name: Sign the APK with the demo's key
+        if: env.DEMO_KEYSTORE != ''
+        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile/android
+        run: |
+          set -euo pipefail
+          if [ -z "$DEMO_KEYSTORE_PASSWORD" ] || [ -z "$DEMO_KEY_ALIAS" ] || [ -z "$DEMO_KEY_PASSWORD" ]; then
+            echo "DEMO_KEYSTORE needs DEMO_KEYSTORE_PASSWORD, DEMO_KEY_ALIAS, and DEMO_KEY_PASSWORD."
+            exit 1
+          fi
+          echo "$DEMO_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/demo.p12"
+          trap 'rm -f "$RUNNER_TEMP/demo.p12"' EXIT
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)"
+          "$tools/zipalign" -p -f 4 app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/aligned.apk"
+          # Signing again replaces the debug signature: apksigner keeps no other signer's.
+          "$tools/apksigner" sign --ks "$RUNNER_TEMP/demo.p12" --ks-type PKCS12 \
+            --ks-pass env:DEMO_KEYSTORE_PASSWORD --ks-key-alias "$DEMO_KEY_ALIAS" \
+            --key-pass env:DEMO_KEY_PASSWORD --out "$RUNNER_TEMP/clubedge-native-demo.apk" "$RUNNER_TEMP/aligned.apk"
+          "$tools/apksigner" verify --print-certs "$RUNNER_TEMP/clubedge-native-demo.apk" > "$RUNNER_TEMP/signers.txt"
+          if grep -q '^Signer #2' "$RUNNER_TEMP/signers.txt"; then
+            echo "The APK is still signed with Expo's debug key too."
+            exit 1
+          fi
+          echo "Clubedge Native Demo $VERSION, signed with the demo's key." >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep Expo's debug signature, without the demo's key
+        if: env.DEMO_KEYSTORE == ''
+        working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile/android
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/clubedge-native-demo.apk"
+          {
+            echo "Clubedge Native Demo $VERSION is **debug-signed**: the repository has no DEMO_KEYSTORE secret."
+            echo "A later APK signed with another key cannot update it in place: uninstall it first."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Attach the APK to the release
+        working-directory: ${{ runner.temp }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha256sum clubedge-native-demo.apk > clubedge-native-demo.apk.sha256
+          gh release upload "$TAG" clubedge-native-demo.apk clubedge-native-demo.apk.sha256 --clobber --repo "$GITHUB_REPOSITORY"
