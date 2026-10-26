@@ -33,7 +33,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Apps in other languages run their lint, typecheck, and tests with their own tools.
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         if: ${{ hashFiles('apps/*/pyproject.toml') != '' }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
