@@ -7,6 +7,11 @@
 # fields, but never remove or rename them, or make an optional request field required. CI's
 # contract job fails a pull request that does (SETUP.md, "Apps installed on phones").
 #
+# Those apps send their version and platform with every request (the AppVersionHeader and
+# AppPlatformHeader parameters). Once a version is below the minimum getAppVersion serves, every
+# operation but getHealth, getReady, and getAppVersion answers it 426 update_required (the
+# UpdateRequired response), so the app shows its update screen whichever request it makes.
+#
 # An operation that belongs to a module (payments, jobs, ...) names it with
 # `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
 # answers 404 not_found as for any unknown path; the conformance suite checks both cases.
@@ -69,6 +74,8 @@ paths:
       summary: >-
         The app versions the API serves, for apps installed on phones, which keep calling it long
         after a release. Never cached.
+      parameters:
+        - $ref: "#/components/parameters/AppPlatformHeader"
       responses:
         "200":
           description: The versions, each null until the API sets it.
@@ -508,6 +515,36 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    UpdateRequired:
+      description: >-
+        The app's version (X-App-Version) is below the minimum the API serves (code
+        update_required): it must update before it continues. Any operation but getHealth,
+        getReady, and getAppVersion can answer it.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  # What the apps installed on phones send with every request.
+  parameters:
+    AppVersionHeader:
+      name: X-App-Version
+      in: header
+      required: false
+      description: >-
+        The installed app's version, such as 1.4.0. Below the minimum getAppVersion serves, the
+        request gets 426 update_required (UpdateRequired).
+      schema:
+        type: string
+    AppPlatformHeader:
+      name: X-App-Platform
+      in: header
+      required: false
+      description: >-
+        The platform the app runs on, for that platform's versions and update link. Any other
+        value counts as none.
+      schema:
+        type: string
+        enum: [ios, android]
   securitySchemes:
     bearerAuth:
       type: http
@@ -558,15 +595,17 @@ components:
           type: [string, "null"]
     AppVersion:
       type: object
-      description: Versions are MAJOR.MINOR.PATCH, such as 1.4.0.
-      required: [minimumVersion, latestVersion, updateUrl]
+      description: >-
+        Versions are MAJOR.MINOR.PATCH, such as 1.4.0. Each is the one for the platform the
+        request names in X-App-Platform, where the API sets that platform its own.
+      required: [minimumVersion, latestVersion, updateUrl, nextMinimumVersion, nextMinimumFrom]
       properties:
         minimumVersion:
           type: [string, "null"]
           pattern: ^\d+\.\d+\.\d+$
           description: >-
             The oldest app version the API still serves: apps below it must update before
-            continuing.
+            continuing. Once nextMinimumFrom passes, it is nextMinimumVersion.
         latestVersion:
           type: [string, "null"]
           pattern: ^\d+\.\d+\.\d+$
@@ -576,6 +615,17 @@ components:
           type: [string, "null"]
           format: uri
           description: Where to get the update, such as a store listing or a download page.
+        nextMinimumVersion:
+          type: [string, "null"]
+          pattern: ^\d+\.\d+\.\d+$
+          description: >-
+            A minimum the API has announced but does not require yet: apps below it keep working
+            until nextMinimumFrom, and can tell their users to update before then. Null when
+            none is announced, and once its date passes, when it becomes minimumVersion.
+        nextMinimumFrom:
+          type: [string, "null"]
+          format: date-time
+          description: When nextMinimumVersion becomes the minimum; null with it.
     Account:
       type: object
       required: [email, displayName, canDeleteAccount]

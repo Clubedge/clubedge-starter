@@ -7,6 +7,7 @@
 // server with API_URL set. It runs in Vitest, which is why it is a separate entry
 // (`@clubedge/contract/conformance`) that only tests import.
 import { describe, expect, it } from "vitest";
+import { APP_PLATFORM_HEADER, APP_VERSION_HEADER } from "./app-version";
 import type { components } from "./schema";
 
 export interface ApiHarness {
@@ -23,7 +24,8 @@ export interface ApiConformanceOptions {
   ready?: boolean;
   /**
    * What /api/app-version must answer, such as every field null from an API without the APP_*
-   * variables; any versions in the contract's format when absent.
+   * variables; any versions in the contract's format when absent. With a minimumVersion, the
+   * suite also checks that apps below it get 426 update_required.
    */
   appVersion?: components["schemas"]["AppVersion"];
   /**
@@ -183,9 +185,47 @@ export function describeApiConformance(
             (url) => url === null || (typeof url === "string" && URL.canParse(url)),
             "an absolute URL or null",
           ),
+          nextMinimumVersion: version,
+          nextMinimumFrom: expect.toSatisfy(
+            (date) => date === null || (typeof date === "string" && !Number.isNaN(Date.parse(date))),
+            "a date-time or null",
+          ),
         },
       );
     });
+
+    // Above any minimum an API could set, an app is always served.
+    it("serves the apps it doesn't require to update", async () => {
+      const harness = await setup();
+      const response = await harness.request("/api/session", {
+        headers: { [APP_VERSION_HEADER]: "999999.0.0", [APP_PLATFORM_HEADER]: "android" },
+      });
+      expect(response.status).toBe(200);
+    });
+
+    const minimum = options.appVersion?.minimumVersion;
+    if (minimum && minimum !== "0.0.0") {
+      const outdated = { [APP_VERSION_HEADER]: "0.0.0" };
+
+      it("answers an app below the minimum 426 update_required", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/session", { headers: outdated });
+        expect(response.status).toBe(426);
+        expect(await json(response)).toEqual({
+          error: { code: "update_required", message: expect.any(String) },
+        });
+      });
+
+      // So the app can still learn that it must update, and from where.
+      it.each(["/api/health", "/api/ready", "/api/app-version"])(
+        "still answers %s for an app below the minimum",
+        async (path) => {
+          const harness = await setup();
+          const response = await harness.request(path, { headers: outdated });
+          expect(response.status).not.toBe(426);
+        },
+      );
+    }
 
     it("answers unknown API paths with a JSON not_found error", async () => {
       const harness = await setup();
