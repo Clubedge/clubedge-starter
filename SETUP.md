@@ -862,13 +862,20 @@ The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `pac
 
 ### Apps installed on phones
 
-An app installed on a phone calls the API and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
+An app installed on a phone calls the API and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached, so a change applies on each app's next check, with no new release of the app. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
 
 - `APP_MINIMUM_VERSION`, the oldest app version the API still serves: below it, the app shows a blocking update screen.
 - `APP_LATEST_VERSION`, the newest released version: below it, the app may show an optional update notice.
 - `APP_UPDATE_URL`, where to get the update: an `https://` link to the store listing or a download page.
+- `APP_NEXT_MINIMUM_VERSION` and `APP_NEXT_MINIMUM_VERSION_FROM`, a minimum announced for a date and time with its time zone, such as `2026-11-01T00:00:00Z`. Until then, apps below it keep working and tell their users to update by that date; from then, the API requires it, with no redeploy.
 
-Versions are `MAJOR.MINOR.PATCH`, such as `1.4.0`, and the latest may not be older than the minimum. Other values fail the request rather than reach the apps, and `pnpm check:env` lists them before a deploy.
+Each can be set for one platform by adding `_IOS` or `_ANDROID` to its name, such as `APP_UPDATE_URL_IOS` for the App Store listing and `APP_UPDATE_URL_ANDROID` for Google Play, or `APP_LATEST_VERSION_IOS` while App Store review holds a release Google Play already has. The apps say which platform they run on, and the platform's own value wins over the shared one.
+
+Versions are `MAJOR.MINOR.PATCH`, such as `1.4.0`. The latest may not be older than the minimum, nor the announced minimum, and the announced minimum must be newer than the current one. Other values fail the request rather than reach the apps, and `pnpm check:env` lists them before a deploy.
+
+The apps also send their version (`X-App-Version`) and platform (`X-App-Platform`) with every request. Below the minimum, the API answers every request but `/api/health`, `/api/ready`, and `/api/app-version` with `426 update_required`, so an app left open for days shows its update screen at its next request, not only when it starts again. The version is what the app says it is, so this keeps old apps from calling an API they no longer match; it is not a security control.
+
+For an urgent fix, raise `APP_MINIMUM_VERSION` itself: the apps below it stop at their next request. Once a security fix is out, don't lower the minimum again, even to roll back a broken release: ship a fixed version instead.
 
 Installed apps keep calling the contract they shipped with, so change `openapi.yaml` only in ways they survive: add fields and operations, but never remove or rename them, and never make an optional request field required. The CI workflow's `contract` job compares each pull request's contract with its base branch's using [oasdiff](https://github.com/oasdiff/oasdiff), and fails on a change that breaks existing clients. For a deliberate break before any app has shipped, label the pull request `breaking-contract` and run the job again. Once apps have shipped, a break also needs `APP_MINIMUM_VERSION` raised to the first version that handles it, so older apps ask for an update instead of failing.
 
@@ -911,11 +918,12 @@ Ctrl+C stops it. The installed app keeps loading its pages from your computer un
 
 ### Updates
 
-Each time it starts, the app compares its version with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)):
+The app compares its version with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)) when it starts, when it comes back to the foreground (at most every 15 minutes), and whenever the API answers one of its requests `426 update_required`:
 
-- Below `APP_MINIMUM_VERSION`, it shows **Update required**, a screen that keeps the app closed, with an **Update** button that opens `APP_UPDATE_URL` in the phone's browser.
-- Below `APP_LATEST_VERSION` only, a notice above the page offers the same button, and **Not now** hides it until the app starts again.
-- When the API cannot be reached, or does not know `/api/app-version` yet, nothing shows and the app works as usual.
+- Below `APP_MINIMUM_VERSION`, it shows **Update required**, a screen that keeps the app closed, with an **Update** button that opens `APP_UPDATE_URL` in the phone's browser. The app remembers it, so it holds when the app next starts offline, until it is updated.
+- Below `APP_NEXT_MINIMUM_VERSION`, a notice above the page says the date it stops working, with the same button. **Not now** hides it until the next day.
+- Below `APP_LATEST_VERSION` only, a notice offers the update, and **Not now** hides it until a newer version is out.
+- When the API cannot be reached, or does not know `/api/app-version` yet, nothing new shows and the app works as usual.
 
 The app's version is its `versionName` in `apps/shell/android/app/build.gradle`, and its version (`MARKETING_VERSION`) in Xcode. Give it as `MAJOR.MINOR.PATCH`, such as `1.4.0`, and raise it with each release; `1.0` counts as `1.0.0`, and a version in another form never sees a notice.
 
@@ -984,7 +992,7 @@ How the app works with the API: <!-- clubedge:only framework=none -->
 - The app has no billing: app stores require their own in-app purchases for digital goods, so subscriptions stay on the website. <!-- clubedge:only payments!=none -->
 - Its icon, Android's adaptive icon, and its splash screen are the images in `apps/mobile/assets`, which `app.config.ts` names.
 
-Each time it starts, the app compares its version, `version` in `app.config.ts` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)). Below `APP_MINIMUM_VERSION`, it shows only **Update required**, with an **Update** button that opens `APP_UPDATE_URL`; below `APP_LATEST_VERSION`, the dashboard says an update is available.
+The app compares its version, `version` in `app.config.ts` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)) when it starts, when it comes back to the foreground (at most every 15 minutes), and whenever the API answers one of its requests `426 update_required`. Below `APP_MINIMUM_VERSION`, it shows only **Update required**, with an **Update** button that opens `APP_UPDATE_URL`, and remembers it, so it holds when the app next starts offline, until it is updated. Below `APP_NEXT_MINIMUM_VERSION`, the dashboard says the date it stops working; below `APP_LATEST_VERSION`, that an update is available. The logic is shared with the API in `packages/contract` (`app-version.ts` and `app-update.ts`).
 
 <!-- clubedge:end -->
 
