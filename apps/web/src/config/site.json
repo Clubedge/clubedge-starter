@@ -6,6 +6,8 @@
   "workspaceLabel": "Starter workspace",
   "links": {
     "repository": "https://github.com/Clubedge/clubedge-starter",
-    "setupGuide": "https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md"
+    "setupGuide": "https://github.com/Clubedge/clubedge-starter/blob/main/SETUP.md",
+    "terms": "https://example.com/terms",
+    "privacy": "https://example.com/privacy"
   }
 }
