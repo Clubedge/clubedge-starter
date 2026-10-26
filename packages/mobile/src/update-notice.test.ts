@@ -27,6 +27,13 @@ describe("UpdateScreen", () => {
     expect(html).not.toContain("Not now");
   });
 
+  it("keeps the app closed on a block remembered offline, before the API answers", () => {
+    const update = { status: "required" as const, versions: null };
+    const html = renderToStaticMarkup(createElement(UpdateScreen, { update, onDismiss: () => {} }));
+    expect(html).toContain("Update required");
+    expect(html).toContain("Get the update where you installed the app.");
+  });
+
   it("says where to update when the API gives no address", () => {
     const html = render("required", null);
     expect(html).toContain("Get the update where you installed the app.");
