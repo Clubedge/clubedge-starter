@@ -286,7 +286,8 @@ function allowMobileOrigins(request, response) {
     response.writeHead(204, {
       ...cors,
       "access-control-allow-methods": "GET, POST",
-      "access-control-allow-headers": "authorization, content-type",
+      // The app's version and platform go with each request (packages/contract, app-update.ts).
+      "access-control-allow-headers": "authorization, content-type, x-app-version, x-app-platform",
       "access-control-max-age": "600",
     });
     response.end();

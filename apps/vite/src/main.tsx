@@ -21,11 +21,12 @@ createRoot(root).render(
 );
 
 // clubedge:if shell!=none
-// The mobile app's own notices, which only its build loads, so the website never has them: an
-// update notice when the API serves newer versions of the app, and the banner of a demo build.
+// The mobile app's own notices, which only its build loads, so the website never has them: the
+// update checks, whose requests say which version of the app they come from, and the banner of a
+// demo build.
 if (import.meta.env.MODE === "app") {
   void import("@clubedge/mobile/update-notice").then(({ showUpdateNotice }) =>
-    showUpdateNotice(() => api.GET("/api/app-version").then(({ data }) => data ?? null)),
+    showUpdateNotice(api),
   );
   if (import.meta.env.VITE_DEMO === "true") {
     void import("@clubedge/mobile/demo/banner").then(({ showDemoBanner }) => showDemoBanner());

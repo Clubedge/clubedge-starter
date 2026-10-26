@@ -4,6 +4,8 @@ import createClient from "openapi-fetch";
 import type { components, paths } from "./schema";
 
 export type { components, paths };
+export * from "./app-version";
+export * from "./app-update";
 export type Health = components["schemas"]["Health"];
 export type Ready = components["schemas"]["Ready"];
 export type Session = components["schemas"]["Session"];

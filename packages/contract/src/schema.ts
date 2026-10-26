@@ -303,9 +303,9 @@ export interface components {
       email: string;
       displayName: string | null;
     };
-    /** @description Versions are MAJOR.MINOR.PATCH, such as 1.4.0. */
+    /** @description Versions are MAJOR.MINOR.PATCH, such as 1.4.0. Each is the one for the platform the request names in X-App-Platform, where the API sets that platform its own. */
     AppVersion: {
-      /** @description The oldest app version the API still serves: apps below it must update before continuing. */
+      /** @description The oldest app version the API still serves: apps below it must update before continuing. Once nextMinimumFrom passes, it is nextMinimumVersion. */
       minimumVersion: string | null;
       /** @description The newest released version: apps below it may show an optional update notice. */
       latestVersion: string | null;
@@ -314,6 +314,13 @@ export interface components {
        * @description Where to get the update, such as a store listing or a download page.
        */
       updateUrl: string | null;
+      /** @description A minimum the API has announced but does not require yet: apps below it keep working until nextMinimumFrom, and can tell their users to update before then. Null when none is announced, and once its date passes, when it becomes minimumVersion. */
+      nextMinimumVersion: string | null;
+      /**
+       * Format: date-time
+       * @description When nextMinimumVersion becomes the minimum; null with it.
+       */
+      nextMinimumFrom: string | null;
     };
     Account: {
       email: string;
@@ -481,8 +488,22 @@ export interface components {
         "application/json": components["schemas"]["Error"];
       };
     };
+    /** @description The app's version (X-App-Version) is below the minimum the API serves (code update_required): it must update before it continues. Every operation but getHealth, getReady, and getAppVersion can answer it, to a request that sends X-App-Version. */
+    UpdateRequired: {
+      headers: {
+        [name: string]: unknown;
+      };
+      content: {
+        "application/json": components["schemas"]["Error"];
+      };
+    };
   };
-  parameters: never;
+  parameters: {
+    /** @description The installed app's version, such as 1.4.0. Below the minimum getAppVersion serves, the request gets 426 update_required (UpdateRequired). */
+    AppVersionHeader: string;
+    /** @description The platform the app runs on, for that platform's own versions and update link. Without it, the API serves the versions shared by both platforms. */
+    AppPlatformHeader: "ios" | "android";
+  };
   requestBodies: never;
   headers: never;
   pathItems: never;
@@ -556,12 +577,16 @@ export interface operations {
           "application/json": components["schemas"]["Session"];
         };
       };
+      426: components["responses"]["UpdateRequired"];
     };
   };
   getAppVersion: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description The platform the app runs on, for that platform's own versions and update link. Without it, the API serves the versions shared by both platforms. */
+        "X-App-Platform"?: components["parameters"]["AppPlatformHeader"];
+      };
       path?: never;
       cookie?: never;
     };
@@ -601,6 +626,7 @@ export interface operations {
         };
       };
       401: components["responses"]["Unauthorized"];
+      426: components["responses"]["UpdateRequired"];
       503: components["responses"]["NotConfigured"];
     };
   };
@@ -636,6 +662,7 @@ export interface operations {
       401: components["responses"]["Unauthorized"];
       413: components["responses"]["PayloadTooLarge"];
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       503: components["responses"]["NotConfigured"];
     };
   };
@@ -689,6 +716,7 @@ export interface operations {
       };
       413: components["responses"]["PayloadTooLarge"];
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       429: components["responses"]["TooManyRequests"];
       /** @description Deleting accounts is not set up on this server (code not_configured), or the rate limit cannot be checked now (code unavailable). */
       503: {
@@ -721,6 +749,7 @@ export interface operations {
           "application/json": components["schemas"]["BrowserErrorReporting"];
         };
       };
+      426: components["responses"]["UpdateRequired"];
     };
   };
   reportBrowserError: {
@@ -754,6 +783,7 @@ export interface operations {
       };
       413: components["responses"]["PayloadTooLarge"];
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       429: components["responses"]["TooManyRequests"];
     };
   };
@@ -777,6 +807,7 @@ export interface operations {
           "application/json": components["schemas"]["JobsStatus"];
         };
       };
+      426: components["responses"]["UpdateRequired"];
     };
   };
   runSampleJob: {
@@ -802,6 +833,7 @@ export interface operations {
         };
       };
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       /** @description The queue could not be reached (code unavailable). */
       503: {
         headers: {
@@ -841,6 +873,7 @@ export interface operations {
           "application/json": components["schemas"]["Error"];
         };
       };
+      426: components["responses"]["UpdateRequired"];
     };
   };
   inspectInngest: {
@@ -852,6 +885,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      426: components["responses"]["UpdateRequired"];
       /** @description Inngest reads the app's jobs. The SDK defines the answer. */
       default: {
         headers: {
@@ -870,6 +904,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      426: components["responses"]["UpdateRequired"];
       /** @description Registers the app's jobs with Inngest. The SDK defines the answer. */
       default: {
         headers: {
@@ -888,6 +923,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      426: components["responses"]["UpdateRequired"];
       /** @description The job's result. The SDK defines the answer. */
       default: {
         headers: {
@@ -917,6 +953,7 @@ export interface operations {
           "application/json": components["schemas"]["Billing"];
         };
       };
+      426: components["responses"]["UpdateRequired"];
     };
   };
   startCheckout: {
@@ -952,6 +989,7 @@ export interface operations {
       };
       401: components["responses"]["Unauthorized"];
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       503: components["responses"]["NotConfigured"];
     };
   };
@@ -989,6 +1027,7 @@ export interface operations {
         };
       };
       415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
       503: components["responses"]["NotConfigured"];
     };
   };
@@ -1026,6 +1065,7 @@ export interface operations {
         };
       };
       413: components["responses"]["PayloadTooLarge"];
+      426: components["responses"]["UpdateRequired"];
       /** @description Applying the event failed, so the provider retries it (code webhook_failed). */
       500: {
         headers: {

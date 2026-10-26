@@ -31,7 +31,13 @@ const routes: Record<string, (request: Request) => Response | Promise<Response>>
   "GET /api/ready": () => json(200, { status: "ok" }),
   "GET /api/session": () => json(200, { user: demo.user }),
   "GET /api/app-version": () =>
-    json(200, { minimumVersion: null, latestVersion: null, updateUrl: null }),
+    json(200, {
+      minimumVersion: null,
+      latestVersion: null,
+      updateUrl: null,
+      nextMinimumVersion: null,
+      nextMinimumFrom: null,
+    }),
   "GET /api/account": () =>
     demo.user
       ? json(200, {

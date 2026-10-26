@@ -7,6 +7,11 @@
 # fields, but never remove or rename them, or make an optional request field required. CI's
 # contract job fails a pull request that does (SETUP.md, "Apps installed on phones").
 #
+# Those apps send their version and platform with every request (the AppVersionHeader and
+# AppPlatformHeader parameters). Once a version is below the minimum getAppVersion serves, every
+# operation but getHealth, getReady, and getAppVersion answers it 426 update_required (the
+# UpdateRequired response), so the app shows its update screen whichever request it makes.
+#
 # An operation that belongs to a module (payments, jobs, ...) names it with
 # `x-clubedge-module: <id>`. A project without that module has no such endpoint, so its API
 # answers 404 not_found as for any unknown path; the conformance suite checks both cases.
@@ -63,12 +68,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Session"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
   /api/app-version:
     get:
       operationId: getAppVersion
       summary: >-
         The app versions the API serves, for apps installed on phones, which keep calling it long
         after a release. Never cached.
+      parameters:
+        - $ref: "#/components/parameters/AppPlatformHeader"
       responses:
         "200":
           description: The versions, each null until the API sets it.
@@ -104,6 +113,8 @@ paths:
                 $ref: "#/components/schemas/Account"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "503":
           $ref: "#/components/responses/NotConfigured"
   /api/account/profile:
@@ -132,6 +143,8 @@ paths:
                 $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "503":
           $ref: "#/components/responses/NotConfigured"
         "413":
@@ -185,6 +198,8 @@ paths:
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
@@ -212,6 +227,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BrowserErrorReporting"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
     post:
       operationId: reportBrowserError
       summary: Reports an error from the browser like a server error. 30 a minute per address.
@@ -235,6 +252,8 @@ paths:
           $ref: "#/components/responses/PayloadTooLarge"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "429":
           $ref: "#/components/responses/TooManyRequests"
   /api/jobs:
@@ -259,6 +278,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JobsStatus"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
   /api/jobs/sample:
     post:
       operationId: runSampleJob
@@ -282,6 +303,8 @@ paths:
                 $ref: "#/components/schemas/SampleJobQueued"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "503":
           description: The queue could not be reached (code unavailable).
           content:
@@ -312,6 +335,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
   /api/inngest:
     get:
       operationId: inspectInngest
@@ -320,6 +345,8 @@ paths:
       responses:
         default:
           description: Inngest reads the app's jobs. The SDK defines the answer.
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
     put:
       operationId: syncInngest
       summary: Inngest's protocol (opaque here); only the Inngest provider has it.
@@ -327,6 +354,8 @@ paths:
       responses:
         default:
           description: Registers the app's jobs with Inngest. The SDK defines the answer.
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
     post:
       operationId: runInngestJob
       summary: >-
@@ -336,6 +365,8 @@ paths:
       responses:
         default:
           description: The job's result. The SDK defines the answer.
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
   /api/billing:
     get:
       operationId: getBilling
@@ -358,6 +389,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Billing"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
   /api/billing/checkout:
     post:
       operationId: startCheckout
@@ -389,6 +422,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "503":
           $ref: "#/components/responses/NotConfigured"
   /api/billing/portal:
@@ -423,6 +458,8 @@ paths:
                 $ref: "#/components/schemas/Error"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "503":
           $ref: "#/components/responses/NotConfigured"
   /api/webhooks/payments:
@@ -459,6 +496,8 @@ paths:
                 $ref: "#/components/schemas/Error"
         "413":
           $ref: "#/components/responses/PayloadTooLarge"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
         "500":
           description: Applying the event failed, so the provider retries it (code webhook_failed).
           content:
@@ -508,6 +547,36 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    UpdateRequired:
+      description: >-
+        The app's version (X-App-Version) is below the minimum the API serves (code
+        update_required): it must update before it continues. Every operation but getHealth,
+        getReady, and getAppVersion can answer it, to a request that sends X-App-Version.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  # What the apps installed on phones send with every request.
+  parameters:
+    AppVersionHeader:
+      name: X-App-Version
+      in: header
+      required: false
+      description: >-
+        The installed app's version, such as 1.4.0. Below the minimum getAppVersion serves, the
+        request gets 426 update_required (UpdateRequired).
+      schema:
+        type: string
+    AppPlatformHeader:
+      name: X-App-Platform
+      in: header
+      required: false
+      description: >-
+        The platform the app runs on, for that platform's own versions and update link. Without
+        it, the API serves the versions shared by both platforms.
+      schema:
+        type: string
+        enum: [ios, android]
   securitySchemes:
     bearerAuth:
       type: http
@@ -558,15 +627,17 @@ components:
           type: [string, "null"]
     AppVersion:
       type: object
-      description: Versions are MAJOR.MINOR.PATCH, such as 1.4.0.
-      required: [minimumVersion, latestVersion, updateUrl]
+      description: >-
+        Versions are MAJOR.MINOR.PATCH, such as 1.4.0. Each is the one for the platform the
+        request names in X-App-Platform, where the API sets that platform its own.
+      required: [minimumVersion, latestVersion, updateUrl, nextMinimumVersion, nextMinimumFrom]
       properties:
         minimumVersion:
           type: [string, "null"]
           pattern: ^\d+\.\d+\.\d+$
           description: >-
             The oldest app version the API still serves: apps below it must update before
-            continuing.
+            continuing. Once nextMinimumFrom passes, it is nextMinimumVersion.
         latestVersion:
           type: [string, "null"]
           pattern: ^\d+\.\d+\.\d+$
@@ -576,6 +647,17 @@ components:
           type: [string, "null"]
           format: uri
           description: Where to get the update, such as a store listing or a download page.
+        nextMinimumVersion:
+          type: [string, "null"]
+          pattern: ^\d+\.\d+\.\d+$
+          description: >-
+            A minimum the API has announced but does not require yet: apps below it keep working
+            until nextMinimumFrom, and can tell their users to update before then. Null when
+            none is announced, and once its date passes, when it becomes minimumVersion.
+        nextMinimumFrom:
+          type: [string, "null"]
+          format: date-time
+          description: When nextMinimumVersion becomes the minimum; null with it.
     Account:
       type: object
       required: [email, displayName, canDeleteAccount]

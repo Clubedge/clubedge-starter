@@ -123,7 +123,8 @@ describe("apps/vite/server.mjs for the mobile app's origins", () => {
       expect(response.status, path).toBe(204);
       expect(response.headers).toMatchObject({
         "access-control-allow-origin": origin,
-        "access-control-allow-headers": "authorization, content-type",
+        "access-control-allow-headers":
+          "authorization, content-type, x-app-version, x-app-platform",
         "access-control-max-age": "600",
         vary: "Origin",
       });
