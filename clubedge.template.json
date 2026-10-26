@@ -87,6 +87,7 @@
     "apps/api-fastapi/.env.example",
     ".github/workflows/ci.yml",
     ".github/workflows/deploy.yml",
+    ".railway/railway.ts",
     ".github/workflows/preview.yml",
     ".gitignore",
     ".prettierignore",
