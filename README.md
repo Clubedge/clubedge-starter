@@ -42,7 +42,7 @@ To try the native app, download [clubedge-native-demo.apk](https://github.com/Cl
 
 <!-- In generated projects, the block below supplies the title that create-clubedge-app replaces with the project's name; its comment keeps it hidden here. -->
 <!-- clubedge:end -->
-<!-- clubedge:if framework=next|tanstack-start|none
+<!-- clubedge:if framework=next|tanstack-start|vite|none
 # Clubedge Starter
 <!-- clubedge:end -->
 
@@ -106,7 +106,8 @@ To try the native app, download [clubedge-native-demo.apk](https://github.com/Cl
 - A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release. <!-- clubedge:only api=none -->
 - Production images for the frontend, served by Node, and for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only api!=none && framework!=none -->
 - A production image for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only framework=none -->
-- A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database.
+- A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database. <!-- clubedge:only deploy!=docker -->
+- Deployment with Docker Compose behind Caddy: `pnpm clubedge deploy` writes the Compose file, a Caddyfile, and a workflow that publishes the images to GitHub's container registry with each release. A readiness endpoint (`/api/ready`) checks the database. <!-- clubedge:only deploy=docker -->
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `.railway/railway.ts`: migrations run before each release, and `pnpm clubedge deploy` sets up the project. <!-- clubedge:only deploy=railway -->
 - Deployment to Render with a `render.yaml` Blueprint: migrations run before each deploy. <!-- clubedge:only deploy=render -->
@@ -163,7 +164,7 @@ corepack enable
 pnpm install
 ```
 
-<!-- clubedge:if framework!=none -->
+<!-- clubedge:if framework!=none && infra!=neon -->
 
 Copy the example environment file to the web app's local environment file.
 
@@ -180,7 +181,7 @@ cp .env.example apps/web/.env.local
 ```
 
 <!-- clubedge:end -->
-<!-- clubedge:if framework=none -->
+<!-- clubedge:if framework=none && infra!=neon -->
 
 Copy the API's example environment file to its local environment file.
 
@@ -228,8 +229,8 @@ Nothing else to install: `pnpm dev` starts a local PostgreSQL database (PGlite, 
 <!-- clubedge:end -->
 <!-- clubedge:if infra=neon -->
 
-Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/web/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework!=none -->
-Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/api/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework=none -->
+Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/web/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework=next|tanstack-start -->
+Nothing to install: create-clubedge-app created a free [Neon](https://neon.com) database and put its URLs in `apps/api/.env.local`. It lasts 72 hours; claim it into a free Neon account to keep it. Apply the migrations: <!-- clubedge:only framework=vite|none -->
 
 ```sh
 pnpm db:migrate
@@ -526,15 +527,21 @@ Shared components are generated under `packages/ui/src/components` and can be im
 
 Each phase ends with a Starter release and a create-clubedge-app release pinned to it. The full plan is in [ROADMAP.md](ROADMAP.md).
 
-| Release          | Theme                                                                                    |
-| ---------------- | ---------------------------------------------------------------------------------------- |
-| v0.5.0 to v0.8.0 | Optional modules, local services with and without Docker, `add`, `remove`, and `upgrade` |
-| v0.9.0           | Email, password reset, and email verification                                            |
-| v0.10.0          | Deployment to Docker hosts, Fly.io, Railway, Render, Vercel, and Netlify                 |
-| v0.11.0          | Payments with Stripe                                                                     |
-| v0.12.0          | Background jobs with pg-boss                                                             |
-| v0.13.0          | Observability with OpenTelemetry or Sentry                                               |
-| next             | Browser error reporting, Sentry source maps, and auth emails through the job queue       |
+| Release            | Theme                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------- |
+| v0.5.0 to v0.8.0   | Optional modules, local services with and without Docker, `add`, `remove`, and `upgrade`       |
+| v0.9.0             | Email, password reset, and email verification                                                  |
+| v0.10.0            | Deployment to Docker hosts, Fly.io, Railway, Render, Vercel, and Netlify                       |
+| v0.11.0            | Payments with Stripe                                                                           |
+| v0.12.0            | Background jobs with pg-boss                                                                   |
+| v0.13.0            | Observability with OpenTelemetry or Sentry                                                     |
+| v0.14.0 to v0.15.0 | Account settings, browser error reporting, and the docs-style dashboard                        |
+| v0.16.0 to v0.19.0 | Upgrades as pull requests, Railway configuration as code, production variable checks, and Neon |
+| v0.20.0 to v0.21.0 | Pluggable jobs (BullMQ, Inngest) and auth (Firebase, Appwrite), each with a conformance suite  |
+| v0.22.0 to v0.26.0 | React + Vite with a separate Hono or FastAPI API, and every module on both                     |
+| v0.27.0            | Mobile apps with Capacitor                                                                     |
+| v0.28.0            | The native app with Expo, and projects without a website                                       |
+| next               | Proposed: organizations and teams, shipping the native app to stores, and an admin area        |
 
 ## Community
 
