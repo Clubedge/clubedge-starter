@@ -334,8 +334,10 @@ jobs:
           grep -q "versionCode $code" android/app/build.gradle
           grep -q "versionName \"$version\"" android/app/build.gradle
           echo "VERSION=$version" >> "$GITHUB_ENV"
-          # Expo signs the release build with its debug key.
-          (cd android && ./gradlew assembleRelease)
+          # Expo signs the release build with its debug key. The APK is for phones, which run ARM: it
+          # leaves out the x86 code emulators use, and compresses the native libraries, which phones
+          # unpack when they install it, so it downloads faster.
+          (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a -Pexpo.useLegacyPackaging=true)
       - name: Sign the APK with the demo's key
         if: env.DEMO_KEYSTORE != ''
         working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile/android
@@ -358,7 +360,8 @@ jobs:
             echo "The APK is still signed with Expo's debug key too."
             exit 1
           fi
-          echo "Clubedge Native Demo $VERSION, signed with the demo's key." >> "$GITHUB_STEP_SUMMARY"
+          size=$(du -m "$RUNNER_TEMP/clubedge-native-demo.apk" | cut -f1)
+          echo "Clubedge Native Demo $VERSION ($size MB), signed with the demo's key." >> "$GITHUB_STEP_SUMMARY"
       - name: Keep Expo's debug signature, without the demo's key
         if: env.DEMO_KEYSTORE == ''
         working-directory: ${{ runner.temp }}/clubedge-native-demo/apps/mobile/android
