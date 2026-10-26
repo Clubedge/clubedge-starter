@@ -1,7 +1,7 @@
 import { createSupabaseBrowserClient } from "@clubedge/auth-supabase/browser";
 import deviceStorage from "expo-sqlite/kv-store";
 import { AppState } from "react-native";
-import { AccountError, type AuthClient } from "@/lib/auth-client";
+import { AccountError, signOutEverywhereFailed, type AuthClient } from "@/lib/auth-client";
 import { apiUrl } from "@/lib/config";
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -137,10 +137,13 @@ export const authClient: AuthClient = {
     const { error: signOutError } = await auth.signOut({ scope: "others" });
     if (signOutError) throw signOutError;
   },
-  async signOut() {
-    // "local" ends this device's session only. When Supabase cannot be reached, it can keep the
-    // session to renew later, so the device forgets it here.
-    const { error } = await client().auth.signOut({ scope: "local" });
+  async signOut(options) {
+    // "local" ends this device's session only, and "global" the user's sessions everywhere.
+    const scope = options?.everywhere ? "global" : "local";
+    const { error } = await client().auth.signOut({ scope });
+    if (error && options?.everywhere) throw new Error(signOutEverywhereFailed);
+    // When Supabase cannot be reached, it can keep the session to renew later, so the device
+    // forgets it here.
     if (error) await deviceStorage.removeItem(storageKey);
   },
 };
