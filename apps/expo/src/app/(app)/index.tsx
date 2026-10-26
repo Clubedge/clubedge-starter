@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshControl } from "react-native";
 import site from "@/config/site.json";
 import { Body, Button, Card, Screen, Title } from "@/components/ui";
-import { installedVersion, useUpdate } from "@/components/update-gate";
+import { useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
+import { installedVersion } from "@/lib/app-update";
 import { authEnabled } from "@/lib/auth-enabled";
 import { apiUrl } from "@/lib/config";
 
@@ -14,7 +15,9 @@ type Overview = { health: Health | null; user: User | null };
 export default function Dashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { update, updateUrl } = useUpdate();
+  const update = useUpdate();
+  const updateUrl = update?.versions?.updateUrl;
+  const deadline = update?.versions?.nextMinimumFrom;
 
   // The API's health and the signed-in user, from the API's contract (packages/contract).
   const load = useCallback(async () => {
@@ -39,7 +42,19 @@ export default function Dashboard() {
     <Screen header refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}>
       <Title>Welcome to {site.name}</Title>
       <Body muted>{site.description}</Body>
-      {update === "available" ? (
+      {update?.status === "upcoming" && deadline ? (
+        <Card title="Update required soon">
+          <Body>
+            This version of the app stops working on{" "}
+            {new Date(deadline).toLocaleDateString(undefined, { dateStyle: "long" })}. Update it
+            before then.
+          </Body>
+          {updateUrl ? (
+            <Button title="Update" onPress={() => void Linking.openURL(updateUrl)} />
+          ) : null}
+        </Card>
+      ) : null}
+      {update?.status === "available" ? (
         <Card title="Update available">
           <Body>A newer version of the app is out.</Body>
           {updateUrl ? (

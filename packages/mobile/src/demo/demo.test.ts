@@ -68,6 +68,8 @@ describe("the demo's API", () => {
       minimumVersion: null,
       latestVersion: null,
       updateUrl: null,
+      nextMinimumVersion: null,
+      nextMinimumFrom: null,
     });
     expect((await api.GET("/api/billing")).data?.subscription).toBeNull();
     expect((await api.GET("/api/client-errors")).data).toEqual({ provider: "none" });
