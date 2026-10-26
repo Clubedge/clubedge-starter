@@ -250,6 +250,20 @@ describe("clubedge.template.json", () => {
     );
   });
 
+  it("titles every project's README", () => {
+    // The CLI names the project in the README's first heading and records its provenance under
+    // it, so the hidden title block must be kept for every framework, and for none.
+    const title = /<!-- clubedge:if framework=([a-z0-9|-]+)\r?\n# /.exec(
+      readFileSync("README.md", "utf8"),
+    );
+    const frameworkStacks = stackDescriptors
+      .filter((stack) => slot.roles.includes(stack.role))
+      .map((stack) => stack.id);
+    expect(title?.[1]?.split("|").sort()).toEqual(
+      [...frameworkStacks, ...(slot.optional ? ["none"] : [])].sort(),
+    );
+  });
+
   it("matches the Docker image name used by the root scripts", () => {
     const { scripts } = readJson("package.json");
     expect(scripts["docker:build"]).toContain(`-t ${manifest.dockerImage} `);

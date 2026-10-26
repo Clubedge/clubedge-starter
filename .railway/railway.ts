@@ -1,7 +1,16 @@
+// clubedge:if framework=next|tanstack-start
 // Railway's configuration for this project, as code: the migrations before each release and the
 // health check. `pnpm clubedge deploy` applies it before each release; elsewhere, run
 // `railway config apply` once. Railway builds the root Dockerfile; set variables with
 // `railway variable set` or the dashboard.
+// clubedge:end
+// clubedge:if framework=vite|none
+// Railway's configuration for this project, as code. Each app runs as its own Railway service,
+// built from its own Dockerfile, such as apps/api/Dockerfile: `pnpm clubedge deploy` writes that
+// configuration here, with the API's migrations before each release and the health checks, and
+// applies it. Deploy with it: as written, this file describes one service built from a root
+// Dockerfile, which this project doesn't have.
+// clubedge:end
 import { readFileSync } from "node:fs";
 import { defineRailway, project, service } from "railway/iac";
 

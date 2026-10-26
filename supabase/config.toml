@@ -21,9 +21,19 @@ smtp_port = 54325
 # clubedge:end
 
 [auth]
+# clubedge:if framework!=none
 site_url = "http://localhost:3000"
 # Patterns, so links can carry a next page, such as the password reset page.
 additional_redirect_urls = ["http://localhost:3000/auth/callback**", "http://127.0.0.1:3000/auth/callback**"]
+# clubedge:end
+# clubedge:if framework=none
+# Without a website, emailed links go to the address the client asks for once it is listed here,
+# such as the native app's scheme, which apps/mobile/app.config.ts makes from the site config's
+# serviceId ("my-product://**"). Restart the stack after changing it: pnpm infra:down, then
+# pnpm infra:up. Other links go to site_url, the API.
+site_url = "http://localhost:3001"
+additional_redirect_urls = []
+# clubedge:end
 
 [auth.email]
 # Sign-up signs the user in directly during local development.
