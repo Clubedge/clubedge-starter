@@ -27,6 +27,7 @@ export interface StorageConformanceOptions {
 
 /** Unique keys, so providers that keep objects between runs never mix them up. */
 let counter = 0;
+// Keep the generated names stable enough to be unique per run while still readable in logs.
 const uniqueKey = (name: string) => `conformance/${Date.now().toString(36)}-${counter++}/${name}`;
 
 async function bytes(stream: ReadableStream<Uint8Array>) {
