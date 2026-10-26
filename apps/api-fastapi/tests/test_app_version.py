@@ -18,7 +18,7 @@ from clubedge_api.app_version import (
 )
 from clubedge_api.contract import AppVersion
 from clubedge_api.settings import get_settings
-from tests.fakes import client, dependencies
+from tests.fakes import client, dependencies, ready
 
 FIELDS = (
     "APP_MINIMUM_VERSION",
@@ -243,8 +243,9 @@ def test_checks_an_announced_minimum() -> None:
 
 
 def outdated(path: str, version: str = "1.1.9") -> int:
-    api = client(app_version=served)
-    return api.get(path, headers={"X-App-Version": version}).status_code
+    api = client(app_version=served, is_ready=ready)
+    status: int = api.get(path, headers={"X-App-Version": version}).status_code
+    return status
 
 
 def test_answers_an_app_below_the_minimum_426_update_required() -> None:
