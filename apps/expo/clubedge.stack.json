@@ -20,6 +20,7 @@
       "none": {},
       "supabase|better-auth": {
         "files": [
+          "src/app/welcome.tsx",
           "src/app/sign-in.tsx",
           "src/app/sign-up.tsx",
           "src/app/forgot-password.tsx",

@@ -22,7 +22,10 @@ function HideSplashScreen({ fontsReady }: { fontsReady: boolean }) {
   return null;
 }
 
-/** The app's screens open signed in, and the sign-in screens signed out. */
+/**
+ * The app's screens open signed in, and the welcome and sign-in screens signed out: signed out,
+ * the app starts on the welcome screen.
+ */
 function Routes() {
   const { status } = useSession();
   const colors = useColors();
@@ -33,10 +36,11 @@ function Routes() {
     <Stack
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}
     >
-      <Stack.Protected guard={signedIn}>
+      <Stack.Protected guard={signedIn} redirectTo="/welcome">
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
+        <Stack.Screen name="welcome" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
         <Stack.Screen name="forgot-password" />
