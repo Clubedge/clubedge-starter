@@ -7,6 +7,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./conformance": "./src/conformance.ts",
     "./file-system": "./src/file-system.ts"
   },
   "scripts": {

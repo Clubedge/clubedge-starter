@@ -55,7 +55,8 @@ export function createSupabaseStorage({
         .from(bucketName())
         .list(pieces.join("/"), { search: name });
       if (error) throw error;
-      return data.some((file) => file.name === name);
+      // A folder implied by a deeper key lists with a null id; it is not an object.
+      return data.some((file) => file.id !== null && file.name === name);
     },
     async getSignedUrl(key, options) {
       const supabase = await getClient();
