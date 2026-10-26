@@ -1,0 +1,35 @@
+{
+  "id": "expo",
+  "name": "Expo",
+  "role": "mobile",
+  "envExample": ".env.example",
+  "conditional": [".env.example"],
+  "auditIgnores": ["GHSA-86w9-cpqp-85rv", "GHSA-mrhx-c7xc-m3w5"],
+  "modules": {
+    "auth": {
+      "none": {},
+      "supabase|better-auth": {
+        "files": [
+          "src/app/sign-in.tsx",
+          "src/app/sign-up.tsx",
+          "src/app/forgot-password.tsx",
+          "src/app/(app)/settings.tsx",
+          "src/lib/auth.ts",
+          "src/lib/auth-client.ts",
+          "src/lib/session.tsx"
+        ],
+        "replace": {
+          "src/app/_layout.tsx": "src/variants/layout.auth.tsx",
+          "src/lib/api.ts": "src/variants/api.auth.ts",
+          "src/lib/auth-enabled.ts": "src/variants/auth-enabled.auth.ts"
+        }
+      },
+      "supabase": {
+        "replace": { "src/lib/auth.ts": "src/variants/auth.supabase.ts" }
+      },
+      "better-auth": {
+        "replace": { "src/lib/auth.ts": "src/variants/auth.better-auth.ts" }
+      }
+    }
+  }
+}

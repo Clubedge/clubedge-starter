@@ -80,5 +80,14 @@ export default defineConfig([
     "apps/shell/android/**",
     "apps/shell/ios/**",
     // clubedge:end
+    // clubedge:if mobile!=none
+    // The native app's generated Android and iOS projects, and Expo's working files.
+    "apps/mobile/android/**",
+    "apps/mobile/ios/**",
+    "apps/expo/android/**", // clubedge:only starter-repository
+    "apps/expo/ios/**", // clubedge:only starter-repository
+    "**/.expo/**",
+    "**/expo-env.d.ts",
+    // clubedge:end
   ]),
 ]);

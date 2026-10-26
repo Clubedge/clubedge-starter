@@ -160,16 +160,49 @@ describe("stack packs", () => {
     }
   });
 
+  it("lets every mobile app work with every API", () => {
+    // A mobile app lists the options it implements, such as the sign-in providers it has
+    // screens for; with each API, one of them must remain, and "none" where the module has it.
+    const implemented = (stack: (typeof stackDescriptors)[number], id: string) =>
+      stack.modules?.[id]
+        ? Object.keys(stack.modules[id]).flatMap((key) => key.split("|"))
+        : undefined;
+    const withRole = (role: string) => stackDescriptors.filter((stack) => stack.role === role);
+    for (const [id, module] of Object.entries<{ scope?: string; options: object }>(
+      moduleDescriptors,
+    )) {
+      if (module.scope === "project") continue;
+      for (const mobile of withRole("mobile")) {
+        const offered = implemented(mobile, id);
+        if (!offered) continue;
+        if ("none" in module.options) expect(offered, `${mobile.id}: ${id}`).toContain("none");
+        for (const api of withRole("api")) {
+          const theirs = implemented(api, id) ?? Object.keys(module.options);
+          const common = offered.filter((option) => theirs.includes(option));
+          expect(common, `${mobile.id} with ${api.id}: ${id}`).not.toEqual([]);
+        }
+      }
+    }
+  });
+
   it("gives every stack its own id", () => {
     const ids = stackDescriptors.map((stack) => stack.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain(slot.default);
   });
+
+  it("gives every advisory pnpm audit skips to the stack whose dependencies need it", () => {
+    // The CLI removes a stack's auditIgnores from projects without the stack, so each advisory
+    // package.json skips belongs to a stack, and projects without it audit that advisory again.
+    const skipped: string[] = readJson("package.json").pnpm?.auditConfig?.ignoreGhsas ?? [];
+    const owned = stackDescriptors.flatMap<string>((stack) => stack.auditIgnores ?? []);
+    expect([...skipped].sort()).toEqual([...new Set(owned)].sort());
+  });
 });
 
 describe("clubedge.template.json", () => {
   it("uses the schema version the CLI understands", () => {
-    expect(manifest.schemaVersion).toBe(5);
+    expect(manifest.schemaVersion).toBe(6);
     expect(manifest.packageManager).toBe("pnpm");
   });
 

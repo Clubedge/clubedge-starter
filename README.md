@@ -53,6 +53,7 @@ To try the mobile app on an Android phone, download [clubedge-demo.apk](https://
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a Hono API in TypeScript in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=hono -->
 - A React + Vite single-page app with TypeScript, TanStack Router, Tailwind CSS 4, and shadcn/ui using Base UI primitives, and a FastAPI API in Python in `apps/api`, joined by one OpenAPI contract. <!-- clubedge:only framework=vite && api=fastapi -->
 - An Android and iOS app in `apps/shell`, made from the web app with Capacitor: it calls the API through the website, keeps its session on the device, and asks for an update when the API serves newer versions. A demo build has sample data and needs no server. See [The mobile app](SETUP.md#the-mobile-app). <!-- clubedge:only shell!=none -->
+- A native Android and iOS app in `apps/mobile`, built with Expo and React Native: its own screens call the API through the website with the same contract client, and it asks for an update when the API serves newer versions. See [The native app](SETUP.md#the-native-app). <!-- clubedge:only mobile!=none -->
 - pnpm workspaces and Turborepo, with the web app in `apps/web` and framework-agnostic packages under `packages/`.
 - Drizzle ORM and PostgreSQL schema, migrations, and seed commands.
 - Zod environment validation, security headers, structured errors, and `/api/health`.
@@ -333,6 +334,16 @@ The mobile app ([setup](SETUP.md#the-mobile-app)):
 
 <!-- clubedge:end -->
 
+<!-- clubedge:if mobile!=none -->
+
+The native app ([setup](SETUP.md#the-native-app)):
+
+- `pnpm --filter @clubedge/mobile-app android`: build the app, install it on the Android emulator or a phone, and start Expo's dev server. The first run generates `apps/mobile/android`.
+- `pnpm --filter @clubedge/mobile-app ios`: the same for iOS, on a Mac. The first run generates `apps/mobile/ios`.
+- `pnpm --filter @clubedge/mobile-app start`: start the dev server for the app already installed.
+
+<!-- clubedge:end -->
+
 Check the project:
 
 - `pnpm clubedge status`: the project's Starter release, modules, and Git state, whether a newer Starter release exists, and the command to run next.
@@ -375,6 +386,7 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 
 - `apps/web/`: the web app, with routes, UI, and the composition root in `src/server/`
 - `apps/shell/`: the mobile app, which packages the web app for Android and iOS with Capacitor, and its native projects once created <!-- clubedge:only shell!=none -->
+- `apps/mobile/`: the native app, built with Expo and React Native, whose Android and iOS projects Expo generates <!-- clubedge:only mobile!=none -->
 - `e2e/`: Playwright browser checks
 - `packages/core/`: errors, `Result` type, HTTP helpers, and the error reporting and tracing hooks (no dependencies)
 - `packages/db/`: Drizzle schema, client factory, migrations, and seed script

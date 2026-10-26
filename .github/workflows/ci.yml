@@ -67,6 +67,13 @@ jobs:
           # clubedge:if auth!=none
           curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3000/login
           # clubedge:end
+      # clubedge:if mobile!=none
+      # package.json's pnpm.auditConfig skips two high advisories in Expo's development CLI
+      # (@expo/cli), which builds and serves the native app but is not part of it: node-forge's,
+      # which has no fixed release, and zod 3's, fixed only in zod 4. pnpm skips them wherever they
+      # appear, so remove them once Expo's CLI no longer needs them. Last checked on 2026-10-26,
+      # with @expo/cli 58.1.15.
+      # clubedge:end
       - run: pnpm audit --audit-level high
 
   e2e:
@@ -243,5 +250,50 @@ jobs:
         with:
           name: android-debug
           path: apps/shell/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+  # clubedge:end
+
+  # clubedge:if mobile!=none
+  # The native app: its packages against its Expo SDK, its JavaScript bundle for Android and iOS,
+  # and a release APK, built from the Android project Expo generates from app.config.ts.
+  expo:
+    # The Starter's repository is the template projects come from, not one. # clubedge:only starter-repository
+    if: github.repository != 'Clubedge/clubedge-starter' # clubedge:only starter-repository
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/mobile
+    env:
+      # The website the app calls: set an EXPO_PUBLIC_API_URL repository variable for an APK that works.
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://example.com' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # React Native builds with Java 17; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec expo install --check
+      - run: pnpm exec expo export --platform android --platform ios
+      - name: Build the release APK
+        run: |
+          set -euo pipefail
+          pnpm exec expo prebuild --platform android
+          # The release build carries the app's JavaScript; Expo signs it with a debug key until
+          # you set your own (SETUP.md, "The native app").
+          cd android
+          ./gradlew assembleRelease
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-release
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 7
   # clubedge:end

@@ -6,6 +6,7 @@ import { sql } from "drizzle-orm";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { betterAuth } from "better-auth/minimal";
 import { bearer } from "better-auth/plugins"; // clubedge:only shell!=none
+import { expo } from "@better-auth/expo"; // clubedge:only mobile!=none
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { passwordResetEmail, verificationEmail } from "@clubedge/auth";
 // clubedge:if email=smtp|resend
@@ -19,6 +20,17 @@ import { createResendEmail } from "@clubedge/email-resend";
 // clubedge:end
 import { clientIp } from "./client-ip.mjs";
 import site from "./src/config/site.json" with { type: "json" };
+
+// clubedge:if mobile!=none
+// The native app's address scheme, such as my-product://, which its sign-in requests carry: made
+// from the site config the way the app's app.config.ts makes it, so the two stay in step.
+const scheme =
+  site.serviceId
+    .toLowerCase()
+    .replace(/[^a-z0-9+.-]/g, "")
+    .replace(/^[^a-z]+/, "") || "app";
+const appScheme = `${scheme}://`;
+// clubedge:end
 
 const id = () =>
   uuid("id")
@@ -169,6 +181,26 @@ function getAuthServer() {
   });
   const baseURL =
     process.env.BETTER_AUTH_URL || process.env.FRONTEND_URL || "http://localhost:3000";
+  const trustedOrigins = [];
+  const plugins = [];
+  // clubedge:if shell!=none
+  // The mobile shell signs in from its own origins (MOBILE_ORIGINS, as server.mjs reads them),
+  // and its WebView keeps no cookie for this server: the bearer plugin answers with the session
+  // token in a header, and takes it back as a bearer token.
+  trustedOrigins.push(
+    ...(process.env.MOBILE_ORIGINS ?? "capacitor://localhost,https://localhost")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+  plugins.push(bearer());
+  // clubedge:end
+  // clubedge:if mobile!=none
+  // The native app signs in with its own scheme, which it sends as expo-origin, and keeps the
+  // session cookie on the device: the expo plugin takes expo-origin as the request's origin.
+  trustedOrigins.push(appScheme);
+  plugins.push(expo());
+  // clubedge:end
   authServer = betterAuth({
     database: drizzleAdapter(database, {
       provider: "pg",
@@ -213,16 +245,8 @@ function getAuthServer() {
       // account deletions per user. The limits are kept in this process, so they cannot fail open.
       customRules: { "/change-password": { window: 60, max: 10 } },
     },
-    // clubedge:if shell!=none
-    // The mobile app signs in from its own origins (MOBILE_ORIGINS, as server.mjs reads it), and
-    // its WebView keeps no cookie for this server: the bearer plugin answers with the session
-    // token in a header, and takes it back as a bearer token.
-    trustedOrigins: (process.env.MOBILE_ORIGINS ?? "capacitor://localhost,https://localhost")
-      .split(",")
-      .map((origin) => origin.trim())
-      .filter(Boolean),
-    plugins: [bearer()],
-    // clubedge:end
+    trustedOrigins,
+    plugins,
   });
   return authServer;
 }

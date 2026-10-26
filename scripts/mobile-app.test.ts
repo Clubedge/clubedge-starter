@@ -8,9 +8,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
 import { iconArguments, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
 
-// The mobile app (apps/capacitor) calls the API through the website's Node server
-// (apps/vite/server.mjs), from origins of its own. The server runs here from a copy, as the
-// production image runs it, next to stand-ins for the API and for Better Auth's bundle.
+// The mobile apps call the API through the website's Node server (apps/vite/server.mjs): the
+// shell (apps/capacitor) from origins of its own, and the native app (apps/expo) with no origin,
+// as native requests have none. The server runs here from a copy, as the production image runs
+// it, next to stand-ins for the API and for Better Auth's bundle.
 
 const appOrigins = ["capacitor://localhost", "https://localhost"];
 let api: Server;
@@ -58,12 +59,15 @@ beforeAll(async () => {
   copyFileSync("apps/vite/client-ip.mjs", join(directory, "client-ip.mjs"));
   mkdirSync(join(directory, "dist"));
   writeFileSync(join(directory, "dist/index.html"), "<!doctype html>");
-  // Better Auth, with its bearer plugin, as it answers a sign-in.
+  // Better Auth, with its bearer plugin, as it answers a sign-in. It also says which session
+  // cookie and app scheme it received.
   writeFileSync(
     join(directory, "dist/auth.server.mjs"),
     `export async function serveAuthRequest(request, response) {
       response.writeHead(200, {
         "content-type": "application/json",
+        "x-received-cookie": request.headers.cookie ?? "",
+        "x-received-expo-origin": request.headers["expo-origin"] ?? "",
         "set-auth-token": "token.signature",
         "access-control-expose-headers": "set-auth-token",
         "set-cookie": ["better-auth.session_token=token.signature; Path=/; HttpOnly"],
@@ -174,6 +178,31 @@ describe("apps/vite/server.mjs for the mobile app's origins", () => {
     expect(website.headers["set-cookie"]).toEqual([
       "better-auth.session_token=token.signature; Path=/; HttpOnly",
     ]);
+  });
+});
+
+describe("apps/vite/server.mjs for the native app, which sends no origin", () => {
+  it("passes its session cookie and its scheme to Better Auth, and the new cookie back", async () => {
+    const response = await send("POST", "/api/auth/sign-in/email", {
+      cookie: "better-auth.session_token=old.signature",
+      "expo-origin": "my-product://",
+    });
+    expect(response.headers["x-received-cookie"]).toBe("better-auth.session_token=old.signature");
+    expect(response.headers["x-received-expo-origin"]).toBe("my-product://");
+    expect(response.headers["set-cookie"]).toEqual([
+      "better-auth.session_token=token.signature; Path=/; HttpOnly",
+    ]);
+    // Without a browser origin, no CORS headers, and the shell's bearer token stays out.
+    expect(response.headers["access-control-allow-origin"]).toBeUndefined();
+    expect(response.headers["set-auth-token"]).toBeUndefined();
+  });
+
+  it("forwards its session cookie to the API", async () => {
+    const response = await send("GET", "/api/session", {
+      cookie: "better-auth.session_token=token.signature",
+    });
+    expect(response.status).toBe(200);
+    expect(forwarded.cookie).toBe("better-auth.session_token=token.signature");
   });
 });
 
