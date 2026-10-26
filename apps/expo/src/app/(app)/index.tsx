@@ -1,5 +1,6 @@
 import type { Health, User } from "@clubedge/contract";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState, type ReactNode } from "react";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 import site from "@/config/site.json";
 import { Avatar, Mark, Notice, Screen } from "@/components/ui";
@@ -19,21 +20,28 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const update = useUpdate();
 
-  // The API's health and the signed-in user, from the API's contract (packages/contract).
+  // The API's health and the signed-in user, from the API's contract (packages/contract). The
+  // name set in Settings is the app's own, in its account, and wins over the sign-in provider's.
   const load = useCallback(async () => {
-    const [health, session] = await Promise.all([
+    const [health, session, account] = await Promise.all([
       api.GET("/api/health").catch(() => null),
       api.GET("/api/session").catch(() => null),
+      authEnabled ? api.GET("/api/account").catch(() => null) : null,
     ]);
+    const user = session?.data ? session.data.user : undefined;
+    const displayName = account?.data?.displayName;
     setOverview({
       health: health?.data ?? null,
-      user: session?.data ? session.data.user : undefined,
+      user: user && displayName ? { ...user, displayName } : user,
     });
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Asked again each time Home shows, so a name changed in Settings shows on return.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const refresh = async () => {
     setRefreshing(true);

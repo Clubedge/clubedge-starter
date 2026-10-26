@@ -1,6 +1,6 @@
 import type { Account } from "@clubedge/contract";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { AccountError } from "@/lib/auth-client";
 
@@ -44,11 +44,15 @@ export function useAccountAction() {
  */
 export function useAccount(): Account | null {
   const [account, setAccount] = useState<Account | null>(null);
+  // Only the latest request sets it: an older one that answers late would bring back a name
+  // changed since.
+  const latest = useRef(0);
   useFocusEffect(
     useCallback(() => {
+      const request = ++latest.current;
       void api.GET("/api/account").then(
         ({ data }) => {
-          if (data) setAccount(data);
+          if (data && request === latest.current) setAccount(data);
         },
         () => undefined,
       );
