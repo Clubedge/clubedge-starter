@@ -25,7 +25,7 @@
           "src/app/sign-up.tsx",
           "src/app/forgot-password.tsx",
           "src/app/reset-password.tsx",
-          "src/app/(app)/you",
+          "src/app/(app)/settings",
           "src/components/sign-out-sheet.tsx",
           "src/components/tab-bar.tsx",
           "src/lib/account.ts",

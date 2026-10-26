@@ -8,7 +8,7 @@ import { useFonts } from "expo-font";
 import deviceStorage from "expo-sqlite/kv-store";
 import { Appearance, useColorScheme } from "react-native";
 
-// The appearance chosen in You (useDarkMode), over the phone's own: kept on the device, and set
+// The appearance chosen in Settings (useDarkMode), over the phone's own: kept on the device, and set
 // before the first screen draws.
 const appearanceKey = "appearance";
 const chosenAppearance = deviceStorage.getItemSync(appearanceKey);

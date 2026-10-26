@@ -1,11 +1,15 @@
+import type { AppVersion } from "@clubedge/contract";
 import * as Linking from "expo-linking";
+import type { Icon } from "phosphor-react-native";
 import { ArrowCircleDownIcon } from "phosphor-react-native/src/icons/ArrowCircleDown";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ClockIcon } from "phosphor-react-native/src/icons/Clock";
 import { ShieldCheckIcon } from "phosphor-react-native/src/icons/ShieldCheck";
+import { SparkleIcon } from "phosphor-react-native/src/icons/Sparkle";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import site from "@/config/site.json";
 import { Body, Button, Screen } from "@/components/ui";
 import { installedVersion, updates } from "@/lib/app-update";
@@ -20,7 +24,7 @@ const openUpdate = (url: string) => void Linking.openURL(url);
  * Starts the app's update checks (lib/app-update.ts): when the app starts, when it comes back to
  * the foreground (at most every UPDATE_CHECK_INTERVAL), and whenever the API refuses this
  * version. Below the minimum, the app cannot continue and only offers the update. Before an
- * announced minimum's date, a dialog over any screen says when the app stops working; below the
+ * announced minimum's date, a sheet over any screen says when the app stops working; below the
  * latest, the dashboard shows a banner (UpdateBanner).
  */
 export function UpdateGate({ children }: { children: ReactNode }) {
@@ -42,12 +46,12 @@ export function UpdateGate({ children }: { children: ReactNode }) {
       />
     );
   }
-  const deadline = update?.status === "upcoming" ? update.versions?.nextMinimumFrom : null;
+  const versions = update?.status === "upcoming" ? update.versions : null;
   return (
     <>
       {children}
-      {deadline ? (
-        <UpdateDeadline deadline={deadline} updateUrl={update?.versions?.updateUrl} />
+      {versions?.nextMinimumFrom ? (
+        <UpdateSheet versions={versions} deadline={versions.nextMinimumFrom} />
       ) : null}
     </>
   );
@@ -111,57 +115,91 @@ function UpdateRequired({
 }
 
 /**
- * Before an announced minimum's date: how many days this version has left. "Remind me
- * tomorrow" is the update checks' Not now, which brings it back the next day.
+ * Before an announced minimum's date: a sheet from the bottom with the version to install, when
+ * this one stops working, and the update. Not now is the update checks' own, which brings it back
+ * the next day.
  */
-function UpdateDeadline({
-  deadline,
-  updateUrl,
-}: {
-  deadline: string;
-  updateUrl: string | null | undefined;
-}) {
+function UpdateSheet({ versions, deadline }: { versions: AppVersion; deadline: string }) {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const date = new Date(deadline);
   const day = date.toLocaleDateString(undefined, { month: "long", day: "numeric" });
   const daysLeft = Math.max(0, Math.ceil((date.getTime() - Date.now()) / 86_400_000));
+  const version = versions.latestVersion ?? versions.nextMinimumVersion;
+  const updateUrl = versions.updateUrl;
+  const points: { icon: Icon; title: string; body: string }[] = [
+    {
+      icon: ClockIcon,
+      title: `Update by ${day}`,
+      body: `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left. After that, version ${installedVersion} can no longer connect.`,
+    },
+    {
+      icon: ShieldCheckIcon,
+      title: "Your data stays as it is",
+      body: "Your account and everything in it will be there after you update.",
+    },
+  ];
   return (
-    <Modal animationType="fade" onRequestClose={updates.notNow} statusBarTranslucent transparent>
-      <View style={[styles.dialogScrim, { backgroundColor: colors.scrim }]}>
-        <View
-          accessibilityViewIsModal
-          style={[styles.dialog, { backgroundColor: colors.background }]}
-        >
-          <View style={[styles.dialogBadge, { backgroundColor: colors.dangerTint }]}>
-            <ClockIcon size={28} color={colors.danger} />
+    <Modal
+      animationType="slide"
+      navigationBarTranslucent
+      onRequestClose={updates.notNow}
+      statusBarTranslucent
+      transparent
+    >
+      {/* The scrim fills the screen, behind the sheet too, so its rounded corners show. */}
+      <Pressable
+        accessibilityLabel="Not now"
+        onPress={updates.notNow}
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]}
+      />
+      <View style={styles.sheetAbove} />
+      <View
+        style={[
+          styles.sheet,
+          { backgroundColor: colors.background, paddingBottom: insets.bottom + 16 },
+        ]}
+      >
+        <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+        <View style={styles.sheetHeader}>
+          <View style={[styles.sheetBadge, { backgroundColor: colors.primary }]}>
+            <SparkleIcon size={26} color={colors.onPrimary} weight="fill" />
           </View>
-          <View style={styles.dialogText}>
-            <Text accessibilityRole="header" style={[styles.dialogTitle, { color: colors.text }]}>
-              Update by {day}
+          <View style={styles.sheetTitles}>
+            <Text accessibilityRole="header" style={[styles.sheetTitle, { color: colors.text }]}>
+              {version ? `${site.shortName} ${version}` : site.shortName}
             </Text>
-            <Text style={[styles.dialogBody, { color: colors.textSecondary }]}>
-              After {day}, version {installedVersion} can no longer connect.
-            </Text>
+            {installedVersion ? (
+              <Text style={[styles.sheetSubtitle, { color: colors.textMuted }]}>
+                You have {installedVersion}
+              </Text>
+            ) : null}
           </View>
-          <View style={[styles.daysLeft, { backgroundColor: colors.fill }]}>
-            <Text style={[styles.daysLeftCount, { color: colors.text }]}>{daysLeft}</Text>
-            <Text style={[styles.daysLeftText, { color: colors.textSecondary }]}>
-              {daysLeft === 1 ? "day" : "days"} left. Your data stays as it is.
-            </Text>
+        </View>
+        <Text style={[styles.sheetLabel, { color: colors.textMuted }]}>WHAT TO KNOW</Text>
+        {points.map(({ icon: PointIcon, title, body }) => (
+          <View key={title} style={styles.point}>
+            <View style={[styles.pointBadge, { backgroundColor: colors.primaryTint }]}>
+              <PointIcon size={22} color={colors.accent} weight="fill" />
+            </View>
+            <View style={styles.pointText}>
+              <Text style={[styles.pointTitle, { color: colors.text }]}>{title}</Text>
+              <Text style={[styles.pointBody, { color: colors.textSecondary }]}>{body}</Text>
+            </View>
           </View>
-          <View style={styles.dialogActions}>
-            {updateUrl ? <Button title="Update now" onPress={() => openUpdate(updateUrl)} /> : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={updates.notNow}
-              style={({ pressed }) => [
-                styles.remind,
-                { backgroundColor: pressed ? colors.fill : "transparent" },
-              ]}
-            >
-              <Text style={[type.headline, { color: colors.text }]}>Remind me tomorrow</Text>
-            </Pressable>
-          </View>
+        ))}
+        <View style={styles.sheetActions}>
+          {updateUrl ? <Button title="Update now" onPress={() => openUpdate(updateUrl)} /> : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={updates.notNow}
+            style={({ pressed }) => [
+              styles.later,
+              { backgroundColor: pressed ? colors.fill : "transparent" },
+            ]}
+          >
+            <Text style={[type.headline, { color: colors.text }]}>Not now</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -242,29 +280,41 @@ const styles = StyleSheet.create({
   versionValue: { fontFamily: font.semibold, fontSize: 15, fontVariant: ["tabular-nums"] },
   reassurance: { flexDirection: "row", gap: 12, paddingHorizontal: 2 },
   reassuranceText: { flex: 1, fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
-  dialogScrim: { flex: 1, justifyContent: "center", padding: 20 },
-  dialog: { borderRadius: radius.hero, padding: 24, gap: 14 },
-  dialogBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.xl,
+  // The sheet: the design's UpdateSheet.
+  sheetAbove: { flex: 1, pointerEvents: "none" },
+  sheet: {
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    gap: 14,
+  },
+  grabber: { alignSelf: "center", width: 36, height: 5, borderRadius: 3, marginBottom: 6 },
+  sheetHeader: { flexDirection: "row", alignItems: "center", gap: 14 },
+  sheetBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
-  dialogText: { gap: 6 },
-  dialogTitle: { fontFamily: font.bold, fontSize: 22, letterSpacing: -0.3 },
-  dialogBody: { fontFamily: font.regular, fontSize: 15, lineHeight: 22 },
-  daysLeft: {
-    flexDirection: "row",
+  sheetTitles: { flex: 1, gap: 2 },
+  sheetTitle: { fontFamily: font.bold, fontSize: 20 },
+  sheetSubtitle: { fontFamily: font.regular, fontSize: 14 },
+  sheetLabel: { fontFamily: font.semibold, fontSize: 13, marginTop: 4 },
+  point: { flexDirection: "row", gap: 14 },
+  pointBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: radius.lg,
+    justifyContent: "center",
   },
-  daysLeftCount: { fontFamily: font.bold, fontSize: 28, fontVariant: ["tabular-nums"] },
-  daysLeftText: { flex: 1, fontFamily: font.regular, fontSize: 14 },
-  dialogActions: { gap: 6 },
-  remind: { height: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
+  pointText: { flex: 1, gap: 2 },
+  pointTitle: { fontFamily: font.semibold, fontSize: 16 },
+  pointBody: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
+  sheetActions: { gap: 6, marginTop: 8 },
+  later: { height: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center" },
   banner: {
     flexDirection: "row",
     alignItems: "center",

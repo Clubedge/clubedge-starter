@@ -1,13 +1,13 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { Icon } from "phosphor-react-native";
+import { GearSixIcon } from "phosphor-react-native/src/icons/GearSix";
 import { HouseIcon } from "phosphor-react-native/src/icons/House";
-import { UserIcon } from "phosphor-react-native/src/icons/User";
 import { useEffect, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { font, radius, useColors } from "@/lib/theme";
 
 /** Each tab's icon, by its route's name: a new tab adds its own here. */
-const icons: Record<string, Icon> = { index: HouseIcon, you: UserIcon };
+const icons: Record<string, Icon> = { index: HouseIcon, settings: GearSixIcon };
 
 /**
  * The tab bar: a capsule floating over the screens, where the current tab is a pill with its

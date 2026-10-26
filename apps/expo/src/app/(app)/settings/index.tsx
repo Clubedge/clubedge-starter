@@ -16,7 +16,7 @@ import { font, type, useColors, useDarkMode } from "@/lib/theme";
  * The signed-in user and their settings: the name and email address, the app's appearance, the
  * password and the account's deletion, signing out, and the app's version.
  */
-export default function You() {
+export default function Settings() {
   const colors = useColors();
   const account = useAccount();
   const [dark, setDark] = useDarkMode();
@@ -27,7 +27,7 @@ export default function You() {
     <>
       <Screen layout="list">
         <Text accessibilityRole="header" style={[type.largeTitle, { color: colors.text }]}>
-          You
+          Settings
         </Text>
         <View style={styles.identity}>
           <Avatar name={name ?? ""} size={64} />
@@ -45,7 +45,7 @@ export default function You() {
             title="Edit"
             variant="outline"
             small
-            onPress={() => router.push("/you/edit-profile")}
+            onPress={() => router.push("/settings/edit-profile")}
           />
         </View>
         <ListSection title="Preferences">
@@ -55,12 +55,12 @@ export default function You() {
           <ListRow
             icon={LockSimpleIcon}
             label="Password & security"
-            onPress={() => router.push("/you/password")}
+            onPress={() => router.push("/settings/password")}
           />
           <ListRow
             icon={TrashIcon}
             label="Delete account"
-            onPress={() => router.push("/you/delete-account")}
+            onPress={() => router.push("/settings/delete-account")}
           />
         </ListSection>
         <Pressable
