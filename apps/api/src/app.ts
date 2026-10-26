@@ -2,8 +2,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import type { AppVersion, Health, Ready, Session, User } from "@clubedge/contract";
 import { reportError, type ClientIpSettings } from "@clubedge/core";
+import { getClientIp } from "@clubedge/core"; // clubedge:only framework=none && auth=better-auth
 import { apiError } from "@/http";
 import type { CreateRateLimiter } from "@/rate-limit";
+import { socketAddress } from "@/rate-limit"; // clubedge:only framework=none && auth=better-auth
 import { appVersionRoutes } from "@/routes/app-version";
 // clubedge:if auth!=none
 import { accountRoutes, type AccountService } from "@/routes/account";
@@ -41,6 +43,10 @@ export interface ApiDependencies {
   // clubedge:if auth!=none
   /** The account settings (src/server/account); they answer 503 not_configured when absent. */
   account?: AccountService;
+  // clubedge:end
+  // clubedge:if framework=none && auth=better-auth
+  /** Better Auth's endpoints (src/server/auth), which run in the API when there is no website. */
+  authHandler?(request: Request): Promise<Response>;
   // clubedge:end
   // clubedge:if observability!=none
   /** How the browser reports its errors (src/server/observability); not at all when absent. */
@@ -92,6 +98,23 @@ export function createApp(dependencies: ApiDependencies) {
 
   // clubedge:if auth!=none
   app.route("/", accountRoutes(dependencies));
+  // clubedge:end
+  // clubedge:if framework=none && auth=better-auth
+  // Without a website, the mobile app signs in here. Better Auth limits requests per client
+  // address, which it reads from X-Forwarded-For: it gets the one this API finds, never a copy the
+  // client sent. The app, which sends no browser Origin, sends its own address (its scheme) as
+  // expo-origin, which Better Auth checks as the origin, as Better Auth's Expo plugin would.
+  const { authHandler } = dependencies;
+  if (authHandler) {
+    app.on(["GET", "POST"], "/api/auth/*", (c) => {
+      const headers = new Headers(c.req.raw.headers);
+      const settings = { ...dependencies.clientIpSettings, socketAddress: socketAddress(c) };
+      headers.set("x-forwarded-for", getClientIp(c.req.raw.headers, settings));
+      const appOrigin = headers.get("expo-origin");
+      if (appOrigin && !headers.has("origin")) headers.set("origin", appOrigin);
+      return authHandler(new Request(c.req.raw, { headers }));
+    });
+  }
   // clubedge:end
 
   // clubedge:if observability!=none

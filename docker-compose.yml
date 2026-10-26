@@ -1,7 +1,7 @@
 services:
-  app:
-    build:
-      context: .
+  app: # clubedge:only framework!=none
+    build: # clubedge:only framework!=none
+      context: . # clubedge:only framework!=none
       # clubedge:if framework=vite
       # Vite compiles its VITE_* settings into the build, and .env files stay out of the image:
       # Compose reads these from the shell or a .env file next to this one (or pass
@@ -16,30 +16,33 @@ services:
         VITE_APPWRITE_ENDPOINT: ${VITE_APPWRITE_ENDPOINT:-} # clubedge:only auth=appwrite
         VITE_APPWRITE_PROJECT_ID: ${VITE_APPWRITE_PROJECT_ID:-} # clubedge:only auth=appwrite
       # clubedge:end
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./apps/web/.env.local
-    # clubedge:if api!=none
+    ports: # clubedge:only framework!=none
+      - "3000:3000" # clubedge:only framework!=none
+    env_file: # clubedge:only framework!=none
+      - ./apps/web/.env.local # clubedge:only framework!=none
+    # clubedge:if api!=none && framework!=none
     environment:
       # The frontend's server sends /api to the API service.
       API_URL: http://api:3001
     depends_on:
       - api
     # clubedge:end
-    restart: unless-stopped
+    restart: unless-stopped # clubedge:only framework!=none
   # clubedge:if api!=none
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    # Without a website, the mobile app calls the API itself. # clubedge:only framework=none
+    ports: # clubedge:only framework=none
+      - "3001:3001" # clubedge:only framework=none
     env_file:
       - path: ./apps/api/.env.local
         required: false
     environment:
       HOST: 0.0.0.0
-      # Only the frontend's server reaches the API (it publishes no port), and it sends the
-      # client's address as the one X-Forwarded-For entry, for the API's rate limits.
-      TRUSTED_PROXY_HOPS: "1"
+      # Only the frontend's server reaches the API (it publishes no port), and it sends the # clubedge:only framework!=none
+      # client's address as the one X-Forwarded-For entry, for the API's rate limits. # clubedge:only framework!=none
+      TRUSTED_PROXY_HOPS: "1" # clubedge:only framework!=none
     restart: unless-stopped
   # clubedge:end

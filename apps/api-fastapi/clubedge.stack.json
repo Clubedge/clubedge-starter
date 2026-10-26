@@ -16,6 +16,7 @@
     "src/clubedge_api/server.py",
     "src/clubedge_api/storage.py",
     "tests/test_account.py",
+    "tests/test_production_env.py",
     "tests/test_storage_s3.py"
   ],
   "deployment": {

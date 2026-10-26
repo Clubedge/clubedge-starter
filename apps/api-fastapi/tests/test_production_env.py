@@ -22,14 +22,20 @@ def test_passes_when_every_required_variable_is_set() -> None:
     assert check_production_env(complete()).ok
 
 
-def test_always_requires_the_database_and_the_frontends_url() -> None:
+def test_always_requires_the_database() -> None:
     missing = {requirement.key for requirement in check_production_env({}).missing}
-    assert {"DATABASE_URL", "FRONTEND_URL"} <= missing
+    assert "DATABASE_URL" in missing
 
 
 def test_counts_empty_values_as_unset() -> None:
     missing = check_production_env(complete(DATABASE_URL="  ")).missing
     assert [requirement.key for requirement in missing] == ["DATABASE_URL"]
+
+
+# clubedge:if framework!=none
+def test_requires_the_frontends_url() -> None:
+    missing = {requirement.key for requirement in check_production_env({}).missing}
+    assert "FRONTEND_URL" in missing
 
 
 def test_rejects_urls_to_this_machine() -> None:
@@ -42,6 +48,7 @@ def test_rejects_a_url_that_is_not_absolute() -> None:
     assert result.invalid == ["FRONTEND_URL is not an absolute URL"]
 
 
+# clubedge:end
 def test_checks_where_rate_limits_find_the_client_address() -> None:
     assert check_production_env(complete(TRUSTED_PROXY_HOPS="1")).ok
     result = check_production_env(complete(TRUSTED_PROXY_HOPS="1", CLIENT_IP_HEADER="x real ip"))

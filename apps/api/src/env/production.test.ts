@@ -1,20 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { checkProductionEnv, isLocalUrl, requiredVariables } from "./production";
 
-// A value for every variable this API requires, whichever modules it has.
+// A value for every variable this API requires, whichever modules it has: a hosted URL, long
+// enough for a secret too.
 const complete = () =>
-  Object.fromEntries(requiredVariables().map(({ key }) => [key, "https://service.example.com"]));
+  Object.fromEntries(
+    requiredVariables().map(({ key }) => [key, "https://service.example.com/0123456789"]),
+  );
 
 describe("production env check", () => {
   it("passes when every required variable is set", () => {
     expect(checkProductionEnv(complete())).toEqual({ missing: [], local: [], invalid: [] });
   });
 
-  it("always requires the database and the frontend's URL", () => {
+  it("always requires the database", () => {
     const keys = checkProductionEnv({}).missing.map(({ key }) => key);
     expect(keys).toContain("DATABASE_URL");
-    expect(keys).toContain("FRONTEND_URL");
   });
+
+  // clubedge:if framework!=none
+  it("requires the frontend's URL", () => {
+    expect(checkProductionEnv({}).missing.map(({ key }) => key)).toContain("FRONTEND_URL");
+  });
+  // clubedge:end
 
   it("counts empty values as unset", () => {
     const env = { ...complete(), DATABASE_URL: "  " };
@@ -22,8 +30,11 @@ describe("production env check", () => {
   });
 
   it("rejects URLs to this machine", () => {
-    const env = { ...complete(), FRONTEND_URL: "http://localhost:3000" };
-    expect(checkProductionEnv(env).local).toEqual(["FRONTEND_URL"]);
+    const env = {
+      ...complete(),
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/app",
+    };
+    expect(checkProductionEnv(env).local).toEqual(["DATABASE_URL"]);
   });
 
   it("checks the optional direct database URL", () => {
@@ -64,10 +75,21 @@ describe("production env check", () => {
     ]);
   });
 
+  // clubedge:if framework!=none
   it("rejects a URL that isn't absolute", () => {
     const env = { ...complete(), FRONTEND_URL: "my-app.example.com" };
     expect(checkProductionEnv(env).invalid).toEqual(["FRONTEND_URL is not an absolute URL"]);
   });
+  // clubedge:end
+
+  // clubedge:if auth=better-auth && framework=none
+  it("refuses a Better Auth secret shorter than 32 characters", () => {
+    const env = { ...complete(), BETTER_AUTH_SECRET: "too-short" };
+    expect(checkProductionEnv(env).invalid).toEqual([
+      "BETTER_AUTH_SECRET is shorter than 32 characters: use openssl rand -hex 32",
+    ]);
+  });
+  // clubedge:end
 
   it("checks where rate limits find the client's address", () => {
     const env = { ...complete(), TRUSTED_PROXY_HOPS: "1" };

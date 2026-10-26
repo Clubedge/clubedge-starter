@@ -460,6 +460,19 @@ jobs:
               framework: vite,
               modules: --auth supabase --api fastapi --mobile expo,
             }
+          # Without a website: the API and the native app, which calls it directly, with Better Auth
+          # running in the Hono API, and with Supabase next to the FastAPI API; and an API alone.
+          - {
+              name: api-hono-expo,
+              framework: none,
+              modules: --auth better-auth --api hono --mobile expo,
+            }
+          - {
+              name: api-fastapi-expo,
+              framework: none,
+              modules: --auth supabase --api fastapi --mobile expo,
+            }
+          - { name: api-hono, framework: none, modules: --auth none --api hono }
           - {
               name: vite-hono-resend,
               framework: vite,
@@ -559,6 +572,7 @@ jobs:
           cat "$RUNNER_TEMP/firebase.log"
           exit 1
       - name: Browser checks
+        if: matrix.framework != 'none'
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_AUTH_ENABLED: ${{ contains(matrix.modules, '--auth firebase') || (matrix.framework == 'vite' && contains(matrix.modules, '--auth better-auth')) }}
@@ -576,6 +590,7 @@ jobs:
         if: failure() && contains(matrix.modules, '--auth firebase')
         run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
       - name: Build, start, and smoke-test
+        if: matrix.framework != 'none'
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           set -euo pipefail
@@ -583,6 +598,26 @@ jobs:
           pnpm start > "$RUNNER_TEMP/app.log" 2>&1 &
           trap 'tail -n 50 "$RUNNER_TEMP/app.log"' EXIT
           node "$GITHUB_WORKSPACE/scripts/smoke-generated-app.mjs"
+      # Without a website, pnpm start serves the API on port 3001, and, with Better Auth, the API
+      # answers sign-in at /api/auth itself.
+      - name: Build, start, and check the API
+        if: matrix.framework == 'none'
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          BETTER_AUTH_SECRET: ${{ contains(matrix.modules, '--auth better-auth') && 'starter-ci-secret-for-better-auth-0123456789' || '' }}
+        run: |
+          set -euo pipefail
+          pnpm build
+          pnpm start > "$RUNNER_TEMP/api.log" 2>&1 &
+          trap 'tail -n 50 "$RUNNER_TEMP/api.log"' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent --output /dev/null http://127.0.0.1:3001/api/health && break
+            sleep 1
+          done
+          curl --fail --silent --show-error --output /dev/null http://127.0.0.1:3001/api/health
+          if [ -n "$BETTER_AUTH_SECRET" ]; then
+            curl --fail --silent --show-error http://127.0.0.1:3001/api/auth/ok
+          fi
       # The mobile app: the web app's build for it, copied into the Android project Capacitor
       # creates, and a debug APK. Capacitor 8 builds with Java 21; the runner has the Android SDK.
       - uses: actions/setup-java@v6

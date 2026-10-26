@@ -17,6 +17,8 @@ If pnpm reports that it ignored a package build script needed by your environmen
 
 ## Configure the local environment
 
+<!-- clubedge:if framework!=none -->
+
 Copy `.env.example` to `apps/web/.env.local`.
 
 PowerShell:
@@ -31,6 +33,25 @@ macOS/Linux:
 cp .env.example apps/web/.env.local
 ```
 
+<!-- clubedge:end -->
+<!-- clubedge:if framework=none -->
+
+Copy `apps/api/.env.example` to `apps/api/.env.local`.
+
+PowerShell:
+
+```powershell
+Copy-Item apps/api/.env.example apps/api/.env.local
+```
+
+macOS/Linux:
+
+```sh
+cp apps/api/.env.example apps/api/.env.local
+```
+
+<!-- clubedge:end -->
+
 The example file points at the local services described in [Local services](#local-services) and leaves provider keys blank, so the app builds and starts before anything is configured. <!-- clubedge:only infra!=none -->
 The example file leaves provider URLs and keys blank so the app can build and start without connecting to real services. At minimum, set `DATABASE_URL`. <!-- clubedge:only infra=none -->
 
@@ -41,8 +62,9 @@ The variables are:
 - `NEXT_PUBLIC_APP_URL` (recommended): the app's origin, defaulting to `http://localhost:3000`. <!-- clubedge:only framework=next -->
 - `APP_URL` (recommended): the app's origin, defaulting to `http://localhost:3000`. <!-- clubedge:only framework=tanstack-start -->
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=next && auth=supabase -->
-- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=tanstack-start && auth=supabase -->
-- `BETTER_AUTH_SECRET` (for sign-in): see [Better Auth](#better-auth). <!-- clubedge:only auth=better-auth -->
+- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (for sign-in): see [Supabase Auth](#supabase-auth). <!-- clubedge:only framework=tanstack-start|none && auth=supabase -->
+- `BETTER_AUTH_SECRET` (for sign-in): see [Better Auth](#better-auth). <!-- clubedge:only auth=better-auth && framework!=none -->
+- `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` (for sign-in): see [Better Auth](#better-auth). <!-- clubedge:only auth=better-auth && framework=none -->
 - `FIREBASE_PROJECT_ID`, `FIREBASE_API_KEY`, and in production a service account: see [Firebase Authentication](#firebase-authentication). <!-- clubedge:only auth=firebase -->
 - `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, and `APPWRITE_API_KEY` (for sign-in): see [Appwrite](#appwrite). <!-- clubedge:only auth=appwrite -->
 - `REDIS_URL` (optional): see [Redis](#redis). <!-- clubedge:only cache=redis -->
@@ -56,7 +78,8 @@ The variables are:
 - `STORAGE_*` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=s3 -->
 - `SUPABASE_STORAGE_BUCKET` (for file storage): see [File storage](#file-storage). <!-- clubedge:only storage=supabase -->
 
-`DATABASE_URL` must be a non-empty string for server environment validation. If you are only exploring the UI, a local placeholder URL works, but database operations fail until it points to a real PostgreSQL database.
+`DATABASE_URL` must be a non-empty string for server environment validation. If you are only exploring the UI, a local placeholder URL works, but database operations fail until it points to a real PostgreSQL database. <!-- clubedge:only framework!=none -->
+The API starts with a local placeholder `DATABASE_URL`, but database operations fail until it points to a real PostgreSQL database. <!-- clubedge:only framework=none -->
 
 Start the development server:
 
@@ -64,7 +87,8 @@ Start the development server:
 pnpm dev
 ```
 
-The app is available at <http://localhost:3000>, the liveness endpoint at <http://localhost:3000/api/health>, and the readiness endpoint, which also checks the database, at <http://localhost:3000/api/ready>.
+The app is available at <http://localhost:3000>, the liveness endpoint at <http://localhost:3000/api/health>, and the readiness endpoint, which also checks the database, at <http://localhost:3000/api/ready>. <!-- clubedge:only framework!=none -->
+The API listens on port 3001: the liveness endpoint is at <http://localhost:3001/api/health>, and the readiness endpoint, which also checks the database, at <http://localhost:3001/api/ready>. In development it listens on every interface (`HOST=0.0.0.0`), so a phone or another device on the same network reaches it; see [Without a website](#without-a-website). <!-- clubedge:only framework=none -->
 
 <!-- clubedge:if auth=supabase -->
 
@@ -73,6 +97,10 @@ The app is available at <http://localhost:3000>, the liveness endpoint at <http:
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server, so never give it a `NEXT_PUBLIC_` prefix. <!-- clubedge:only framework=next -->
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into the Supabase variables above. Authentication runs on the server, which validates every user with Supabase, and the publishable key is all sign-in needs. To let users delete their account from the settings page, also set `SUPABASE_SECRET_KEY` to a secret key from the same settings; it stays on the server. <!-- clubedge:only framework=tanstack-start -->
 To let users delete their account from the settings page, set `SUPABASE_SECRET_KEY` in `apps/api/.env.local` to a secret key from the project's API settings; only the API uses it. <!-- clubedge:only framework=vite && api=hono|fastapi -->
+Create or select a Supabase project and copy its URL and publishable key from the project's API settings into `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env.local`. The API validates the access token each request carries with Supabase, and the publishable key is all it needs. To let users delete their account, also set `SUPABASE_SECRET_KEY` there to a secret key from the same settings; only the API uses it. <!-- clubedge:only framework=none -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if auth=supabase && framework!=none -->
 
 In Supabase Auth URL configuration, add this redirect URL for local email confirmation and password reset links:
 
@@ -81,6 +109,15 @@ http://localhost:3000/auth/callback**
 ```
 
 For deployed environments, add your deployed origin followed by `/auth/callback**`. The `**` lets links carry the page to open next, such as `/reset-password`. Supabase sends the confirmation and password reset emails itself; configure its SMTP settings in the Supabase project to send them from your own domain. Until the Supabase variables are set, the dashboard stays viewable as a demo and the login page explains what is missing; once they are set, the dashboard redirects signed-out visitors to the login page.
+
+<!-- clubedge:end -->
+<!-- clubedge:if auth=supabase && framework=none -->
+
+In the Supabase dashboard, under Authentication, URL Configuration, add the native app's address scheme to the Redirect URLs, such as `my-product://**`, where `my-product` is the scheme `apps/mobile/app.config.ts` makes from the site config's `serviceId`. Confirmation and password reset links then open the app: confirming a new account opens its sign-in screen, and a password reset link opens its reset screen, which sets the new password. <!-- clubedge:only mobile!=none -->
+The local stack reads its redirect URLs from `additional_redirect_urls` in `supabase/config.toml`: add the scheme there too, and restart the stack. <!-- clubedge:only mobile!=none && infra=supabase -->
+
+Supabase sends the confirmation and password reset emails itself; configure its SMTP settings in the Supabase project to send them from your own domain.
+Their links lead to the address the client asks for, once the Redirect URLs in the project's URL configuration list it. <!-- clubedge:only mobile=none -->
 
 <!-- clubedge:end -->
 
@@ -94,16 +131,19 @@ Better Auth keeps users, passwords, and sessions in your PostgreSQL database, in
 openssl rand -base64 32
 ```
 
-Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Signing in again on another device creates another session row, and signing out deletes it.
+Put the result in `BETTER_AUTH_SECRET`. Until it is set, the dashboard stays viewable as a demo and the login page explains what is missing; once it is set, the dashboard redirects signed-out visitors to the login page. Signing in again on another device creates another session row, and signing out deletes it. <!-- clubedge:only framework!=none -->
+Put the result in `BETTER_AUTH_SECRET` in `apps/api/.env.local`, and set `BETTER_AUTH_URL` there to the API's public URL: `http://localhost:3001` in development. Better Auth runs in the API, which serves it at `/api/auth`; until the secret is set, no one can sign in. Signing in again on another device creates another session row, and signing out deletes it. <!-- clubedge:only framework=none -->
 
 Sign-up signs the user in immediately; add email verification in `packages/auth-better-auth` if your application needs it. <!-- clubedge:only email=none -->
-The frontend's server still sends password reset and verification emails through Resend when `RESEND_API_KEY` and `EMAIL_FROM` are both set in `apps/web/.env.local`. <!-- clubedge:only email=none && api!=none -->
+The frontend's server still sends password reset and verification emails through Resend when `RESEND_API_KEY` and `EMAIL_FROM` are both set in `apps/web/.env.local`. <!-- clubedge:only email=none && api!=none && framework!=none -->
 Better Auth sends its emails through the [email module](#email): <!-- clubedge:only email!=none -->
 
-- **Password reset:** "Forgot password?" on the login page emails a link to `/reset-password`, valid for one hour and usable once. <!-- clubedge:only email!=none -->
+- **Password reset:** "Forgot password?" on the login page emails a link to `/reset-password`, valid for one hour and usable once. <!-- clubedge:only email!=none && framework!=none -->
+- **Password reset:** "Forgot your password?" on the native app's sign-in screen emails a link, valid for one hour and usable once, that opens the app's reset screen to set a new password. <!-- clubedge:only email!=none && framework=none && mobile!=none -->
+- **Password reset:** a reset request to Better Auth, under `/api/auth`, emails a link valid for one hour and usable once. <!-- clubedge:only email!=none && framework=none && mobile=none -->
 - **Email verification:** every new account gets a confirmation link. Sign-up signs the user in right away unless `BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true`, which refuses sign-in until the link is opened. <!-- clubedge:only email!=none -->
 
-These emails are sent by the `send-email` [background job](#background-jobs), so sign-up never waits for the email provider, and a failed send is retried with backoff. <!-- clubedge:only email!=none && jobs!=none -->
+These emails are sent by the `send-email` [background job](#background-jobs), so sign-up never waits for the email provider, and a failed send is retried with backoff. <!-- clubedge:only email!=none && jobs!=none && framework!=none -->
 
 <!-- clubedge:end -->
 
@@ -111,10 +151,12 @@ These emails are sent by the `send-email` [background job](#background-jobs), so
 
 ## Firebase Authentication
 
-[Firebase Authentication](https://firebase.google.com/docs/auth) checks passwords and keeps the accounts; the app's own pages sign users in, and the server holds the session in an HTTP-only cookie (a Firebase session cookie, checked for revocation on each request). Password reset and email confirmation links are generated by Firebase and sent through the [email module](#email), so they open the app's own pages and need no setup in the Firebase console. <!-- clubedge:only email!=none -->
-[Firebase Authentication](https://firebase.google.com/docs/auth) checks passwords and keeps the accounts; the app's own pages sign users in, and the server holds the session in an HTTP-only cookie (a Firebase session cookie, checked for revocation on each request). Without the email module there is no password reset. <!-- clubedge:only email=none -->
+[Firebase Authentication](https://firebase.google.com/docs/auth) checks passwords and keeps the accounts; the app's own pages sign users in, and the server holds the session in an HTTP-only cookie (a Firebase session cookie, checked for revocation on each request). Password reset and email confirmation links are generated by Firebase and sent through the [email module](#email), so they open the app's own pages and need no setup in the Firebase console. <!-- clubedge:only email!=none && framework!=none -->
+[Firebase Authentication](https://firebase.google.com/docs/auth) checks passwords and keeps the accounts; the app's own pages sign users in, and the server holds the session in an HTTP-only cookie (a Firebase session cookie, checked for revocation on each request). Without the email module there is no password reset. <!-- clubedge:only email=none && framework!=none -->
+[Firebase Authentication](https://firebase.google.com/docs/auth) checks passwords and keeps the accounts. Clients sign users in with Firebase's SDK and send the ID token with each request (`Authorization: Bearer <token>`); the API verifies it, and accepts only confirmed email addresses. <!-- clubedge:only framework=none -->
 
-In development, `pnpm auth:dev` starts Firebase's Auth Emulator (`firebase.json`, port 9099), which the example environment points at: no Firebase project or account is needed. Accounts live in memory until it stops.
+In development, `pnpm auth:dev` starts Firebase's Auth Emulator (`firebase.json`, port 9099), which the example environment points at: no Firebase project or account is needed. Accounts live in memory until it stops. <!-- clubedge:only framework!=none -->
+In development, `pnpm auth:dev` starts Firebase's Auth Emulator (`firebase.json`, port 9099), so no Firebase project or account is needed: point the API at it with `FIREBASE_PROJECT_ID=demo-clubedge` and `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` in `apps/api/.env.local`. Accounts live in memory until it stops. <!-- clubedge:only framework=none -->
 
 In production:
 
@@ -131,7 +173,8 @@ Changing a password or resetting it signs out every other session; deleting an a
 
 ## Appwrite
 
-[Appwrite](https://appwrite.io) keeps the accounts, on Appwrite Cloud or your own server; the app's own pages sign users in, and the server holds the session's secret in an HTTP-only cookie (`a_session_<project>`). Appwrite sends the email confirmation and password recovery emails itself, through its SMTP settings, with links back to the app's `/auth/callback` and `/reset-password`.
+[Appwrite](https://appwrite.io) keeps the accounts, on Appwrite Cloud or your own server; the app's own pages sign users in, and the server holds the session's secret in an HTTP-only cookie (`a_session_<project>`). Appwrite sends the email confirmation and password recovery emails itself, through its SMTP settings, with links back to the app's `/auth/callback` and `/reset-password`. <!-- clubedge:only framework!=none -->
+[Appwrite](https://appwrite.io) keeps the accounts, on Appwrite Cloud or your own server. Clients sign users in with Appwrite's SDK and send a JWT from it with each request (`Authorization: Bearer <token>`); the API checks it with Appwrite, and accepts only confirmed email addresses. <!-- clubedge:only framework=none -->
 
 1. Create a project in [Appwrite Cloud](https://cloud.appwrite.io) (free tier) or on your Appwrite server.
 2. Under Overview, Platforms, add a **Web** platform for the app's hostname: `localhost` in development, your domain in production. Appwrite only sends links to registered hostnames.
@@ -173,7 +216,8 @@ pnpm db:migrate
 pnpm check:services
 ```
 
-The database is on port 54322 and the API on port 54321, matching the example environment. Copy the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data.
+The database is on port 54322 and the API on port 54321, matching the example environment. Copy the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data. <!-- clubedge:only framework!=none -->
+The database is on port 54322, matching the example environment, and Supabase's API on port 54321. Copy that API URL and the publishable key from `pnpm infra:status` into the Supabase variables. Email confirmation is off locally, so sign-up signs the user in directly. `pnpm infra:down` stops the stack and `pnpm infra:reset` also deletes its data. <!-- clubedge:only framework=none -->
 
 The app's own email goes to the same inbox over SMTP, on port 54325. <!-- clubedge:only email=smtp -->
 
@@ -182,7 +226,8 @@ The app's own email goes to the same inbox over SMTP, on port 54325. <!-- clubed
 
 This project runs its development services without Docker or any other installation:
 
-- **PostgreSQL:** `pnpm dev` also starts [PGlite](https://pglite.dev), PostgreSQL compiled to WebAssembly, and serves it on `127.0.0.1:5433`. Each start applies the migrations. Data is kept in `.data/pglite`. `pnpm infra:up` runs the database on its own, for `pnpm check:services` or browser tests.
+- **PostgreSQL:** `pnpm dev` also starts [PGlite](https://pglite.dev), PostgreSQL compiled to WebAssembly, and serves it on `127.0.0.1:5433`. Each start applies the migrations. Data is kept in `.data/pglite`. `pnpm infra:up` runs the database on its own, for `pnpm check:services` or browser tests. <!-- clubedge:only framework!=none -->
+- **PostgreSQL:** `pnpm dev` also starts [PGlite](https://pglite.dev), PostgreSQL compiled to WebAssembly, and serves it on `127.0.0.1:5433`. Each start applies the migrations. Data is kept in `.data/pglite`. `pnpm infra:up` runs the database on its own, for `pnpm check:services`. <!-- clubedge:only framework=none -->
 - **Files:** while `STORAGE_DIRECTORY` is set, uploads are stored in that folder (`.data/storage`) instead of S3. Set the S3 variables and remove `STORAGE_DIRECTORY` to use object storage. <!-- clubedge:only storage=s3 -->
 - **Cache:** without `REDIS_URL`, the cache and rate limits use process memory. <!-- clubedge:only cache=redis -->
 - **Email:** without a provider configured, emails are printed to the `pnpm dev` output, links included. <!-- clubedge:only email!=none -->
@@ -194,8 +239,10 @@ PGlite runs a single database session, so connections take turns. That is plenty
 
 This project's database is hosted on [Neon](https://neon.com), so there is nothing to install or start:
 
-- **PostgreSQL:** create-clubedge-app created a free, unclaimed Neon database and wrote `DATABASE_URL` (pooled) and `DATABASE_URL_DIRECT` into `apps/web/.env.local`. It expires 72 hours after creation and holds up to 100 MB until it is claimed. `pnpm clubedge neon` shows how long it has left.
-- **Keep it:** `pnpm clubedge neon claim` opens Neon's claim page; sign in (free) and the database moves to your account with its data. Claiming resets the password, so copy the new connection strings from the Neon console into `apps/web/.env.local` afterwards: the pooled one into `DATABASE_URL`, the direct one into `DATABASE_URL_DIRECT`.
+- **PostgreSQL:** create-clubedge-app created a free, unclaimed Neon database and wrote `DATABASE_URL` (pooled) and `DATABASE_URL_DIRECT` into `apps/web/.env.local`. It expires 72 hours after creation and holds up to 100 MB until it is claimed. `pnpm clubedge neon` shows how long it has left. <!-- clubedge:only framework!=none -->
+- **PostgreSQL:** create-clubedge-app created a free, unclaimed Neon database and wrote `DATABASE_URL` (pooled) and `DATABASE_URL_DIRECT` into `apps/api/.env.local`. It expires 72 hours after creation and holds up to 100 MB until it is claimed. `pnpm clubedge neon` shows how long it has left. <!-- clubedge:only framework=none -->
+- **Keep it:** `pnpm clubedge neon claim` opens Neon's claim page; sign in (free) and the database moves to your account with its data. Claiming resets the password, so copy the new connection strings from the Neon console into `apps/web/.env.local` afterwards: the pooled one into `DATABASE_URL`, the direct one into `DATABASE_URL_DIRECT`. <!-- clubedge:only framework!=none -->
+- **Keep it:** `pnpm clubedge neon claim` opens Neon's claim page; sign in (free) and the database moves to your account with its data. Claiming resets the password, so copy the new connection strings from the Neon console into `apps/api/.env.local` afterwards: the pooled one into `DATABASE_URL`, the direct one into `DATABASE_URL_DIRECT`. <!-- clubedge:only framework=none -->
 - **Start over:** `pnpm clubedge neon create` creates a new database and replaces the two URLs, for example after one expired.
 - **Your own project:** paste the connection strings from any Neon project instead; nothing else changes.
 - **Cache:** without `REDIS_URL`, the cache and rate limits use process memory. <!-- clubedge:only cache=redis -->
@@ -231,7 +278,8 @@ Hosted PostgreSQL usually offers two URLs. The pooled one (Neon's host ending in
 
 <!-- clubedge:end -->
 
-`db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate. The database commands run in `packages/db` and read `DATABASE_URL` from `apps/web/.env.local`, so the project keeps one environment file. The Postgres.js client is configured with `prepare: false` for compatibility with Supabase transaction pooling.
+`db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate. The database commands run in `packages/db` and read `DATABASE_URL` from `apps/web/.env.local`, so the project keeps one environment file. The Postgres.js client is configured with `prepare: false` for compatibility with Supabase transaction pooling. <!-- clubedge:only framework!=none -->
+`db:migrate` applies committed migrations. `db:push` is available for local development, but do not use it as a production migration workflow. Use `pnpm db:seed` only against a database where seed data is appropriate. The database commands run in `packages/db` and read `DATABASE_URL` from `apps/api/.env.local`, the API's environment file. The Postgres.js client is configured with `prepare: false` for compatibility with Supabase transaction pooling. <!-- clubedge:only framework=none -->
 
 <!-- clubedge:if cache=redis -->
 
@@ -264,7 +312,7 @@ The rate limiter and cache keep their state in process memory, which suits a sin
 The app sends email through the `EmailProvider` in `apps/web/src/server/email.ts`. Server code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api=none -->
 The API sends email through the `EmailProvider` in `apps/api/src/server/email.ts`: its code imports `email` from `@/server/email` and calls `email.send({ to, subject, text, html })`. <!-- clubedge:only api=hono -->
 The API sends email through the `EmailProvider` in `apps/api/src/clubedge_api/email.py`: its code imports `email` from `clubedge_api.email` and awaits `email.send({"to": ..., "subject": ..., "text": ..., "html": ...})`. <!-- clubedge:only api=fastapi -->
-Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which sends its emails with the same provider, so set the email variables in both `apps/web/.env.local` and `apps/api/.env.local`. <!-- clubedge:only api!=none && auth=better-auth -->
+Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which sends its emails with the same provider, so set the email variables in both `apps/web/.env.local` and `apps/api/.env.local`. <!-- clubedge:only api!=none && auth=better-auth && framework!=none -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if email=smtp -->
@@ -368,16 +416,21 @@ Queue it from the API's code with `await get_jobs().enqueue(welcome_email, {"use
 Queue it from the API's code with `await get_jobs().enqueue(welcome_email, {"userId": user_id})`, from `clubedge_api.background_jobs`. <!-- clubedge:only email=none && api=fastapi -->
 
 A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart `pnpm dev` after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/web/src/jobs/sample.ts` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=none -->
-A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/api/src/jobs/sample.ts` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=hono -->
-A raised exception fails the attempt and the job is retried (`retry_limit`, `retry_delay_seconds`, `retry_backoff`). An attempt that runs past `timeout_seconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule="0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues `sample_job` from `apps/api/src/clubedge_api/jobs.py` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=fastapi -->
+A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues the sample job from `apps/api/src/jobs/sample.ts` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=hono && framework!=none -->
+A thrown error fails the attempt and the job is retried (`retryLimit`, `retryDelaySeconds`, `retryBackoff`). An attempt that runs past `timeoutSeconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule: "0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. `POST /api/jobs/sample` queues the sample job from `apps/api/src/jobs/sample.ts`, and `GET /api/jobs` lists its recent runs; remove them when you add your own. <!-- clubedge:only api=hono && framework=none -->
+A raised exception fails the attempt and the job is retried (`retry_limit`, `retry_delay_seconds`, `retry_backoff`). An attempt that runs past `timeout_seconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule="0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. The dashboard's jobs card queues `sample_job` from `apps/api/src/clubedge_api/jobs.py` through `/api/jobs` and lists its recent runs; remove both when you add your own. <!-- clubedge:only api=fastapi && framework!=none -->
+A raised exception fails the attempt and the job is retried (`retry_limit`, `retry_delay_seconds`, `retry_backoff`). An attempt that runs past `timeout_seconds`, or whose server stops, is retried too, so make jobs safe to run twice. Add `schedule="0 3 * * *"` (cron syntax, UTC) to run a job on a schedule. Restart the API after adding or changing a job. `POST /api/jobs/sample` queues `sample_job` from `apps/api/src/clubedge_api/jobs.py`, and `GET /api/jobs` lists its recent runs; remove them when you add your own. <!-- clubedge:only api=fastapi && framework=none -->
 
 Where no server keeps running, as on Vercel and Netlify, there is no worker: `JOBS_WORKER` defaults to `off` there, and you can set it yourself anywhere. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` every minute or so with the header `Authorization: Bearer <CRON_SECRET>`, from Vercel Cron, a Netlify scheduled function, or any scheduler. Each call runs the jobs that are due. <!-- clubedge:only jobs=pg-boss|bullmq && api=none -->
-To run the jobs elsewhere, set `JOBS_WORKER=off` on the API: it then runs no worker. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` on the frontend, which forwards it to the API, every minute or so with the header `Authorization: Bearer <CRON_SECRET>`. Each call runs the jobs that are due. The API stops its worker on `SIGTERM`, letting running jobs finish. <!-- clubedge:only jobs=pg-boss|bullmq && api=hono|fastapi -->
+To run the jobs elsewhere, set `JOBS_WORKER=off` on the API: it then runs no worker. Set `CRON_SECRET` to 16 or more random characters and call `GET /api/jobs/run` on the frontend, which forwards it to the API, every minute or so with the header `Authorization: Bearer <CRON_SECRET>`. Each call runs the jobs that are due. The API stops its worker on `SIGTERM`, letting running jobs finish. <!-- clubedge:only jobs=pg-boss|bullmq && api=hono|fastapi && framework!=none -->
+To run the jobs elsewhere, set `JOBS_WORKER=off` on the API: it then runs no worker. Set `CRON_SECRET` to 16 or more random characters and call the API's `GET /api/jobs/run` every minute or so with the header `Authorization: Bearer <CRON_SECRET>`. Each call runs the jobs that are due. The API stops its worker on `SIGTERM`, letting running jobs finish. <!-- clubedge:only jobs=pg-boss|bullmq && framework=none -->
 Inngest keeps the job history: the jobs card reads it from Inngest's API (the Dev Server's locally), and Inngest's dashboard shows each run's attempts, output, and errors. <!-- clubedge:only jobs=inngest -->
 
 Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss`, `bullmq`, or `inngest`. To add another, implement `JobQueue` in a new package, return it from `apps/web/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=none -->
-Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss`, `bullmq`, or `inngest`. To add another, implement `JobQueue` in a new package, return it from `apps/api/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=hono -->
-Jobs go through the provider-neutral `JobQueue` protocol in `apps/api/src/clubedge_api/job_queue.py`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs bullmq` or `inngest`; pg-boss, which the TypeScript stacks offer, is not available with the FastAPI API. To add another, implement `JobQueue` in a new module and return it from `apps/api/src/clubedge_api/background_jobs.py`. <!-- clubedge:only api=fastapi -->
+Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss`, `bullmq`, or `inngest`. To add another, implement `JobQueue` in a new package, return it from `apps/api/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=hono && framework!=none -->
+Jobs go through the provider-neutral `JobQueue` interface in `packages/jobs`, so job definitions and the routes stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs pg-boss` or `bullmq`. To add another, implement `JobQueue` in a new package, return it from `apps/api/src/server/jobs.ts`, and prove it with the shared conformance suite, as each provider's tests do: <!-- clubedge:only api=hono && framework=none -->
+Jobs go through the provider-neutral `JobQueue` protocol in `apps/api/src/clubedge_api/job_queue.py`, so job definitions, the routes, and the jobs card stay the same whichever provider runs them. Switch providers with `pnpm clubedge add jobs bullmq` or `inngest`; pg-boss, which the TypeScript stacks offer, is not available with the FastAPI API. To add another, implement `JobQueue` in a new module and return it from `apps/api/src/clubedge_api/background_jobs.py`. <!-- clubedge:only api=fastapi && framework!=none -->
+Jobs go through the provider-neutral `JobQueue` protocol in `apps/api/src/clubedge_api/job_queue.py`, so job definitions and the routes stay the same whichever provider runs them. Without a website, BullMQ is the one provider the FastAPI API offers; to add another, implement `JobQueue` in a new module and return it from `apps/api/src/clubedge_api/background_jobs.py`. <!-- clubedge:only api=fastapi && framework=none -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if jobs!=none && api!=fastapi -->
@@ -393,14 +446,16 @@ describeJobQueue("my-queue", (jobs, { worker }) => createMyQueue({ jobs, worker 
 
 ## Observability
 
-Server errors and traces go to the tool you chose. Errors that escape a page, route, server action, or server function are sent with the request's method and path, and so are errors the app handles and reports with `reportError` from `@clubedge/core`, such as a failed webhook, email, or background job. Every request is traced, and so are calls through the email, storage, and payments composition roots, as spans such as `email.send` and `storage.upload`. Wrap your own work with `traced("name", () => work())` from `@clubedge/core`. Until the tool is configured nothing is sent, and errors keep going to the server log.
+Server errors and traces go to the tool you chose. Errors that escape a page, route, server action, or server function are sent with the request's method and path, and so are errors the app handles and reports with `reportError` from `@clubedge/core`, such as a failed webhook, email, or background job. Every request is traced, and so are calls through the email, storage, and payments composition roots, as spans such as `email.send` and `storage.upload`. Wrap your own work with `traced("name", () => work())` from `@clubedge/core`. Until the tool is configured nothing is sent, and errors keep going to the server log. <!-- clubedge:only framework!=none -->
+Server errors and traces go to the tool you chose. Errors that escape an API route are sent with the request's method and path, and so are errors the API handles and reports with `reportError` from `@clubedge/core`. Every request is traced; wrap your own work with `traced("name", () => work())` from `@clubedge/core`. Until the tool is configured nothing is sent, and errors keep going to the server log. <!-- clubedge:only framework=none && api=hono -->
+Server errors and traces go to the tool you chose. Errors that escape an API route are sent with the request's method and path, and every request is traced. Until the tool is configured nothing is sent, and errors keep going to the server log. <!-- clubedge:only framework=none && api=fastapi -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if observability=otel -->
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
 Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. Traces go to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the project's service id. <!-- clubedge:only framework=tanstack-start -->
-Set `OTEL_EXPORTER_OTLP_ENDPOINT` in `apps/api/.env.local` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. The API sends traces to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the API's service id. <!-- clubedge:only framework=vite -->
+Set `OTEL_EXPORTER_OTLP_ENDPOINT` in `apps/api/.env.local` to an OpenTelemetry collector or to a vendor's OTLP/HTTP endpoint (Grafana Cloud, Honeycomb, Datadog, and others accept it), with any API key in `OTEL_EXPORTER_OTLP_HEADERS` as `key=value` pairs. The API sends traces to `/v1/traces` and errors to `/v1/logs` as error log records, and each error is also recorded on the span it happened in. `OTEL_SERVICE_NAME` defaults to the API's service id. <!-- clubedge:only framework=vite|none -->
 
 To see traces during development, run [Jaeger](https://www.jaegertracing.io), set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, and open http://localhost:16686:
 
@@ -414,17 +469,19 @@ docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/jaeger:latest
 Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. The spans Next.js and pg-boss create join the same traces. <!-- clubedge:only framework=next -->
 Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=tanstack-start -->
 Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN; the frontend reads it from the API at runtime. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=vite && api=hono -->
-Create a Python project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN; the frontend reads it from the API at runtime. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies, and its integrations trace what FastAPI, httpx, and Redis do in the same traces. <!-- clubedge:only api=fastapi -->
+Create a Node.js project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies. <!-- clubedge:only framework=none && api=hono -->
+Create a Python project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN; the frontend reads it from the API at runtime. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies, and its integrations trace what FastAPI, httpx, and Redis do in the same traces. <!-- clubedge:only api=fastapi && framework!=none -->
+Create a Python project in [Sentry](https://sentry.io) and set `SENTRY_DSN` in `apps/api/.env.local` to its DSN. `SENTRY_TRACES_SAMPLE_RATE` is the share of API requests traced, from 0 to 1 (default 0.1; use 1 while trying it out), and `SENTRY_ENVIRONMENT` labels events (default `NODE_ENV`). The SDK sends no user details, cookies, query strings, or request bodies, and its integrations trace what FastAPI, httpx, and Redis do in the same traces. <!-- clubedge:only api=fastapi && framework=none -->
 
-To see your own code in browser stack traces, give the build `SENTRY_AUTH_TOKEN` (an auth token with the `project:releases` scope), `SENTRY_ORG`, and `SENTRY_PROJECT`. The build then makes source maps for the browser bundle, uploads them to Sentry, and deletes them, so they are never served. Without the token the build makes no source maps. Set the three variables where the build runs: in CI, or as build-time variables on your platform. <!-- clubedge:only framework!=vite -->
+To see your own code in browser stack traces, give the build `SENTRY_AUTH_TOKEN` (an auth token with the `project:releases` scope), `SENTRY_ORG`, and `SENTRY_PROJECT`. The build then makes source maps for the browser bundle, uploads them to Sentry, and deletes them, so they are never served. Without the token the build makes no source maps. Set the three variables where the build runs: in CI, or as build-time variables on your platform. <!-- clubedge:only framework=next|tanstack-start -->
 The React + Vite build does not upload source maps to Sentry yet, so browser stack traces point into the minified bundle. <!-- clubedge:only framework=vite -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if observability!=none -->
 
-Uncaught errors in the browser are reported too, with the page's path and no query string. With OpenTelemetry, the browser sends them to `/api/client-errors`, which reports them like server errors and accepts 30 reports a minute per address. With Sentry, Sentry's browser SDK sends them directly; it is downloaded only when `SENTRY_DSN` is set. In both cases the browser reads its settings from `/api/client-errors` at runtime, so builds never bake them in.
+Uncaught errors in the browser are reported too, with the page's path and no query string. With OpenTelemetry, the browser sends them to `/api/client-errors`, which reports them like server errors and accepts 30 reports a minute per address. With Sentry, Sentry's browser SDK sends them directly; it is downloaded only when `SENTRY_DSN` is set. In both cases the browser reads its settings from `/api/client-errors` at runtime, so builds never bake them in. <!-- clubedge:only framework!=none -->
 
-On Vercel and Netlify, a function can stop right after it responds, so spans still waiting in a batch at that moment can be lost. <!-- clubedge:only framework!=vite -->
+On Vercel and Netlify, a function can stop right after it responds, so spans still waiting in a batch at that moment can be lost. <!-- clubedge:only framework=next|tanstack-start -->
 
 Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/web/src/server/observability.ts`; error reports and spans across the app stay the same. <!-- clubedge:only api=none -->
 Observability goes through the provider-neutral `ObservabilityProvider` interface in `packages/observability` and the telemetry hooks in `@clubedge/core`. To use another tool, implement that interface in a new package and install it from `apps/api/src/server/observability.ts`; error reports and spans across the API stay the same. The API stops taking requests on `SIGTERM` and sends what is still buffered before it exits. <!-- clubedge:only api=hono -->
@@ -449,13 +506,13 @@ The storage adapter uses Supabase Storage through the signed-in user's Supabase 
 <!-- clubedge:if storage!=none && api=hono -->
 
 The API holds the storage adapter: set its variables in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. `pnpm check:services` uploads, reads back, and deletes a test file. <!-- clubedge:only storage=s3 -->
-The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. It acts as the user whose Supabase access token the request carries (the `Authorization: Bearer` header the frontend sends), and as anonymous without one. <!-- clubedge:only storage=supabase -->
+The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `getStorage(c.req.raw)` from `apps/api/src/server/storage.ts`. It acts as the user whose Supabase access token the request carries (its `Authorization: Bearer` header), and as anonymous without one. <!-- clubedge:only storage=supabase -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if storage!=none && api=fastapi -->
 
 The API holds the storage adapter: set its variables in `apps/api/.env.local`, and in a route call `get_storage(request)` from `apps/api/src/clubedge_api/storage.py`, then await its `upload`, `download`, `delete`, `exists`, or `get_signed_url`. `pnpm check:services` uploads, reads back, and deletes a test file. <!-- clubedge:only storage=s3 -->
-The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `get_storage(request)` from `apps/api/src/clubedge_api/storage.py`, then await its `upload`, `download`, `delete`, `exists`, or `get_signed_url`. It acts as the user whose Supabase access token the request carries (the `Authorization: Bearer` header the frontend sends), and as anonymous without one. <!-- clubedge:only storage=supabase -->
+The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.env.local`, and in a route call `get_storage(request)` from `apps/api/src/clubedge_api/storage.py`, then await its `upload`, `download`, `delete`, `exists`, or `get_signed_url`. It acts as the user whose Supabase access token the request carries (its `Authorization: Bearer` header), and as anonymous without one. <!-- clubedge:only storage=supabase -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if storage!=none -->
@@ -463,6 +520,7 @@ The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.e
 The storage adapter does not authorize users or validate uploads. Before calling it, the route must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
 
 <!-- clubedge:end -->
+<!-- clubedge:if framework!=none -->
 
 ## Shared UI development
 
@@ -478,7 +536,11 @@ Shared components live in `packages/ui/src/components` and are imported from `@c
 
 The root route is a public landing page; the reference dashboard is available at `/dashboard`. The dashboard uses the shared shadcn sidebar and breadcrumb. A light/dark switch is available in the landing page and dashboard navigation; its choice is saved in local storage and the initial theme follows the system preference until the user selects one. Theme colors are centralized in `packages/ui/src/styles/globals.css` (blue `#2563eb`, dark background `#151515`).
 
+<!-- clubedge:end -->
+
 ## Docker
+
+<!-- clubedge:if framework!=none -->
 
 Create `apps/web/.env.local` first. Start the development image with:
 
@@ -496,6 +558,26 @@ pnpm docker:start
 The image runs the Next.js standalone output as an unprivileged user. Ensure the configured database and provider hosts are reachable from the container. <!-- clubedge:only framework=next -->
 The image runs the self-contained Nitro server bundle as an unprivileged user, with no `node_modules`. Ensure the configured database and provider hosts are reachable from the container. <!-- clubedge:only framework=tanstack-start -->
 
+<!-- clubedge:end -->
+<!-- clubedge:if framework=none -->
+
+Create `apps/api/.env.local` first. `pnpm docker:dev` builds the API's image and runs it with Docker Compose (`docker-compose.yml`), publishing port 3001:
+
+```sh
+pnpm docker:dev
+```
+
+Build a production image from the repository root and run it with:
+
+```sh
+docker build -f apps/api/Dockerfile -t <image> .
+docker run --rm -p 3001:3001 --env-file apps/api/.env.local <image>
+```
+
+The image runs the API as an unprivileged user. Ensure the configured database and provider hosts are reachable from the container.
+
+<!-- clubedge:end -->
+
 The image also contains the production migrator, which applies every package's migrations with only `DATABASE_URL`:
 
 ```sh
@@ -508,12 +590,14 @@ Run it before a new version starts serving; it skips migrations that are already
 
 <!-- clubedge:if deploy=docker -->
 
-Run the production image on any host or orchestrator that runs containers: build it with `pnpm docker:build` or in CI, push it to a registry, and start it with the production environment. Before each release, run the migrator above as a one-off task (a Kubernetes Job, an ECS task, or `docker run`), then roll out the new containers. Point the platform's health check at `/api/health`.
+Run the production image on any host or orchestrator that runs containers: build it with `pnpm docker:build` or in CI, push it to a registry, and start it with the production environment. Before each release, run the migrator above as a one-off task (a Kubernetes Job, an ECS task, or `docker run`), then roll out the new containers. Point the platform's health check at `/api/health`. <!-- clubedge:only framework!=none -->
+Run the API's production image on any host or orchestrator that runs containers: build it as above or in CI, push it to a registry, and start it with the production environment. Before each release, run the migrator above as a one-off task (a Kubernetes Job, an ECS task, or `docker run`), then roll out the new containers. Point the platform's health check at `/api/health`. <!-- clubedge:only framework=none -->
 
 On a server of your own, `pnpm clubedge deploy` sets this up with Docker Compose. It writes three files, and never overwrites one you changed:
 
 - `compose.yaml` runs the app's image behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself. <!-- clubedge:only api=none -->
-- `compose.yaml` runs the frontend's and the API's images behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself, and the API stays on the Compose network behind the frontend. <!-- clubedge:only api!=none -->
+- `compose.yaml` runs the frontend's and the API's images behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself, and the API stays on the Compose network behind the frontend. <!-- clubedge:only api!=none && framework!=none -->
+- `compose.yaml` runs the API's image behind [Caddy](https://caddyserver.com), the only service that publishes ports: Caddy serves your domain over HTTPS, with certificates it obtains and renews by itself, and passes the client's address to the API. <!-- clubedge:only framework=none -->
 - `Caddyfile` is Caddy's configuration.
 - `.github/workflows/release-images.yml` builds the images for linux/amd64 and linux/arm64 on each published GitHub release, and publishes them to this repository's GitHub Container Registry, tagged with the version, `<major>.<minor>`, and `latest`.
 
@@ -535,9 +619,11 @@ Set the other production variables listed below with `fly secrets set`. Each dep
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=railway -->
 
-`.railway/railway.ts` is the service's configuration on [Railway](https://railway.com), as code: Railway builds the root `Dockerfile`, runs `node /app/migrate.mjs` before each release, so a failed migration stops it, and checks `/api/health` before switching traffic.
+`.railway/railway.ts` is the service's configuration on [Railway](https://railway.com), as code: Railway builds the root `Dockerfile`, runs `node /app/migrate.mjs` before each release, so a failed migration stops it, and checks `/api/health` before switching traffic. <!-- clubedge:only framework!=none -->
+`.railway/railway.ts` is the API's configuration on [Railway](https://railway.com), as code: `pnpm clubedge deploy` writes it so that Railway builds `apps/api/Dockerfile`, runs `node /app/migrate.mjs` before each release, so a failed migration stops it, and checks `/api/health` before switching traffic. <!-- clubedge:only framework=none -->
 
-The quickest first deploy is `pnpm clubedge deploy`: it creates the project, Postgres, the service, its domain and variables, applies `.railway/railway.ts`, and deploys. To deploy another way, add Railway's TypeScript SDK with `pnpm add -D -w railway`, run `railway config apply` once (Railway CLI 5.42.1 or newer), and add the production variables listed below to the service. The file names the service after the package; if yours has another name, change it there.
+The quickest first deploy is `pnpm clubedge deploy`: it creates the project, Postgres, the service, its domain and variables, applies `.railway/railway.ts`, and deploys. To deploy another way, add Railway's TypeScript SDK with `pnpm add -D -w railway`, run `railway config apply` once (Railway CLI 5.42.1 or newer), and add the production variables listed below to the service. The file names the service after the package; if yours has another name, change it there. <!-- clubedge:only framework!=none -->
+The first deploy is `pnpm clubedge deploy`: it creates the project, Postgres, the API's service, its public `*.up.railway.app` domain and its variables, writes and applies `.railway/railway.ts`, and deploys. The API is the project's one public service. <!-- clubedge:only framework=none -->
 
 <!-- clubedge:end -->
 <!-- clubedge:if deploy=render -->
@@ -599,7 +685,7 @@ It runs once the repository has the Neon settings below, in Settings, then Secre
 
 The Starter repository also runs `.github/workflows/stack-previews.yml`. For each pull request, it generates React + Vite with Hono and FastAPI through the CLI, then deploys each generated frontend and API as separate Render web services. Both stacks use the existing main Supabase project's Auth endpoint and publishable key, retrieved by the workflow and passed to their generated frontend and API. Set the Actions secret `SUPABASE_ACCESS_TOKEN` and the repository secret or variable `SUPABASE_PROJECT_REF`. The token needs permission to read API gateway keys. These previews share the main project's Supabase Auth configuration and user pool; their application databases remain isolated on per-stack Neon branches. Also set the existing `RENDER_API_KEY`, `NEON_PROJECT_ID`, and `NEON_API_KEY`; if the Render token can access multiple workspaces, set `RENDER_OWNER_ID`. Connect the Starter GitHub repository to that Render workspace so Render can build generated preview branches. Each stack's Neon branch, API service, frontend service, and generated Git branch are deleted when the pull request closes. To allow Supabase email confirmation and password-reset links to return to the Render frontends, add `https://clubedge-starter-vite-**-web.onrender.com/**` under the Supabase project's Auth URL Configuration > Redirect URLs; [Supabase documents the wildcard format](https://supabase.com/docs/guides/auth/redirect-urls#use-wildcards-in-redirect-urls). Render free services can take about a minute to wake after inactivity. These settings apply only to the Starter repository and are not copied into generated projects. <!-- clubedge:only starter-repository -->
 
-From your machine, `pnpm clubedge deploy --preview` does the same for the current Git branch. <!-- clubedge:only deploy=vercel|railway -->
+From your machine, `pnpm clubedge deploy --preview` does the same for the current Git branch. <!-- clubedge:only deploy=vercel|railway && framework!=none -->
 
 <!-- clubedge:end -->
 
@@ -611,8 +697,9 @@ Production needs these variables:
 - `NEXT_PUBLIC_APP_URL`, the deployed origin. Next.js compiles it into the build, server code included (sign-in links, Stripe return URLs), so it must be set when the image is built: Railway and Render pass the service's variable to the Docker build; on Fly.io set it under `[build.args]` in `fly.toml`; with the Docker workflow, set the repository variable `NEXT_PUBLIC_APP_URL`. <!-- clubedge:only framework=next -->
 - `APP_URL`, the deployed origin. <!-- clubedge:only framework=tanstack-start -->
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=next && auth=supabase -->
-- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=tanstack-start && auth=supabase -->
+- `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`, from the Supabase project. <!-- clubedge:only framework=tanstack-start|none && auth=supabase -->
 - `BETTER_AUTH_SECRET`, at least 32 random characters, different from development. <!-- clubedge:only auth=better-auth -->
+- `BETTER_AUTH_URL`, the API's public `https://` URL, which `pnpm clubedge deploy` sets. <!-- clubedge:only auth=better-auth && framework=none -->
 - `SUPABASE_SECRET_KEY`, if users should be able to delete their account. <!-- clubedge:only auth=supabase -->
 - `SMTP_URL` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=smtp -->
 - `RESEND_API_KEY` and `EMAIL_FROM`; without them, production refuses to send email. <!-- clubedge:only email=resend -->
@@ -636,7 +723,8 @@ Rate limits count requests per client address, so the server must know which add
 `CLIENT_IP_HEADER` wins when both are set. Without either, or when a request lacks what they name, the address is the connection's own, which is right for a server that clients reach directly. A value that cannot be right stops the server at startup, and `pnpm check:env` reports it.
 
 Next.js gives the app no connection address, so without either setting the address is the last `X-Forwarded-For` entry, the one the proxy nearest the app added: right on Vercel, which replaces the header with the client's address, and behind one proxy you run. Set your host's setting from the table anyway, since some hosts add more than one entry. <!-- clubedge:only framework=next -->
-The frontend's server finds the address with its own settings and sends it to the API as the only `X-Forwarded-For` entry, dropping any address header the client sent. An API that only the frontend's server reaches, over a private network as in `docker-compose.yml`, sets `TRUSTED_PROXY_HOPS=1`. <!-- clubedge:only api!=none -->
+The frontend's server finds the address with its own settings and sends it to the API as the only `X-Forwarded-For` entry, dropping any address header the client sent. An API that only the frontend's server reaches, over a private network as in `docker-compose.yml`, sets `TRUSTED_PROXY_HOPS=1`. <!-- clubedge:only api!=none && framework!=none -->
+Without a website, clients reach the API itself, so the API takes the setting for where it runs, from the table below. `pnpm clubedge deploy` sets it: `TRUSTED_PROXY_HOPS=1` with Docker Compose, behind Caddy, and `CLIENT_IP_HEADER=x-real-ip` on Railway. <!-- clubedge:only framework=none -->
 
 | Where the app runs                    | Setting                                             |
 | ------------------------------------- | --------------------------------------------------- |
@@ -648,11 +736,12 @@ The frontend's server finds the address with its own settings and sends it to th
 | Behind proxies you run (Caddy, nginx) | `TRUSTED_PROXY_HOPS=1`, or the number of proxies    |
 | Reached by clients directly           | Neither                                             |
 
-Vercel and Netlify take runtime variables only from the project's settings, not from `vercel.json` or `netlify.toml`, so set `CLIENT_IP_HEADER` there with the others.
+Vercel and Netlify take runtime variables only from the project's settings, not from `vercel.json` or `netlify.toml`, so set `CLIENT_IP_HEADER` there with the others. <!-- clubedge:only framework!=none -->
 
 ## Checks
 
-`pnpm clubedge doctor` checks that the project can run: Node.js and pnpm versions, installed dependencies, the lockfile, and `apps/web/.env.local` against the example, followed by `pnpm check:services`. Start there when something does not work.
+`pnpm clubedge doctor` checks that the project can run: Node.js and pnpm versions, installed dependencies, the lockfile, and `apps/web/.env.local` against the example, followed by `pnpm check:services`. Start there when something does not work. <!-- clubedge:only framework!=none -->
+`pnpm clubedge doctor` checks that the project can run: Node.js and pnpm versions, installed dependencies, the lockfile, and `apps/api/.env.local` against the example, followed by `pnpm check:services`. Start there when something does not work. <!-- clubedge:only framework=none -->
 
 Run the checks relevant to your change before opening a pull request:
 
@@ -664,6 +753,8 @@ pnpm format:check
 pnpm build
 ```
 
+<!-- clubedge:if framework!=none -->
+
 Browser checks use Playwright. Install Chromium once, then run `pnpm test:e2e`:
 
 ```sh
@@ -672,6 +763,10 @@ pnpm test:e2e
 ```
 
 The Playwright configuration starts the local app with a placeholder database URL; browser scenarios should not require real provider credentials.
+
+<!-- clubedge:end -->
+
+CI (`.github/workflows/ci.yml`) also serves the API's production build and checks `/api/health` on port 3001, then builds the API's image, runs its migrations, and checks the image the same way. <!-- clubedge:only framework=none -->
 
 <!-- clubedge:if starter-repository -->
 
@@ -699,7 +794,7 @@ In generated projects the app lives in `apps/web`, its Dockerfile is the root `D
 
 <!-- clubedge:end -->
 
-<!-- clubedge:if api!=none -->
+<!-- clubedge:if api!=none && framework!=none -->
 
 ## The frontend and its API
 
@@ -711,24 +806,53 @@ The app is two apps that meet at one HTTP contract:
 
 `pnpm dev` starts both: the frontend on <http://localhost:3000>, and the API on port 3001. The frontend's server forwards `/api` to the API (its `API_URL`), so the browser sees one origin and cookies stay first-party.
 
+<!-- clubedge:end -->
+<!-- clubedge:if framework=none -->
+
+## Without a website
+
+This project has no website: it is the API, in `apps/api`, and the native app, in `apps/mobile`, which calls the API directly through the client generated from its contract, `packages/contract/openapi.yaml`. <!-- clubedge:only mobile!=none -->
+This project has no website: it is the API, in `apps/api`, which clients call directly, and its contract, `packages/contract/openapi.yaml`. <!-- clubedge:only mobile=none -->
+The API owns the database and the provider modules, and reads `apps/api/.env.local` (from `apps/api/.env.example`); the database commands read `DATABASE_URL` from there too.
+
+`pnpm dev` starts the API on port 3001, and `pnpm start` serves its production build there. In development it listens on every interface (`HOST=0.0.0.0`), so a phone or another device on the same network reaches it at this computer's address. `pnpm check:services` and `pnpm check:env` check the API, and `pnpm docker:dev` runs it alone in Docker Compose, on the same port.
+
+With the API running, `pnpm --filter @clubedge/mobile-app android` (or `ios`) builds the native app and starts it on an emulator or a phone. Left blank in development, its `EXPO_PUBLIC_API_URL`, in `apps/mobile/.env.local`, means the API on this computer at port 3001 (`EXPO_PUBLIC_DEV_SERVER_PORT`): `http://10.0.2.2:3001` from the Android emulator and `http://localhost:3001` from the iOS simulator. On a phone, set it to `http://<your computer's address>:3001`. [The native app](#the-native-app) has the details. <!-- clubedge:only mobile!=none -->
+
+Better Auth runs in the API, which serves it at `/api/auth`; [Better Auth](#better-auth) lists its settings. <!-- clubedge:only auth=better-auth -->
+It trusts the native app's address scheme, made from the site config's `serviceId`, so the app signs in there. <!-- clubedge:only auth=better-auth && mobile!=none -->
+
+Emailed links open the native app, through its address scheme: confirming a new account opens its sign-in screen, and a password reset link opens its reset screen, which sets the new password. <!-- clubedge:only auth=better-auth && email!=none && mobile!=none -->
+Supabase's emailed links open the native app, through its address scheme, once Supabase's Redirect URLs list that scheme, such as `my-product://**` (see [Supabase Auth](#supabase-auth)): confirming a new account opens the app's sign-in screen, and a password reset link opens its reset screen, which sets the new password. <!-- clubedge:only auth=supabase && mobile!=none -->
+
+`pnpm clubedge deploy` publishes the API itself, with Docker Compose: Caddy serves it at your `DOMAIN` over HTTPS. <!-- clubedge:only deploy=docker -->
+`pnpm clubedge deploy` publishes the API itself on Railway, as the project's one public service, with its own `*.up.railway.app` domain. <!-- clubedge:only deploy=railway -->
+For the native app's release builds, set its `EXPO_PUBLIC_API_URL` to that `https://` address. <!-- clubedge:only mobile!=none -->
+[Deploy](#deploy) has the details.
+
+<!-- clubedge:end -->
+<!-- clubedge:if api!=none -->
+
 To change the API, edit `openapi.yaml` first, run `pnpm --filter @clubedge/contract generate`, then implement the change in the API. Its tests run `@clubedge/contract/conformance`, the suite every API passes; run it against any running API with:
 
 ```sh
 API_URL=http://127.0.0.1:3001 pnpm exec vitest run packages/contract/src/remote.test.ts
 ```
 
-Some endpoints are an optional part of a module, a capability (`x-clubedge-capability` in `openapi.yaml`): the account settings page's display name and account deletion are the `account` capability of the auth module. An API without a capability answers its endpoints with 404, and the suite checks that unless `API_CAPABILITIES` lists it (such as `API_CAPABILITIES=account`).
+Some endpoints are an optional part of a module, a capability (`x-clubedge-capability` in `openapi.yaml`): the display name and account deletion of the account settings are the `account` capability of the auth module. An API without a capability answers its endpoints with 404, and the suite checks that unless `API_CAPABILITIES` lists it (such as `API_CAPABILITIES=account`).
 
-The settings page changes passwords with the auth provider, in the browser or in Better Auth's server, which signs out the user's other sessions and applies the provider's rate limits. The display name and account deletion go through the API, which keeps the app's data: deletion checks the password (10 tries a minute per user, refused while the limit cannot be checked), removes the user's app data, then deletes the user from the provider. <!-- clubedge:only auth!=none && api=hono|fastapi -->
+The settings page changes passwords with the auth provider, in the browser or in Better Auth's server, which signs out the user's other sessions and applies the provider's rate limits. The display name and account deletion go through the API, which keeps the app's data: deletion checks the password (10 tries a minute per user, refused while the limit cannot be checked), removes the user's app data, then deletes the user from the provider. <!-- clubedge:only auth!=none && api=hono|fastapi && framework!=none -->
+Passwords change with the auth provider, which signs out the user's other sessions and applies its rate limits. The display name and account deletion go through the API, which keeps the app's data: deletion checks the password (10 tries a minute per user, refused while the limit cannot be checked), removes the user's app data, then deletes the user from the provider. <!-- clubedge:only auth!=none && framework=none -->
 
-In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `pnpm docker:dev` runs both, with `docker compose -f docker-compose.yml up --build`: name the file, since `compose.yaml` from `pnpm clubedge deploy` would take its place.
+In production, run each app's image: `apps/vite/Dockerfile` (the frontend, served by Node with `API_URL` set to the API's address) and the selected API image (`apps/api/Dockerfile` or `apps/api-fastapi/Dockerfile`). `pnpm docker:dev` runs both, with `docker compose -f docker-compose.yml up --build`: name the file, since `compose.yaml` from `pnpm clubedge deploy` would take its place. <!-- clubedge:only framework!=none -->
+In production, run the API's image, built from `apps/api/Dockerfile` as [Docker](#docker) describes. `pnpm docker:dev` runs it with `docker compose -f docker-compose.yml up --build`: name the file, since `compose.yaml` from `pnpm clubedge deploy` would take its place. <!-- clubedge:only framework=none -->
 
 Run `node migrate.mjs` in the API's image before a new version starts. <!-- clubedge:only api=hono -->
 The API is in Python and managed with [uv](https://docs.astral.sh/uv/): its `package.json` scripts call uv, ruff, mypy, and pytest, so `pnpm dev`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` run it like the other apps. The database schema and migrations stay in `packages/db`, and the API's image bundles their Node migrator: run `node migrate.mjs` in it before a new version starts. <!-- clubedge:only api=fastapi -->
 
 ### Apps installed on phones
 
-An app installed on a phone calls the API through the frontend's domain and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
+An app installed on a phone calls the API and keeps the version it shipped with, often for months. It asks `/api/app-version` which versions the API serves, and the answer is never cached. Set them in `apps/api/.env.local`, or in the API's environment in production; each is `null` while unset:
 
 - `APP_MINIMUM_VERSION`, the oldest app version the API still serves: below it, the app shows a blocking update screen.
 - `APP_LATEST_VERSION`, the newest released version: below it, the app may show an optional update notice.
@@ -804,23 +928,48 @@ Builds without `--demo` contain none of it. The demo replaces the app's build in
 
 `apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens: sign-in, a dashboard, and settings. <!-- clubedge:only auth!=none -->
 `apps/mobile` is a native Android and iOS app, built with [Expo](https://expo.dev) (SDK 58) and React Native, with its own screens. <!-- clubedge:only auth=none -->
-It calls the API through your website, as the website does, with the same contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config.
+It calls the API through your website, as the website does, with the same contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config. <!-- clubedge:only framework!=none -->
+It calls the API directly, with the contract client (`@clubedge/contract`). Expo generates its Android and iOS projects from `apps/mobile/app.config.ts` whenever it builds them (`expo prebuild`), so `android/` and `ios/` are not committed, and upgrades only change the app's TypeScript and config. <!-- clubedge:only framework=none -->
 
 The app runs as a development build, which needs [Android Studio](https://developer.android.com/studio) for Android, and a Mac with [Xcode](https://developer.apple.com/xcode/) for iOS, as Expo's [environment setup](https://docs.expo.dev/get-started/set-up-your-environment/) describes. Expo Go, the store app that runs projects without building them, does not support SDK 58 yet.
+
+The app signs in with Supabase itself: before building it, set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `apps/mobile/.env.local` to the API's Supabase settings. <!-- clubedge:only auth=supabase && framework=none -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if mobile!=none && framework!=none -->
 
 1. Set your app's id in `apps/mobile/app.config.ts`: a reverse-domain name you own, such as `com.yourcompany.app`. It becomes permanent once a store lists the app, so set it before the first release build. The app's name and its address scheme come from `apps/mobile/src/config/site.json`.
 2. Start the website and the API with `pnpm dev`. In development, the app calls them at `http://10.0.2.2:3000` from the Android emulator and at `http://localhost:3000` from the iOS simulator; on a phone, set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local` to `http://<your computer's address>:3000`.
    Set `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` there too, to the website's Supabase settings. <!-- clubedge:only auth=supabase -->
 3. Run `pnpm --filter @clubedge/mobile-app android` (or `ios`). The first run generates the native project, builds the app, installs it on a running emulator or a connected phone, and starts Expo's dev server, which reloads the app as you change it. Later, `pnpm --filter @clubedge/mobile-app start` starts the dev server for the installed build; build again after adding a package with native code.
 
-For a release, set `EXPO_PUBLIC_API_URL` to the website's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your website.
+<!-- clubedge:end -->
+<!-- clubedge:if starter-repository -->
+<!-- In generated projects without a website, the block below supplies these steps; its comment keeps it hidden here. -->
+<!-- clubedge:end -->
+<!-- clubedge:if mobile!=none && framework=none
 
-How the app works with the website:
+1. Set your app's id in `apps/mobile/app.config.ts`: a reverse-domain name you own, such as `com.yourcompany.app`. It becomes permanent once a store lists the app, so set it before the first release build. The app's name and its address scheme come from `apps/mobile/src/config/site.json`.
+2. Start the API with `pnpm dev`. In development, the app calls it at `http://10.0.2.2:3001` from the Android emulator and at `http://localhost:3001` from the iOS simulator; on a phone, set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local` to `http://<your computer's address>:3001`.
+3. Run `pnpm --filter @clubedge/mobile-app android` (or `ios`). The first run generates the native project, builds the app, installs it on a running emulator or a connected phone, and starts Expo's dev server, which reloads the app as you change it. Later, `pnpm --filter @clubedge/mobile-app start` starts the dev server for the installed build; build again after adding a package with native code.
 
-- Better Auth runs on the website, which trusts the app's address scheme (made from the site config's `serviceId`). Its Expo plugin keeps the session cookie in the device's secure storage and sends it with the app's calls. <!-- clubedge:only auth=better-auth -->
-- Supabase keeps the app's session in the app's storage on the device, and the app sends its access token to the API, as the website does. <!-- clubedge:only auth=supabase -->
-- The app sends no browser origin, so the website's CORS settings do not apply to it.
-- Emailed links, such as sign-up confirmations and password resets, open the website. After confirming an address or setting a new password, sign in again in the app. <!-- clubedge:only auth!=none -->
+<!-- clubedge:end -->
+<!-- clubedge:if mobile!=none -->
+
+For a release, set `EXPO_PUBLIC_API_URL` to the website's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your website. <!-- clubedge:only framework!=none -->
+For a release, set `EXPO_PUBLIC_API_URL` to the API's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your API. <!-- clubedge:only framework=none -->
+
+How the app works with the website: <!-- clubedge:only framework!=none -->
+How the app works with the API: <!-- clubedge:only framework=none -->
+
+- Better Auth runs on the website, which trusts the app's address scheme (made from the site config's `serviceId`). Its Expo plugin keeps the session cookie in the device's secure storage and sends it with the app's calls. <!-- clubedge:only auth=better-auth && framework!=none -->
+- Better Auth runs in the API, which trusts the app's address scheme (made from the site config's `serviceId`). Its Expo plugin keeps the session cookie in the device's secure storage and sends it with the app's calls. <!-- clubedge:only auth=better-auth && framework=none -->
+- Supabase keeps the app's session in the app's storage on the device, and the app sends its access token to the API, as the website does. <!-- clubedge:only auth=supabase && framework!=none -->
+- Supabase keeps the app's session in the app's storage on the device, and the app sends its access token to the API with each call. <!-- clubedge:only auth=supabase && framework=none -->
+- The app sends no browser origin, so CORS settings do not apply to it.
+- Emailed links, such as sign-up confirmations and password resets, open the website. After confirming an address or setting a new password, sign in again in the app. <!-- clubedge:only auth!=none && framework!=none -->
+- Emailed links open the app, through its address scheme: confirming a new account opens its sign-in screen, and a password reset link opens its reset screen, which sets the new password. <!-- clubedge:only auth=better-auth && email!=none && framework=none -->
+- Supabase's emailed links open the app, through its address scheme, once its Redirect URLs list it (see [Supabase Auth](#supabase-auth)): confirming a new account opens the sign-in screen, and a password reset link opens the reset screen, which sets the new password. <!-- clubedge:only auth=supabase && framework=none -->
 - Deleting the account is in the app's settings, as the App Store requires of apps that let people sign up. <!-- clubedge:only auth!=none -->
 - The app has no billing: app stores require their own in-app purchases for digital goods, so subscriptions stay on the website. <!-- clubedge:only payments!=none -->
 - Its icon, Android's adaptive icon, and its splash screen are the images in `apps/mobile/assets`, which `app.config.ts` names.
@@ -834,22 +983,27 @@ Each time it starts, the app compares its version, `version` in `app.config.ts` 
 This project is a starting point; review the security and operational choices for your application before production use:
 
 - Set production environment variables through your hosting provider's secret manager. Use unique, rotated credentials and TLS for external connections.
-- Set the app URL variable to the deployed origin and add its `/auth/callback` URL to Supabase's allowed redirect URLs. <!-- clubedge:only auth=supabase -->
-- Make authenticated server routes call `getCurrentUser()` or `requireUser()` from `@/server/auth` (the latter throws a 401 `AppError`), and protect pages with `getPageUser`, which redirects signed-out visitors to `/login`. Do not treat cookie contents alone as proof of identity. <!-- clubedge:only auth!=none -->
+- Set the app URL variable to the deployed origin and add its `/auth/callback` URL to Supabase's allowed redirect URLs. <!-- clubedge:only auth=supabase && framework!=none -->
+- Add the native app's address scheme to Supabase's allowed redirect URLs. <!-- clubedge:only auth=supabase && framework=none && mobile!=none -->
+- Make authenticated server routes call `getCurrentUser()` or `requireUser()` from `@/server/auth` (the latter throws a 401 `AppError`), and protect pages with `getPageUser`, which redirects signed-out visitors to `/login`. Do not treat cookie contents alone as proof of identity. <!-- clubedge:only auth!=none && framework!=none -->
+- Make every API route that acts for a user check the request's user first, as the account routes do, and answer 401 without one. Do not trust a user id that a client sends. <!-- clubedge:only auth!=none && framework=none -->
 - Authorize storage access and validate upload size, content type, and object ownership in the route before using the storage adapter. <!-- clubedge:only storage!=none -->
 - Configure Redis for rate limiting when you deploy more than one instance; the in-memory fallback does not share counts between instances. <!-- clubedge:only cache=redis -->
 - The rate limiter keeps counts in memory, so deploy one instance or switch to a shared store before scaling out. <!-- clubedge:only cache=memory -->
 - Tell the server where each client's address is for your host, with `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS`, so rate limits count each client on its own: see [Client addresses](#client-addresses).
-- Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets.
+- Configure and verify a restrictive Content Security Policy for the scripts and asset origins used by your deployment. A generic policy is not included because it can break framework tooling and project-specific assets. <!-- clubedge:only framework!=none -->
 - Review database migration and backup procedures, provider access policies, and application-specific error handling.
 
 ## Troubleshooting
 
-- **Environment validation fails:** confirm you copied the example to `apps/web/.env.local` and set `DATABASE_URL`. The error names the module whose variables are invalid.
-- **Auth redirects fail:** add the exact local or deployed `/auth/callback` URL to Supabase Auth's allowed redirect URLs. <!-- clubedge:only auth=supabase -->
+- **Environment validation fails:** confirm you copied the example to `apps/web/.env.local` and set `DATABASE_URL`. The error names the module whose variables are invalid. <!-- clubedge:only framework!=none -->
+- **Environment validation fails:** confirm you copied the example to `apps/api/.env.local` and set `DATABASE_URL`. The error names the module whose variables are invalid. <!-- clubedge:only framework=none -->
+- **Auth redirects fail:** add the exact local or deployed `/auth/callback` URL to Supabase Auth's allowed redirect URLs. <!-- clubedge:only auth=supabase && framework!=none -->
+- **Emailed links do not open the app:** add the native app's address scheme, such as `my-product://**`, to Supabase Auth's Redirect URLs. <!-- clubedge:only auth=supabase && framework=none && mobile!=none -->
 - **Database connection fails:** check the URL, network access, and whether your provider expects a transaction pooler. Keep `prepare: false` for the current Supabase pooler setup.
 - **Redis cannot connect:** check that the URL uses `redis://` or `rediss://`, credentials are current, and outbound TCP access is allowed. <!-- clubedge:only cache=redis -->
 - **The mobile app cannot reach the API:** check that `WEB_URL` in `apps/shell/.env.local` is the deployed website's address and that the website's `MOBILE_ORIGINS` lists the app's origins, then run `pnpm --filter @clubedge/shell sync` again. <!-- clubedge:only shell!=none -->
-- **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the website's `https://` address, and a phone in development your computer's address on the same network. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none -->
-- **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`.
+- **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the website's `https://` address, and a phone in development your computer's address on the same network. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none && framework!=none -->
+- **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the API's `https://` address, and a phone in development your computer's address on the same network, with port 3001. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none && framework=none -->
+- **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`. <!-- clubedge:only framework!=none -->
 - **A package file appears missing after an offline install:** retry with a normal registry-backed `pnpm install`; an incomplete local package cache can satisfy offline resolution while leaving package contents incomplete.

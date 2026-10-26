@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const { update, updateUrl } = useUpdate();
 
-  // The API's health and the signed-in user, from the same contract the website uses.
+  // The API's health and the signed-in user, from the API's contract (packages/contract).
   const load = useCallback(async () => {
     const [health, session] = await Promise.all([
       api.GET("/api/health").catch(() => null),

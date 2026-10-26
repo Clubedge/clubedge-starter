@@ -40,6 +40,20 @@ export interface BetterAuthServerConfig {
   requireEmailVerification?: boolean;
   /** The product name used in email subjects. */
   appName?: string;
+  /**
+   * Where emailed links lead. "pages", the default: the app's own pages at `baseUrl`,
+   * /reset-password and /auth/callback. "endpoints": Better Auth's own endpoints at `baseUrl`,
+   * which check the link, then open the address the client asked for, such as its mobile app's,
+   * for an API that has no pages.
+   */
+  emailLinks?: "pages" | "endpoints";
+  /**
+   * Origins Better Auth accepts besides `baseUrl`, such as a mobile app's address scheme
+   * (`my-product://`), which its requests and its links' addresses use.
+   */
+  trustedOrigins?: string[];
+  /** Better Auth's own delete-user endpoint; turn it off where the app deletes accounts itself. */
+  deleteUser?: boolean;
 }
 
 /** Stores Better Auth's tables in a Drizzle PostgreSQL database (see ./schema). */
@@ -65,12 +79,18 @@ export function createBetterAuthServer({
   sendEmail,
   requireEmailVerification = false,
   appName = "App",
+  emailLinks = "pages",
+  trustedOrigins = [],
+  deleteUser = true,
 }: BetterAuthServerConfig) {
   const link = (path: string, params: Record<string, string>) => {
     const url = new URL(path, baseUrl);
     for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
     return url.toString();
   };
+  // Better Auth's link to its own endpoint, or the app's page for the same token.
+  const emailed = (endpoint: string, page: string) =>
+    emailLinks === "endpoints" ? endpoint : page;
   return betterAuth({
     database,
     secret,
@@ -84,12 +104,12 @@ export function createBetterAuthServer({
         ? {
             resetPasswordTokenExpiresIn: 60 * 60,
             // The link opens the app's reset page, which sends the token back with the new password.
-            sendResetPassword: async ({ user, token }) =>
+            sendResetPassword: async ({ user, token, url }) =>
               sendInBackground(
                 sendEmail,
                 passwordResetEmail({
                   to: user.email,
-                  url: link("/reset-password", { token }),
+                  url: emailed(url, link("/reset-password", { token })),
                   appName,
                 }),
               ),
@@ -102,12 +122,12 @@ export function createBetterAuthServer({
             sendOnSignUp: true,
             autoSignInAfterVerification: true,
             // The link goes through the app's auth callback, like Supabase's confirmation links.
-            sendVerificationEmail: async ({ user, token }) =>
+            sendVerificationEmail: async ({ user, token, url }) =>
               sendInBackground(
                 sendEmail,
                 verificationEmail({
                   to: user.email,
-                  url: link("/auth/callback", { code: token }),
+                  url: emailed(url, link("/auth/callback", { code: token })),
                   appName,
                 }),
               ),
@@ -115,11 +135,12 @@ export function createBetterAuthServer({
         }
       : {}),
     // Deleting an account needs the user's password (checked by deleteAccount below).
-    user: { deleteUser: { enabled: true } },
+    user: { deleteUser: { enabled: deleteUser } },
     advanced: { database: { generateId: "uuid" } },
     // Keep Better Auth's provider-level throttling enabled for every host, including the
     // decoupled Vite auth endpoint. Frameworks may add stricter per-client limits as well.
     rateLimit: { enabled: true },
+    trustedOrigins,
   });
 }
 

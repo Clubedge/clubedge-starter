@@ -17,10 +17,19 @@ export class EmailNotVerifiedError extends Error {
   }
 }
 
+// clubedge:if framework!=none
 /**
  * What the app needs from the sign-in provider. Emailed links (confirming the address, resetting
  * the password) open the website, which handles them; the user then signs in here.
  */
+// clubedge:end
+// clubedge:if framework=none
+/**
+ * What the app needs from the sign-in provider. Emailed links (confirming the address, resetting
+ * the password) open this app at the address the screen asks for (`redirectTo`), through its
+ * scheme: sign-in, and the reset screen.
+ */
+// clubedge:end
 export interface AuthClient {
   /** Whether the provider's settings are in the app's env file. */
   configured: boolean;
@@ -34,9 +43,24 @@ export interface AuthClient {
   /** The headers that carry the session to the API: a bearer token, or the session cookie. */
   sessionHeaders(): Promise<Record<string, string>>;
   signIn(email: string, password: string): Promise<void>;
-  /** needsConfirmation: the user opens the emailed link before signing in. */
-  signUp(email: string, password: string): Promise<{ needsConfirmation: boolean }>;
-  requestPasswordReset(email: string): Promise<void>;
+  /**
+   * needsConfirmation: the user opens the emailed link before signing in. `redirectTo` is where
+   * the link leads once it has confirmed the address; the provider's own setting without it.
+   */
+  signUp(request: {
+    email: string;
+    password: string;
+    redirectTo?: string;
+  }): Promise<{ needsConfirmation: boolean }>;
+  /** Emails a reset link, which leads to `redirectTo` once checked; the website's page without it. */
+  requestPasswordReset(request: { email: string; redirectTo?: string }): Promise<void>;
+  // clubedge:if framework=none
+  /**
+   * Sets a new password with what the emailed reset link carries, from the address it opened this
+   * app at. Resolves whether that also signed this device in.
+   */
+  resetPassword(link: string, newPassword: string): Promise<{ signedIn: boolean }>;
+  // clubedge:end
   /**
    * Checks the current password and sets the new one, keeping this device signed in and signing
    * out the user's other sessions. Throws AccountError for a wrong password, a refused new one,

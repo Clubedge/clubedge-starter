@@ -6,6 +6,7 @@ import type { ApiDependencies } from "@/app";
 import { account } from "./account"; // clubedge:only auth!=none
 import { appVersion } from "./app-version";
 import { getCurrentUser } from "./auth";
+import { handleAuthRequest } from "./auth"; // clubedge:only framework=none && auth=better-auth
 import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
 import { backgroundJobs } from "./jobs"; // clubedge:only jobs!=none
@@ -30,6 +31,7 @@ export const dependencies: ApiDependencies = {
   // Read at startup: a CLIENT_IP_HEADER or TRUSTED_PROXY_HOPS that cannot be right stops the API.
   clientIpSettings: parseClientIpSettings(process.env),
   account, // clubedge:only auth!=none
+  authHandler: handleAuthRequest, // clubedge:only framework=none && auth=better-auth
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none
   payments: { isPaymentsConfigured, getBilling, getUserProfileId, appUrl }, // clubedge:only payments!=none

@@ -368,8 +368,11 @@ describe("clubedge.template.json modules", () => {
   it.each(manifest.conditional.map((file: string) => [file]))(
     "%s has balanced blocks that name real modules and options",
     (file) => {
-      // Each slot's stacks (and "none" for optional slots), then each module's options.
-      const slots = Object.entries<{ roles: string[]; default?: string }>(root.slots);
+      // Each slot's stacks (and "none" for slots that can be left empty: those without a
+      // default, and optional ones), then each module's options.
+      const slots = Object.entries<{ roles: string[]; default?: string; optional?: boolean }>(
+        root.slots,
+      );
       const known: Record<string, string[]> = {
         ...Object.fromEntries(
           slots.map(([id, slot]) => [
@@ -378,7 +381,7 @@ describe("clubedge.template.json modules", () => {
               ...stackDescriptors
                 .filter((stack) => slot.roles.includes(stack.role))
                 .map((stack) => stack.id),
-              ...(slot.default ? [] : ["none"]),
+              ...(slot.default && !slot.optional ? [] : ["none"]),
             ],
           ]),
         ),

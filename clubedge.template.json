@@ -16,11 +16,19 @@
       },
       "dockerfile": "Dockerfile",
       "roles": ["fullstack", "frontend"],
-      "default": "next"
+      "default": "next",
+      "optional": true,
+      "fallback": "api",
+      "packages": {
+        "@clubedge/ui": "packages/ui"
+      },
+      "files": ["e2e", "playwright.config.ts", "scripts/smoke-generated-app.mjs"],
+      "filesWhenEmpty": ["apps/expo/src/app/reset-password.tsx"],
+      "scripts": ["test:e2e", "test:e2e:ui", "docker:build", "docker:start"]
     },
     "api": {
       "name": "API",
-      "question": "Which API should the frontend call?",
+      "question": "Which API should the apps call?",
       "path": "apps/api",
       "package": "@clubedge/api",
       "env": {
@@ -112,5 +120,23 @@
     "scripts/template-manifest.test.ts",
     "scripts/vite-api-routes.test.ts",
     "scripts/vite-client-ip.test.ts"
+  ],
+  "rules": [
+    {
+      "when": "framework=none && payments!=none",
+      "message": "Payments send users back to the website's pages, and a project without a website has none: choose --payments none, or a web app with --framework."
+    },
+    {
+      "when": "framework=none && api=fastapi && auth=better-auth",
+      "message": "Without a website, Better Auth runs in the API, and FastAPI cannot run it: choose --api hono, another --auth, or a web app with --framework."
+    },
+    {
+      "when": "framework=none && jobs=inngest",
+      "message": "Inngest reaches the jobs through the website's address, and a project without a website has none: choose --jobs pg-boss or --jobs bullmq, which run in the API."
+    },
+    {
+      "when": "framework=none && deploy!=docker|railway",
+      "message": "Fly.io, Vercel, Netlify, and Render deploy a web app, and this project has only its API: choose --deploy docker or --deploy railway."
+    }
   ]
 }

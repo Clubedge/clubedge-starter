@@ -8,13 +8,15 @@
     "scripts/check-services.ts",
     "src/app.test.ts",
     "src/app.ts",
+    "src/env/production.test.ts",
     "src/env/production.ts",
     "src/index.ts",
     "src/jobs/index.ts",
     "src/server/account.ts",
     "src/server/auth.ts",
     "src/server/index.ts",
-    "src/server/storage.ts"
+    "src/server/storage.ts",
+    "src/server/variants/auth.better-auth.ts"
   ],
   "deployment": {
     "id": "api",

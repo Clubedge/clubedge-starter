@@ -2,7 +2,8 @@ import { createApiClient } from "@clubedge/contract";
 import { authClient } from "@/lib/auth";
 import { apiUrl } from "@/lib/config";
 
-// The API, through the website: its server forwards /api to the API service, with the session.
+// The API, through the website: its server forwards /api to the API service, with the session. // clubedge:only framework!=none
+// The API, which the app calls at its own address, with the session. // clubedge:only framework=none
 export const api = createApiClient({ baseUrl: apiUrl });
 
 api.use({

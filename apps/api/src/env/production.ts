@@ -14,13 +14,21 @@ export type Requirement = { key: string; use: string; url?: boolean };
 export function requiredVariables(): Requirement[] {
   return [
     { key: "DATABASE_URL", use: "the database", url: true },
-    { key: "FRONTEND_URL", use: "the frontend's origin, for CORS and links", url: true },
+    { key: "FRONTEND_URL", use: "the frontend's origin, for CORS and links", url: true }, // clubedge:only framework!=none
     // clubedge:if auth=supabase
     { key: "SUPABASE_URL", use: "Supabase Auth", url: true },
     { key: "SUPABASE_PUBLISHABLE_KEY", use: "Supabase Auth" },
     // clubedge:end
-    // clubedge:if auth=better-auth
+    // clubedge:if auth=better-auth && framework!=none
     { key: "BETTER_AUTH_URL", use: "Better Auth sessions, served by the frontend", url: true },
+    // clubedge:end
+    // clubedge:if auth=better-auth && framework=none
+    {
+      key: "BETTER_AUTH_URL",
+      use: "Better Auth, which runs in this API: its public URL",
+      url: true,
+    },
+    { key: "BETTER_AUTH_SECRET", use: "Better Auth's session cookies" },
     // clubedge:end
     // clubedge:if auth=appwrite
     { key: "APPWRITE_ENDPOINT", use: "Appwrite", url: true },
@@ -111,6 +119,13 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   // The Dev Server only runs on a developer's machine: production talks to Inngest Cloud.
   if (env.INNGEST_DEV?.trim() && !/^(0|false)$/i.test(env.INNGEST_DEV.trim())) {
     invalid.push("INNGEST_DEV is set: production uses Inngest Cloud's keys, so remove it");
+  }
+  // clubedge:end
+  // clubedge:if auth=better-auth && framework=none
+  // Better Auth signs session cookies with it, and only warns about a short one.
+  const authSecret = env.BETTER_AUTH_SECRET?.trim();
+  if (authSecret && authSecret.length < 32) {
+    invalid.push("BETTER_AUTH_SECRET is shorter than 32 characters: use openssl rand -hex 32");
   }
   // clubedge:end
   // clubedge:if auth=firebase
