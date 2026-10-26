@@ -5,10 +5,12 @@ import { createS3Storage } from "./index";
 
 // Against a real S3-compatible service (AWS S3, MinIO, s3mock, R2): the
 // STORAGE_* variables from .env.example, as docker-compose.dev.yml and CI
-// provide them.
+// provide them. Without an explicit region, AWS falls back to its own
+// AWS_REGION; only custom endpoints (R2) take the SDK's "auto".
 const bucket = process.env.STORAGE_BUCKET;
 const endpoint = process.env.STORAGE_ENDPOINT;
-const region = process.env.STORAGE_REGION || "auto";
+const region =
+  process.env.STORAGE_REGION || (endpoint ? "auto" : (process.env.AWS_REGION ?? "auto"));
 const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
 const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
 const publicUrl = process.env.STORAGE_PUBLIC_URL;
