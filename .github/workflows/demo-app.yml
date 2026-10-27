@@ -279,6 +279,12 @@ jobs:
           variable BETTER_AUTH_URL "$(jq -n --arg value "$url" '{value: $value}')"
           variable CLIENT_IP_HEADER '{"value": "cf-connecting-ip"}'
           variable PORT '{"value": "3001"}'
+          # The update policy: an installed demo of an older release, whose API this deploy replaces,
+          # shows the update screen, which links to this release's APK. The demo's version is the
+          # release's (below).
+          variable APP_MINIMUM_VERSION "$(jq -n --arg value "${TAG#v}" '{value: $value}')"
+          apk="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/clubedge-native-demo.apk"
+          variable APP_UPDATE_URL_ANDROID "$(jq -n --arg value "$apk" '{value: $value}')"
           if ! render "$api/services/$id/env-vars?limit=100" | jq -e 'any(.[]; (.envVar.key // .key) == "BETTER_AUTH_SECRET")' > /dev/null; then
             variable BETTER_AUTH_SECRET '{"generateValue": true}'
           fi
