@@ -38,6 +38,9 @@ import { inngestRoutes } from "@/routes/inngest";
 // clubedge:if payments!=none
 import { billingRoutes, type BillingDependencies } from "@/routes/billing";
 // clubedge:end
+// clubedge:if push!=none
+import { pushRoutes, type PushNotifications } from "@/routes/push";
+// clubedge:end
 
 /** What the routes need from the composition root (src/server), so tests can pass stand-ins. */
 export interface ApiDependencies {
@@ -73,6 +76,10 @@ export interface ApiDependencies {
   // clubedge:if payments!=none
   /** Billing with the payment provider (src/server/payments); not configured when absent. */
   payments?: BillingDependencies;
+  // clubedge:end
+  // clubedge:if push!=none
+  /** Push notifications to the mobile apps (src/server/push); not configured when absent. */
+  push?: PushNotifications;
   // clubedge:end
 }
 
@@ -171,6 +178,9 @@ export function createApp(dependencies: ApiDependencies) {
   // clubedge:end
   // clubedge:if payments!=none
   app.route("/", billingRoutes(dependencies));
+  // clubedge:end
+  // clubedge:if push!=none
+  app.route("/", pushRoutes(dependencies));
   // clubedge:end
 
   app.notFound((c) => apiError(c, 404, "not_found", "No such API endpoint."));

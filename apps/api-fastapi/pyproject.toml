@@ -29,6 +29,8 @@ observability-sentry = ["sentry-sdk>=2.20"]
 payments-stripe = ["stripe>=11"]
 jobs-bullmq = ["bullmq>=2"]
 jobs-inngest = ["inngest>=0.4"]
+# FCM's service account and APNs' key sign their tokens; APNs answers over HTTP/2 only.
+push-native = ["cryptography>=44", "h2>=4.1"]
 
 [tool.uv]
 default-groups = "all"

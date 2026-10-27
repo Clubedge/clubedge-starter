@@ -6,6 +6,7 @@ import { TrashIcon } from "phosphor-react-native/src/icons/Trash";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import site from "@/config/site.json";
+import { PushSettings } from "@/components/push-settings"; // clubedge:only push!=none
 import { SignOutSheet } from "@/components/sign-out-sheet";
 import { Avatar, ListRow, ListSection, PillButton, Screen } from "@/components/ui";
 import { useAccount } from "@/lib/account";
@@ -13,8 +14,8 @@ import { installedVersion } from "@/lib/app-update";
 import { font, type, useColors, useDarkMode } from "@/lib/theme";
 
 /**
- * The signed-in user and their settings: the name and email address, the app's appearance, the
- * password and the account's deletion, signing out, and the app's version.
+ * The signed-in user and their settings: the name and email address, the app's appearance and
+ * notifications, the password and the account's deletion, signing out, and the app's version.
  */
 export default function Settings() {
   const colors = useColors();
@@ -50,6 +51,7 @@ export default function Settings() {
         </View>
         <ListSection title="Preferences">
           <ListRow icon={MoonIcon} label="Dark mode" toggle={{ value: dark, onChange: setDark }} />
+          <PushSettings /> {/* clubedge:only push!=none */}
         </ListSection>
         <ListSection title="Account">
           <ListRow

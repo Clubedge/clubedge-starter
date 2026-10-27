@@ -1,0 +1,15 @@
+{
+  "name": "Over-the-air updates",
+  "default": "none",
+  "scope": "project",
+  "options": {
+    "eas": {
+      "name": "EAS Update (the native app)",
+      "dependencies": ["expo-updates"],
+      "files": [".github/workflows/expo-update.yml"]
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

@@ -15,6 +15,7 @@ from clubedge_api.cache import create_rate_limiter
 from clubedge_api.contract import User
 from clubedge_api.db import is_database_ready
 from clubedge_api.payments_stripe import stripe_billing  # clubedge:only payments=stripe
+from clubedge_api.push_service import push_notifications  # clubedge:only push!=none
 from clubedge_api.settings import get_settings
 
 # create-clubedge-app names the project here, like the frontend's site config.
@@ -61,5 +62,9 @@ def dependencies() -> ApiDependencies:
         jobs=background_jobs,  # clubedge:only jobs!=none
         # clubedge:if payments=stripe
         payments=stripe_billing(settings.database_url, settings.frontend_origin),
+        # clubedge:end
+        # clubedge:if push!=none
+        push=push_notifications(),
+        site_name=str(site_config()["name"]),
         # clubedge:end
     )

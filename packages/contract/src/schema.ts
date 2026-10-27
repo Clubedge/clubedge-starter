@@ -279,6 +279,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/push/devices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Saves this device's push token for the signed-in user, who then gets notifications on it. A token saved for another user moves to this one, as when someone else signs in on the device. The app sends it again at each start, since a push service can change a token. */
+    post: operations["registerPushDevice"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/push/devices/remove": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Forgets a push token, when the app turns notifications off or signs out. The token is the device's own secret, so it needs no session: a device whose session has ended can still stop its notifications. */
+    post: operations["removePushDevice"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/push/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Sends a notification to each of the signed-in user's devices, to check that they get them. Limited to 5 a minute per user, and refused while the limit cannot be checked. */
+    post: operations["sendTestPush"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -438,6 +489,26 @@ export interface components {
       received: true;
       /** @enum {string} */
       result: "applied" | "ignored" | "duplicate";
+    };
+    PushDevice: {
+      /** @description The device's push token, as the push service gave it to the app. */
+      token: string;
+      /**
+       * @description The service that delivers to the token: Expo's push service for an Expo push token, Firebase Cloud Messaging for an Android device's, APNs for an Apple device's.
+       * @enum {string}
+       */
+      service: "expo" | "fcm" | "apns";
+      /** @enum {string} */
+      platform: "ios" | "android";
+    };
+    PushDeviceRemoval: {
+      token: string;
+    };
+    PushTestResult: {
+      /** @description The devices the push service took the notification for. */
+      sent: number;
+      /** @description Devices forgotten because their push service no longer knows their token, such as an uninstalled app's. */
+      removed: number;
     };
   };
   responses: {
@@ -1076,6 +1147,114 @@ export interface operations {
         };
       };
       503: components["responses"]["NotConfigured"];
+    };
+  };
+  registerPushDevice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PushDevice"];
+      };
+    };
+    responses: {
+      /** @description Saved. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not a push token, or not one of a service this server sends through (code invalid_input): Expo push tokens with Expo's push service, FCM and APNs tokens with FCM and APNs. */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  removePushDevice: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PushDeviceRemoval"];
+      };
+    };
+    responses: {
+      /** @description Forgotten, or never saved. */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description No token (code invalid_input). */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
+      413: components["responses"]["PayloadTooLarge"];
+      415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
+      503: components["responses"]["NotConfigured"];
+    };
+  };
+  sendTestPush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": Record<string, never>;
+      };
+    };
+    responses: {
+      /** @description Sent. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PushTestResult"];
+        };
+      };
+      401: components["responses"]["Unauthorized"];
+      415: components["responses"]["UnsupportedMediaType"];
+      426: components["responses"]["UpdateRequired"];
+      429: components["responses"]["TooManyRequests"];
+      /** @description No push service is set up on this server (code not_configured), or the push service or the rate limit cannot be reached now (code unavailable). */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Error"];
+        };
+      };
     };
   };
 }

@@ -70,6 +70,11 @@ export const moduleOperations: Record<string, Operation[]> = {
     { method: "POST", path: "/api/billing/portal" },
     { method: "POST", path: "/api/webhooks/payments" },
   ],
+  push: [
+    { method: "POST", path: "/api/push/devices" },
+    { method: "POST", path: "/api/push/devices/remove" },
+    { method: "POST", path: "/api/push/test" },
+  ],
 };
 
 /**
@@ -374,6 +379,44 @@ export function describeApiConformance(
         expect(await json(response)).toMatchObject({
           error: { code: response.status === 400 ? "invalid_signature" : "not_configured" },
         });
+      });
+    });
+
+    // Signed out, as the suite has no user, and without a push service's credentials.
+    describe.runIf(has(options, "push"))("push", () => {
+      const device = {
+        token: "ExponentPushToken[contract-check]",
+        service: "expo",
+        platform: "ios",
+      };
+
+      it.each([
+        ["/api/push/devices", device],
+        ["/api/push/test", {}],
+      ])("refuses POST %s when signed out", async (path, body) => {
+        const harness = await setup();
+        const response = await harness.request(path, postJson(body));
+        expect(response.status).toBe(401);
+        expect(await json(response)).toMatchObject({ error: { code: "unauthorized" } });
+      });
+
+      it("takes a device only as JSON", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/push/devices", {
+          method: "POST",
+          headers: { "content-type": "text/plain" },
+          body: JSON.stringify(device),
+        });
+        expect(response.status).toBe(415);
+        expect(await json(response)).toMatchObject({ error: { code: "unsupported_media_type" } });
+      });
+
+      // Without a session too: the token is what the device proves itself with.
+      it("refuses a removal without a token", async () => {
+        const harness = await setup();
+        const response = await harness.request("/api/push/devices/remove", postJson({}));
+        expect(response.status).toBe(400);
+        expect(await json(response)).toMatchObject({ error: { code: "invalid_input" } });
       });
     });
 

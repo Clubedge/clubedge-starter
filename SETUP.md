@@ -896,7 +896,7 @@ Installed apps keep calling the contract they shipped with, so change `openapi.y
 
    After changing them, run `pnpm --filter @clubedge/shell icons`, and set the colors to match at the top of `apps/shell/scripts/icons.mjs`.
 
-After changing the web app, `pnpm --filter @clubedge/shell sync` copies a new build into the native projects. Release builds and store listings are made in Android Studio and Xcode, as Capacitor's guides for [Google Play](https://capacitorjs.com/docs/android/deploying-to-google-play) and the [App Store](https://capacitorjs.com/docs/ios/deploying-to-app-store) describe. The project's CI builds a debug APK too; set a `WEB_URL` repository variable so that it calls your website.
+After changing the web app, `pnpm --filter @clubedge/shell sync` copies a new build into the native projects. [Store releases](#store-releases) builds them for the stores, signed. The project's CI builds a debug APK too; set a `WEB_URL` repository variable so that it calls your website.
 
 How the app differs from the website:
 
@@ -930,7 +930,33 @@ The app compares its version with the versions the API serves ([Apps installed o
 - Below `APP_LATEST_VERSION` only, a notice offers the update, and **Not now** hides it until a newer version is out.
 - When the API cannot be reached, or does not know `/api/app-version` yet, nothing new shows: a remembered **Update required** still holds, and otherwise the app works as usual.
 
-The app's version is its `versionName` in `apps/shell/android/app/build.gradle`, and its version (`MARKETING_VERSION`) in Xcode. Give it as `MAJOR.MINOR.PATCH`, such as `1.4.0`, and raise it with each release; `1.0` counts as `1.0.0`, and a version in another form never sees a notice.
+The app's version is `version` in `apps/shell/version.json`, as `MAJOR.MINOR.PATCH`, such as `1.4.0`, which each build writes into both native projects: raise it with each release ([Store releases](#store-releases)).
+
+### Store releases
+
+The app's version, which the stores show and the update notice compares, is in `apps/shell/version.json`. Each build writes it into both native projects, with the build number the stores order builds by, made from it: 1.4.2 is build 1004002. Set a newer one for each release:
+
+```sh
+pnpm --filter @clubedge/shell set-version 1.5.0
+```
+
+`pnpm --filter @clubedge/shell release android` (or `ios`) then builds the release, signed: an App Bundle for Google Play, or an IPA for the App Store, which it copies to `apps/shell/release/`. It signs with the settings in `apps/shell/.env.local`:
+
+- Android: your upload key, a keystore you make once and keep outside the repository, with `keytool -genkeypair -v -keystore upload.keystore -alias upload -keyalg RSA -keysize 2048 -validity 10000`. Set `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Gradle builds the bundle, and the JDK's `jarsigner`, from `JAVA_HOME` or the `PATH`, signs it. Google Play signs the published app with a key of its own ([Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756)).
+- iOS, on a Mac: `IOS_TEAM_ID`, your Apple Developer team, for Xcode's automatic signing. To sign manually, as CI does, name the distribution certificate (`IOS_SIGNING_CERTIFICATE`, such as `Apple Distribution`) and the provisioning profile (`IOS_PROVISIONING_PROFILE`, its name or UUID), both installed.
+
+The **Mobile app release** workflow (`.github/workflows/shell-release.yml`, which you run from the Actions tab) does the same on GitHub's runners, keeps each build as the run's artifact, and can upload the iOS build to TestFlight. It builds for the website in the `WEB_URL` repository variable, with these repository secrets:
+
+| Secret                                                                             | What it holds                                                                                       |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `ANDROID_KEYSTORE_BASE64`                                                          | The upload keystore, as base64: `base64 -w0 upload.keystore` (`base64 -i upload.keystore` on a Mac) |
+| `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`           | Its passwords, and the key's alias                                                                  |
+| `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`                               | The distribution certificate, exported from Keychain Access as a .p12, as base64, and its password  |
+| `IOS_PROVISIONING_PROFILE_BASE64`, `IOS_PROVISIONING_PROFILE`                      | The App Store provisioning profile, as base64, and its name                                         |
+| `IOS_TEAM_ID`, `IOS_SIGNING_CERTIFICATE`                                           | Your team, and the certificate's name (`Apple Distribution` when unset)                             |
+| `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, `APP_STORE_CONNECT_KEY` | For TestFlight: an App Store Connect API key's id, its issuer, and its .p8 file's content           |
+
+Google Play takes an app's first upload in its console; later ones can come from the workflow's artifact. Once the stores publish a release, set the API's `APP_LATEST_VERSION` to it ([Apps installed on phones](#apps-installed-on-phones)).
 
 ### The demo
 
@@ -979,8 +1005,8 @@ The app signs in with Supabase itself: before building it, set `EXPO_PUBLIC_SUPA
 <!-- clubedge:end -->
 <!-- clubedge:if mobile!=none -->
 
-For a release, set `EXPO_PUBLIC_API_URL` to the website's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your website. <!-- clubedge:only framework!=none -->
-For a release, set `EXPO_PUBLIC_API_URL` to the API's public `https://` address: it is built into the app. Build it with [EAS Build](https://docs.expo.dev/build/introduction/), or on your computer with `pnpm --filter @clubedge/mobile-app prebuild` and then Android Studio or Xcode, with your own signing key. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your API. <!-- clubedge:only framework=none -->
+A release calls the website's public `https://` address, `EXPO_PUBLIC_API_URL`, which is built into the app: [Store releases of the native app](#store-releases-of-the-native-app) builds it for the stores. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your website. <!-- clubedge:only framework!=none -->
+A release calls the API's public `https://` address, `EXPO_PUBLIC_API_URL`, which is built into the app: [Store releases of the native app](#store-releases-of-the-native-app) builds it for the stores. The project's CI builds a release APK signed with a debug key, for trying on a device; set an `EXPO_PUBLIC_API_URL` repository variable so that it calls your API. <!-- clubedge:only framework=none -->
 
 How the app works with the website: <!-- clubedge:only framework!=none -->
 How the app works with the API: <!-- clubedge:only framework=none -->
@@ -1000,7 +1026,97 @@ How the app works with the API: <!-- clubedge:only framework=none -->
 - The welcome screen shows the brand's blue and the app's mark. For a photo of your own there, add it to `apps/mobile/assets` and set `heroPhoto` in `apps/mobile/src/app/welcome.tsx`. <!-- clubedge:only auth!=none -->
 - The welcome and sign-up screens link to your Terms and Privacy Policy: set their addresses, `links.terms` and `links.privacy` in `apps/mobile/src/config/site.json`, before the first release. The stores ask for a privacy policy too. <!-- clubedge:only auth!=none -->
 
-The app compares its version, `version` in `app.config.ts` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)) when it starts, when it comes back to the foreground (at most every 15 minutes), and whenever the API answers one of its requests `426 update_required`. Below `APP_MINIMUM_VERSION`, it shows only **Update to continue**, with the installed and required versions and an **Update now** button that opens `APP_UPDATE_URL`, and remembers it, so it holds when the app next starts offline, until it is updated. Below `APP_NEXT_MINIMUM_VERSION`, a sheet over any screen offers the update, with the date this version stops working and the days left; **Not now** hides it until the next day. Below `APP_LATEST_VERSION`, a banner on Home offers the update, and its close button hides it until a newer version is out. All of them are in `src/components/update-gate.tsx`. The logic is shared with the API in `packages/contract` (`app-version.ts` and `app-update.ts`).
+The app compares its version, `version` in `app.json` (`MAJOR.MINOR.PATCH`; raise it with each release), with the versions the API serves ([Apps installed on phones](#apps-installed-on-phones)) when it starts, when it comes back to the foreground (at most every 15 minutes), and whenever the API answers one of its requests `426 update_required`. Below `APP_MINIMUM_VERSION`, it shows only **Update to continue**, with the installed and required versions and an **Update now** button that opens `APP_UPDATE_URL`, and remembers it, so it holds when the app next starts offline, until it is updated. Below `APP_NEXT_MINIMUM_VERSION`, a sheet over any screen offers the update, with the date this version stops working and the days left; **Not now** hides it until the next day. Below `APP_LATEST_VERSION`, a banner on Home offers the update, and its close button hides it until a newer version is out. All of them are in `src/components/update-gate.tsx`. The logic is shared with the API in `packages/contract` (`app-version.ts` and `app-update.ts`).
+
+### Store releases of the native app
+
+The app's version, which the stores show and the update notice compares, is `version` in `apps/mobile/app.json`, from which `app.config.ts` makes both stores' build number: 1.4.2 is build 1004002. A project from Starter v0.29.0 or earlier kept its version in `app.config.ts`: after upgrading, keep the Starter's `app.config.ts`, and carry your version over with `set-version`. Set a newer one for each release:
+
+```sh
+pnpm --filter @clubedge/mobile-app set-version 1.5.0
+```
+
+The app builds with [EAS Build](https://docs.expo.dev/build/introduction/), in Expo's cloud, with the profiles in `apps/mobile/eas.json`: `development` for a development build on your devices, `preview` for a release build to share (an APK on Android), and `production` for the stores. Once, from `apps/mobile`:
+
+1. Link the app to an Expo project with `pnpm dlx eas-cli@latest init`, which writes the project's id into `app.json`.
+2. Give each EAS environment the address the app calls, since `.env.local` stays on your computer: `pnpm dlx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_API_URL --value https://app.example.com --visibility plaintext`, and the same for `preview`.
+3. Run a first build interactively, `pnpm dlx eas-cli@latest build --profile production`, which sets up the signing credentials EAS then keeps: Android's upload key, and on iOS, with your Apple Developer account, a distribution certificate and a provisioning profile.
+
+From then on, the **Native app release** workflow (`.github/workflows/expo-release.yml`, which you run from the Actions tab) queues builds with an `EXPO_TOKEN` repository secret (expo.dev, Account settings, Access tokens), and submits production builds to the stores when asked, with the stores' credentials that the first `eas submit` asks for. Once the stores publish a release, set the API's `APP_LATEST_VERSION` to it ([Apps installed on phones](#apps-installed-on-phones)). To build on your computer instead, run `pnpm --filter @clubedge/mobile-app prebuild`, then Android Studio or Xcode, with your own signing key and `EXPO_PUBLIC_API_URL` set in `apps/mobile/.env.local`.
+
+<!-- clubedge:end -->
+
+<!-- clubedge:if ota=eas -->
+
+### Over-the-air updates
+
+With [EAS Update](https://docs.expo.dev/eas-update/introduction/), a change to the app's JavaScript or assets reaches the installed apps without a store release. Each build profile in `apps/mobile/eas.json` names its channel, and an update reaches only the builds of the same version (`runtimeVersion` follows `version`): a change to native code, a package with native code, or `app.config.ts` needs a new version and a store release.
+
+- The app checks for an update when it starts and when it comes back to the foreground, at most every 15 minutes, and downloads it. Home then offers to restart into it; otherwise the app starts with it next time. Debug builds, and builds made before `eas init`, don't check.
+- The **Native app update** workflow (`.github/workflows/expo-update.yml`) publishes one to a channel, with the `EXPO_TOKEN` secret. From `apps/mobile`, `pnpm dlx eas-cli@latest update --channel production --environment production --message "What it changes"` does too.
+- expo.dev lists each channel's updates, and rolls one back by publishing an earlier one again.
+
+<!-- clubedge:end -->
+
+<!-- clubedge:if push!=none -->
+
+## Push notifications
+
+A signed-in user turns notifications on in the app's settings, which asks for the phone's permission and saves the device's push token with the API (`POST /api/push/devices`); **Send a test notification** then sends one to each of their devices. The app sends its token again at each start, as a push service can change it, and forgets it when notifications are turned off or the user signs out, so a signed-out phone gets no more of the account's notifications. A tapped notification opens the screen its data names (`url`), and the API forgets the tokens of uninstalled apps.
+
+<!-- clubedge:end -->
+<!-- clubedge:if push!=none && api=hono -->
+
+Send your own from the API's code, such as a background job:
+
+```ts
+import { push } from "@/server/push";
+
+await push.send(user, {
+  title: "Your report is ready",
+  body: "Open it in the app.",
+  data: { url: "/" },
+});
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if push!=none && api=fastapi -->
+
+Send your own from the API's code, such as a background job:
+
+```python
+from clubedge_api.push import PushMessage
+from clubedge_api.push_service import push_notifications
+
+await push_notifications().send(
+    user, PushMessage("Your report is ready", "Open it in the app.", {"url": "/"})
+)
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if push=expo -->
+
+The notifications go through [Expo's push service](https://docs.expo.dev/push-notifications/overview/), which delivers them with credentials EAS keeps for the app. Use a phone to try them: simulators get no push token.
+
+1. Link the app to an Expo project with `eas init` ([Store releases of the native app](#store-releases-of-the-native-app)): its Expo push tokens need the project's id.
+2. Android: create a [Firebase](https://console.firebase.google.com) project, add an Android app with your app's id, save its `google-services.json` in `apps/mobile`, and set `GOOGLE_SERVICES_JSON=./google-services.json` in `apps/mobile/.env.local`; EAS builds take the file from an EAS file variable of that name. Then upload the Firebase project's service account key to EAS: `pnpm dlx eas-cli@latest credentials`, Android, _Google Service Account_, _Push Notifications (FCM V1)_.
+3. iOS: an interactive `eas build` or `eas credentials` sets up the app's push key with your Apple Developer account.
+4. Set `EXPO_ACCESS_TOKEN` in the API's environment only if you turn on enhanced push security in the Expo project's settings.
+
+<!-- clubedge:end -->
+<!-- clubedge:if push=native -->
+
+The API sends straight to FCM for Android and APNs for iOS. A platform whose credentials are unset gets no notifications, and its devices' tokens wait for them; `pnpm check:env` reports a service with only some of its credentials. Use a phone to try them: simulators get no push token.
+
+- Android: create a [Firebase](https://console.firebase.google.com) project and add an Android app with your app's id, then save its `google-services.json` where the apps' builds find it:
+  - in `apps/mobile`, with `GOOGLE_SERVICES_JSON=./google-services.json` in `apps/mobile/.env.local` (EAS builds take it from an EAS file variable of that name), for the native app; <!-- clubedge:only mobile!=none -->
+  - in `apps/shell`, from which each build of the mobile app copies it into `android/app`. <!-- clubedge:only shell!=none -->
+
+  For the API, create a service account key (Project settings, Service accounts, Generate new private key) and set `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, and `FCM_PRIVATE_KEY` from it.
+
+- iOS: turn on Push Notifications for your app's identifier in the Apple Developer portal, and create an APNs authentication key (Keys, with Apple Push Notifications service). Set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY` (the .p8 file's content), and `APNS_TOPIC`, your app's id. Builds from Xcode use Apple's sandbox, which needs `APNS_ENVIRONMENT=development`; TestFlight and the App Store use production.
+- The native app's build adds the push capability itself. <!-- clubedge:only mobile!=none -->
+- Each build of the mobile app adds the push entitlement to `apps/shell/ios`, and the app delegate's methods that pass the device's token to Capacitor's plugin. <!-- clubedge:only shell!=none -->
 
 <!-- clubedge:end -->
 

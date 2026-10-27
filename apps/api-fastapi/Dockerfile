@@ -35,6 +35,7 @@ RUN uv sync --locked --no-default-groups --group observability-sentry --inexact 
 RUN uv sync --locked --no-default-groups --group payments-stripe --inexact --no-install-project # clubedge:only payments=stripe
 RUN uv sync --locked --no-default-groups --group jobs-bullmq --inexact --no-install-project # clubedge:only jobs=bullmq
 RUN uv sync --locked --no-default-groups --group jobs-inngest --inexact --no-install-project # clubedge:only jobs=inngest
+RUN uv sync --locked --no-default-groups --group push-native --inexact --no-install-project # clubedge:only push=native
 COPY ${APP_DIR}/src ./src
 # --inexact keeps the groups installed above.
 RUN uv sync --locked --no-default-groups --inexact

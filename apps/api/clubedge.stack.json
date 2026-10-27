@@ -143,6 +143,18 @@
       },
       "none": {}
     },
+    "push": {
+      "none": {},
+      "expo|native": {
+        "files": ["src/routes/push.test.ts", "src/routes/push.ts", "src/server/push.ts"]
+      },
+      "native": {
+        "files": ["src/server/variants/push.native.ts"],
+        "replace": {
+          "src/server/push.ts": "src/server/variants/push.native.ts"
+        }
+      }
+    },
     "deploy": {
       "docker": {},
       "railway": {}

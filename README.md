@@ -100,6 +100,13 @@ To try the native app, download [clubedge-native-demo.apk](https://github.com/Cl
 - Background jobs with retries and schedules, run by Inngest, which calls the app for each one, behind a provider-neutral jobs interface. <!-- clubedge:only jobs=inngest -->
 - Server error reporting and request tracing with OpenTelemetry, to any OTLP collector, behind a provider-neutral observability interface. <!-- clubedge:only observability=otel -->
 - Server error reporting and request tracing with Sentry, behind a provider-neutral observability interface. <!-- clubedge:only observability=sentry -->
+- Push notifications to the native app through Expo's push service: a switch and a test notification in its settings, behind a provider-neutral push interface. <!-- clubedge:only push=expo -->
+- Push notifications straight through FCM and APNs to the native app, with a switch and a test notification in its settings, behind a provider-neutral push interface. <!-- clubedge:only push=native && shell=none -->
+- Push notifications straight through FCM and APNs to the native app and the mobile app, with a switch and a test notification in their settings, behind a provider-neutral push interface. <!-- clubedge:only push=native && shell!=none && mobile!=none -->
+- Push notifications straight through FCM and APNs to the mobile app, with a switch and a test notification in its settings, behind a provider-neutral push interface. <!-- clubedge:only push=native && shell!=none && mobile=none -->
+- Over-the-air updates of the native app with EAS Update: the app downloads them when it starts or comes back, and offers to restart into one. <!-- clubedge:only ota=eas -->
+- Store releases of the native app with EAS Build profiles and a workflow that builds and submits them, its build numbers made from its version. <!-- clubedge:only mobile!=none -->
+- Store releases of the mobile app: an App Bundle and an IPA signed by `pnpm release` or a workflow, their build numbers made from the app's version. <!-- clubedge:only shell!=none -->
 
 **Production**
 
@@ -136,6 +143,8 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 | Payments      | `stripe`, `none`                                          | `none`     |
 | Jobs          | `pg-boss`, `bullmq`, `inngest`, `none`                    | `none`     |
 | Observability | `otel`, `sentry`, `none`                                  | `none`     |
+| Push          | `expo`, `native` (FCM and APNs), `none`                   | `none`     |
+| OTA updates   | `eas`, `none`                                             | `none`     |
 | Local infra   | `docker`, `supabase`, `local` (no Docker), `neon`, `none` | `docker`   |
 | Deploy        | `docker`, `fly`, `railway`, `render`, `vercel`, `netlify` | `docker`   |
 
@@ -496,6 +505,9 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `packages/observability/`: `ObservabilityProvider` interface and an in-memory provider for tests <!-- clubedge:only observability!=none -->
 - `packages/observability-otel/`: OpenTelemetry provider (OTLP/HTTP traces and error logs) <!-- clubedge:only observability=otel -->
 - `packages/observability-sentry/`: Sentry provider <!-- clubedge:only observability=sentry -->
+- `packages/push/`: `PushProvider` interface, the devices table, and sending to a user's devices <!-- clubedge:only push!=none -->
+- `packages/push-expo/`: Expo's push service <!-- clubedge:only push=expo -->
+- `packages/push-native/`: FCM and APNs, sent to directly <!-- clubedge:only push=native -->
 - `packages/mobile/`: the mobile app's native helpers (device storage and the app's version), which the web app loads only in its build for the app <!-- clubedge:only shell!=none -->
 - `packages/ui/`: shared shadcn/ui components, utilities, and global theme styles <!-- clubedge:only framework!=none -->
 - `.github/`: CI workflow, issue forms, and pull request template

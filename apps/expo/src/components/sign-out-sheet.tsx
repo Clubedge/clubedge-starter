@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Button, IconButton, Notice } from "@/components/ui";
 import { useAccountAction } from "@/lib/account";
 import { authClient } from "@/lib/auth";
+import { disablePush } from "@/lib/push"; // clubedge:only push!=none
 import { useSession } from "@/lib/session";
 import { font, radius, type, useColors } from "@/lib/theme";
 
@@ -28,6 +29,8 @@ export function SignOutSheet({
 
   const signOut = (everywhere = false) =>
     run(async () => {
+      // A signed-out device gets no more of the account's notifications.
+      await disablePush(); // clubedge:only push!=none
       await authClient.signOut({ everywhere });
       // Signed out, the welcome screen opens in place of the app's screens.
       setSignedIn(false);

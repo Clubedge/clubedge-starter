@@ -1,0 +1,56 @@
+name: Native app update
+
+# Publishes the native app's JavaScript and assets over the air with EAS Update, to the installed
+# apps of the same version on the channel you choose: each build profile in apps/mobile/eas.json
+# names its channel. A change to native code or to app.config.ts needs a store release instead
+# (Native app release). It needs the EXPO_TOKEN secret too (SETUP.md, "Over-the-air updates").
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: The channel whose builds get the update
+        type: choice
+        options: [production, preview]
+        default: production
+      message:
+        description: What the update changes, as expo.dev shows it
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check the Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Set an EXPO_TOKEN repository secret, from expo.dev (Account settings, Access tokens)."
+            exit 1
+          fi
+      # The bundle is built here, with the variables of the channel's EAS environment, such as
+      # EXPO_PUBLIC_API_URL, which it carries as the store builds do.
+      - name: Publish the update
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CHANNEL: ${{ inputs.channel }}
+          MESSAGE: ${{ inputs.message }}
+        run: |
+          pnpm dlx eas-cli@latest update --channel "$CHANNEL" --environment "$CHANNEL" \
+            --message "$MESSAGE" --non-interactive

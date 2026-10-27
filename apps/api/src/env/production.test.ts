@@ -91,6 +91,24 @@ describe("production env check", () => {
   });
   // clubedge:end
 
+  // clubedge:if push=native
+  it("refuses a push service with only some of its credentials", () => {
+    const fcm = {
+      FCM_PROJECT_ID: "my-product",
+      FCM_CLIENT_EMAIL: "push@my-product.iam.gserviceaccount.com",
+    };
+    expect(checkProductionEnv({ ...complete(), ...fcm }).invalid).toContain(
+      "FCM needs FCM_PRIVATE_KEY too",
+    );
+    expect(checkProductionEnv({ ...complete(), ...fcm, FCM_PRIVATE_KEY: "key" }).invalid).toEqual(
+      [],
+    );
+    expect(checkProductionEnv({ ...complete(), APNS_ENVIRONMENT: "staging" }).invalid).toEqual([
+      "APNS_ENVIRONMENT must be production or development",
+    ]);
+  });
+
+  // clubedge:end
   it("checks where rate limits find the client's address", () => {
     const env = { ...complete(), TRUSTED_PROXY_HOPS: "1" };
     expect(checkProductionEnv(env).invalid).toEqual([]);

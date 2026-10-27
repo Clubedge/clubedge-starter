@@ -22,12 +22,15 @@ createRoot(root).render(
 
 // clubedge:if shell!=none
 // The mobile app's own notices, which only its build loads, so the website never has them: the
-// update checks, whose requests say which version of the app they come from, and the banner of a
-// demo build.
+// update checks, whose requests say which version of the app they come from, push notifications,
+// and the banner of a demo build.
 if (import.meta.env.MODE === "app") {
   void import("@clubedge/mobile/update-notice").then(({ showUpdateNotice }) =>
     showUpdateNotice(api),
   );
+  // Notifications: their token goes to the API again, and a tapped one opens its page. // clubedge:only push=native
+  const openPage = (href: string) => void router.navigate({ href }); // clubedge:only push=native
+  void import("@clubedge/mobile/push").then(({ startPush }) => startPush(api, openPage)); // clubedge:only push=native
   if (import.meta.env.VITE_DEMO === "true") {
     void import("@clubedge/mobile/demo/banner").then(({ showDemoBanner }) => showDemoBanner());
   }

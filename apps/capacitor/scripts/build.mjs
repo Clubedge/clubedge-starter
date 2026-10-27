@@ -4,14 +4,16 @@
 //
 // The app's pages load from the device, and call the API through the website at WEB_URL. A
 // platform named here gets its native project first when it has none (cap add); commit android/
-// and ios/ with the rest of the app. Without one, the projects that exist are updated. --open
-// then opens them in Android Studio or Xcode. --demo builds the demo instead: sample data kept
-// on the device, and no server, so no WEB_URL.
+// and ios/ with the rest of the app. Without one, the projects that exist are updated, with the
+// version in version.json (version.mjs). --open then opens them in Android Studio or Xcode.
+// --demo builds the demo instead: sample data kept on the device, and no server, so no WEB_URL.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { makeIcons } from "./icons.mjs";
+import { setUpPush } from "./push.mjs"; // clubedge:only push=native
+import { applyVersion } from "./version.mjs";
 
 const shellDirectory = join(import.meta.dirname, "..");
 const webDirectory = join(import.meta.dirname, "../../web");
@@ -55,7 +57,7 @@ function run(script, args, options) {
   if (status !== 0) process.exit(status ?? 1);
 }
 
-function build(args) {
+export function build(args) {
   const options = args.filter((arg) => arg.startsWith("--"));
   const unknownOption = options.find((option) => !["--open", "--demo"].includes(option));
   if (unknownOption) fail(`Unknown option "${unknownOption}": use --open or --demo.`);
@@ -93,6 +95,13 @@ function build(args) {
     run(capacitor, [created ? "add" : "sync", platform], { cwd: shellDirectory });
     if (created) makeIcons(platform);
   }
+  // The stores' version and build number, and push notifications, in each native project.
+  try {
+    applyVersion();
+  } catch (error) {
+    fail(error.message);
+  }
+  setUpPush(); // clubedge:only push=native
   if (options.includes("--open")) {
     for (const platform of targets) run(capacitor, ["open", platform], { cwd: shellDirectory });
   }

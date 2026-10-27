@@ -52,7 +52,8 @@
         "target": "apps/mobile/.env.local"
       },
       "roles": ["mobile"],
-      "siteConfig": "apps/mobile/src/config/site.json"
+      "siteConfig": "apps/mobile/src/config/site.json",
+      "files": [".github/workflows/expo-release.yml"]
     },
     "shell": {
       "name": "Mobile shell",
@@ -66,7 +67,8 @@
       "roles": ["shell"],
       "packages": {
         "@clubedge/mobile": "packages/mobile"
-      }
+      },
+      "files": [".github/workflows/shell-release.yml"]
     }
   },
   "modules": [
@@ -77,6 +79,8 @@
     "payments",
     "jobs",
     "observability",
+    "push",
+    "ota",
     "infra",
     "deploy"
   ],
@@ -138,6 +142,18 @@
     {
       "when": "framework=none && deploy!=docker|railway",
       "message": "Fly.io, Vercel, Netlify, and Render deploy a web app, and this project has only its API: choose --deploy docker or --deploy railway."
+    },
+    {
+      "when": "push!=none && mobile=none && shell=none",
+      "message": "Push notifications go to the mobile apps, and this project has none: add one with --mobile expo or --shell capacitor, or choose --push none."
+    },
+    {
+      "when": "push=expo && shell!=none",
+      "message": "Expo's push service reaches only the native app, not the mobile shell: choose --push native, which sends through FCM and APNs to both."
+    },
+    {
+      "when": "ota!=none && mobile=none",
+      "message": "Over-the-air updates are for the native app: add it with --mobile expo, or choose --ota none."
     }
   ]
 }

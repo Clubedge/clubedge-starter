@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import site from "@/config/site.json";
 import { Body, Button, Screen } from "@/components/ui";
 import { installedVersion, updates } from "@/lib/app-update";
+import { checkForOtaUpdate } from "@/lib/ota"; // clubedge:only ota=eas
 import { font, radius, type, useColors } from "@/lib/theme";
 
 /** What the versions the API serves call for, for the dashboard to say so: null until known. */
@@ -31,8 +32,11 @@ export function UpdateGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     updates.start();
+    void checkForOtaUpdate(); // clubedge:only ota=eas
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") updates.resume();
+      if (state !== "active") return;
+      updates.resume();
+      void checkForOtaUpdate(); // clubedge:only ota=eas
     });
     return () => subscription.remove();
   }, []);

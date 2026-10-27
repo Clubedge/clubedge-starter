@@ -1,0 +1,36 @@
+{
+  "name": "Push notifications",
+  "default": "none",
+  "options": {
+    "expo": {
+      "name": "Expo push service (the native app)",
+      "packages": {
+        "@clubedge/push": "packages/push",
+        "@clubedge/push-expo": "packages/push-expo"
+      },
+      "dependencies": ["expo-notifications"],
+      "requires": {
+        "auth": ["supabase", "better-auth", "firebase", "appwrite"]
+      }
+    },
+    "native": {
+      "name": "FCM and APNs, directly (the native app and the mobile shell)",
+      "packages": {
+        "@clubedge/push": "packages/push",
+        "@clubedge/push-native": "packages/push-native"
+      },
+      "dependencies": ["expo-notifications", "@capacitor/push-notifications"],
+      "requires": {
+        "auth": ["supabase", "better-auth", "firebase", "appwrite"]
+      },
+      "files": [
+        "packages/mobile/src/push-settings.tsx",
+        "packages/mobile/src/push.test.ts",
+        "packages/mobile/src/push.ts"
+      ]
+    },
+    "none": {
+      "name": "None"
+    }
+  }
+}

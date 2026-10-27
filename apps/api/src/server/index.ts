@@ -11,6 +11,7 @@ import { createRateLimiter } from "./cache";
 import { isReady } from "./db";
 import { backgroundJobs } from "./jobs"; // clubedge:only jobs!=none
 import { browserErrorReporting } from "./observability"; // clubedge:only observability!=none
+import { push } from "./push"; // clubedge:only push!=none
 // clubedge:if payments!=none
 import { appUrl, getBilling, isPaymentsConfigured } from "./payments";
 import { getUserProfileId } from "./users";
@@ -35,4 +36,5 @@ export const dependencies: ApiDependencies = {
   browserErrorReporting, // clubedge:only observability!=none
   jobs: backgroundJobs, // clubedge:only jobs!=none
   payments: { isPaymentsConfigured, getBilling, getUserProfileId, appUrl }, // clubedge:only payments!=none
+  push, // clubedge:only push!=none
 };

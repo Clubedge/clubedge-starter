@@ -114,6 +114,17 @@ def test_refuses_the_example_com_sender_of_env_example() -> None:
     assert check_production_env(complete(EMAIL_FROM="App <hi@mail.example.org>")).ok
 
 
+# clubedge:if push=native
+def test_refuses_a_push_service_with_only_some_of_its_credentials() -> None:
+    fcm = {"FCM_PROJECT_ID": "my-product", "FCM_CLIENT_EMAIL": "push@my-product.example"}
+    assert check_production_env(complete(**fcm)).invalid == ["FCM needs FCM_PRIVATE_KEY too"]
+    assert check_production_env(complete(**fcm, FCM_PRIVATE_KEY="key")).ok
+    assert check_production_env(complete(APNS_ENVIRONMENT="staging")).invalid == [
+        "APNS_ENVIRONMENT must be production or development"
+    ]
+
+
+# clubedge:end
 def test_tells_local_urls_from_hosted_ones() -> None:
     for url in [
         "http://localhost:3000",

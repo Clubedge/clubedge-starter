@@ -16,6 +16,18 @@ const config: CapacitorConfig = {
     // the origins the website's server takes the app's requests from (MOBILE_ORIGINS).
     androidScheme: "https",
   },
+  // How pnpm release signs the iOS build (scripts/release.mjs), from the environment, never from
+  // this file: Xcode's automatic signing, or, with a provisioning profile named, manual signing as
+  // in CI. The script signs Android's App Bundle itself.
+  ios: {
+    buildOptions: process.env.IOS_PROVISIONING_PROFILE
+      ? {
+          signingStyle: "manual",
+          signingCertificate: process.env.IOS_SIGNING_CERTIFICATE || "Apple Distribution",
+          provisioningProfile: process.env.IOS_PROVISIONING_PROFILE,
+        }
+      : { signingStyle: "automatic" },
+  },
   plugins: {
     // Pages draw under the system bars (viewport-fit=cover in index.html) and keep clear of them
     // with CSS env(safe-area-inset-*). On older Android WebViews, Capacitor insets the WebView.
