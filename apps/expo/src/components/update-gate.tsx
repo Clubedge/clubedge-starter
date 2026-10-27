@@ -10,7 +10,7 @@ import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import site from "@/config/site.json";
-import { Body, Button, Screen } from "@/components/ui";
+import { Button, Screen } from "@/components/ui";
 import { installedVersion, updates } from "@/lib/app-update";
 import { checkForOtaUpdate } from "@/lib/ota"; // clubedge:only ota=eas
 import { font, radius, type, useColors } from "@/lib/theme";
@@ -78,7 +78,15 @@ function UpdateRequired({
         updateUrl ? (
           <Button title="Update now" onPress={() => openUpdate(updateUrl)} />
         ) : (
-          <Body muted>Update it from the App Store or Google Play.</Body>
+          // Without the API's link, a note: on one line, smaller on a narrow screen.
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={[type.footnote, { color: colors.textMuted }]}
+          >
+            Update it from the App Store or Google Play.
+          </Text>
         )
       }
     >
