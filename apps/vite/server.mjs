@@ -41,6 +41,9 @@ const apiRoutes = new Map([
   ["POST /api/billing/checkout", "/api/billing/checkout"], // clubedge:only payments=stripe
   ["POST /api/billing/portal", "/api/billing/portal"], // clubedge:only payments=stripe
   ["POST /api/webhooks/payments", "/api/webhooks/payments"], // clubedge:only payments=stripe
+  ["POST /api/push/devices", "/api/push/devices"], // clubedge:only push!=none
+  ["POST /api/push/devices/remove", "/api/push/devices/remove"], // clubedge:only push!=none
+  ["POST /api/push/test", "/api/push/test"], // clubedge:only push!=none
 ]);
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",

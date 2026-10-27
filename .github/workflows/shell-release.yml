@@ -33,8 +33,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # Capacitor 8 builds with Java 21, whose jarsigner signs the bundle; the runner has the
-      # Android SDK.
+      # The Android project builds with Java 21, whose jarsigner signs the bundle; the runner
+      # has the Android SDK.
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

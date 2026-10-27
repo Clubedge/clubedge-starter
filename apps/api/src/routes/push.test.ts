@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { User } from "@clubedge/contract";
 import type { PushDevice, PushMessage, PushService } from "@clubedge/push";
 import { createApp } from "@/app";
+import { siteConfig } from "@/config/site";
 import { createMemoryLimiter, type CreateRateLimiter } from "@/rate-limit";
 import type { PushNotifications } from "./push";
 
@@ -120,7 +121,7 @@ describe("/api/push/test", () => {
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(await response.json()).toEqual({ sent: 1, removed: 0 });
     expect(sent).toEqual([
-      { title: "Clubedge Starter", body: "Notifications work on this device.", data: { url: "/" } },
+      { title: siteConfig.name, body: "Notifications work on this device.", data: { url: "/" } },
     ]);
   });
 

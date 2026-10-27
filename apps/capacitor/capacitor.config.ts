@@ -16,18 +16,9 @@ const config: CapacitorConfig = {
     // the origins the website's server takes the app's requests from (MOBILE_ORIGINS).
     androidScheme: "https",
   },
-  // How pnpm release signs the store builds (scripts/release.mjs), from the environment, never
-  // from this file: Android's upload key, and on iOS, Xcode's automatic signing, or, with a
-  // provisioning profile named, manual signing as in CI.
-  android: {
-    buildOptions: {
-      keystorePath: process.env.ANDROID_KEYSTORE_PATH,
-      keystorePassword: process.env.ANDROID_KEYSTORE_PASSWORD,
-      keystoreAlias: process.env.ANDROID_KEY_ALIAS,
-      keystoreAliasPassword: process.env.ANDROID_KEY_PASSWORD,
-      releaseType: "AAB",
-    },
-  },
+  // How pnpm release signs the iOS build (scripts/release.mjs), from the environment, never from
+  // this file: Xcode's automatic signing, or, with a provisioning profile named, manual signing as
+  // in CI. The script signs Android's App Bundle itself.
   ios: {
     buildOptions: process.env.IOS_PROVISIONING_PROFILE
       ? {
