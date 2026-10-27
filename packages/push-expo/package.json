@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/push-expo",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "description": "Expo's push service for @clubedge/push: notifications to the native app's Expo push tokens.",
   "private": true,
   "license": "Apache-2.0",

@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/observability-sentry",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "description": "Sentry provider for @clubedge/observability: server and browser errors, traces, and source map uploads.",
   "private": true,
   "license": "Apache-2.0",

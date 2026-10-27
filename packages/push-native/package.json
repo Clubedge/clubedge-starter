@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/push-native",
-  "version": "0.30.0",
+  "version": "0.30.1",
   "description": "FCM and APNs for @clubedge/push: notifications sent straight to Android's and Apple's push services.",
   "private": true,
   "license": "Apache-2.0",
