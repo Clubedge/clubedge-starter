@@ -153,6 +153,8 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
         invalid.append("EMAIL_FROM still uses example.com: set a sender on a domain you verified")
     # clubedge:end
     return ProductionEnvCheck(missing, local, invalid)
+
+
 # clubedge:if push=native
 
 
@@ -171,4 +173,6 @@ def _push_credential_problems(values: Mapping[str, str]) -> list[str]:
     if values.get("APNS_ENVIRONMENT", "production") not in ("production", "development"):
         problems.append("APNS_ENVIRONMENT must be production or development")
     return problems
+
+
 # clubedge:end
