@@ -186,6 +186,30 @@
       },
       "none": {}
     },
+    "push": {
+      "none": {},
+      "expo|native": {
+        "files": [
+          "src/clubedge_api/push.py",
+          "src/clubedge_api/push_service.py",
+          "src/clubedge_api/routes/push.py",
+          "tests/test_push.py"
+        ]
+      },
+      "expo": {
+        "files": ["src/clubedge_api/push_expo.py", "tests/test_push_expo.py"]
+      },
+      "native": {
+        "files": [
+          "src/clubedge_api/push_native.py",
+          "src/clubedge_api/variants/push_service_native.py",
+          "tests/test_push_native.py"
+        ],
+        "replace": {
+          "src/clubedge_api/push_service.py": "src/clubedge_api/variants/push_service_native.py"
+        }
+      }
+    },
     "deploy": {
       "docker": {},
       "railway": {}

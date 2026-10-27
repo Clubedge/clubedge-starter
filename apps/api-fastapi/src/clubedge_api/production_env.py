@@ -143,9 +143,32 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             "so remove it"
         )
     # clubedge:end
+    # clubedge:if push=native
+    # A push service with only some of its credentials fails at its first notification.
+    invalid.extend(_push_credential_problems(values))
+    # clubedge:end
     # clubedge:if email=smtp|resend
     # .env.example's placeholder sender: providers refuse a domain you haven't verified.
     if re.search(r"@example\.com\b", values.get("EMAIL_FROM", ""), re.IGNORECASE):
         invalid.append("EMAIL_FROM still uses example.com: set a sender on a domain you verified")
     # clubedge:end
     return ProductionEnvCheck(missing, local, invalid)
+# clubedge:if push=native
+
+
+def _push_credential_problems(values: Mapping[str, str]) -> list[str]:
+    """FCM's and APNs' credentials, each set whole or not at all: a platform whose service has
+    none gets no notifications, which may be deliberate, but half of them is a mistake."""
+    services = {
+        "FCM": ("FCM_PROJECT_ID", "FCM_CLIENT_EMAIL", "FCM_PRIVATE_KEY"),
+        "APNs": ("APNS_KEY_ID", "APNS_TEAM_ID", "APNS_PRIVATE_KEY", "APNS_TOPIC"),
+    }
+    problems: list[str] = []
+    for service, keys in services.items():
+        unset = [key for key in keys if key not in values]
+        if 0 < len(unset) < len(keys):
+            problems.append(f"{service} needs {', '.join(unset)} too")
+    if values.get("APNS_ENVIRONMENT", "production") not in ("production", "development"):
+        problems.append("APNS_ENVIRONMENT must be production or development")
+    return problems
+# clubedge:end

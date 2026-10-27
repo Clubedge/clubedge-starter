@@ -41,10 +41,29 @@
         }
       },
       "supabase": {
-        "replace": { "src/lib/auth.ts": "src/variants/auth.supabase.ts" }
+        "replace": {
+          "src/lib/auth.ts": "src/variants/auth.supabase.ts"
+        }
       },
       "better-auth": {
-        "replace": { "src/lib/auth.ts": "src/variants/auth.better-auth.ts" }
+        "replace": {
+          "src/lib/auth.ts": "src/variants/auth.better-auth.ts"
+        }
+      }
+    },
+    "push": {
+      "none": {},
+      "expo|native": {
+        "files": ["src/components/push-settings.tsx", "src/lib/push.ts"]
+      }
+    },
+    "ota": {
+      "none": {},
+      "eas": {
+        "files": ["src/components/ota-banner.tsx", "src/lib/ota.ts", "variants/eas.updates.json"],
+        "replace": {
+          "eas.json": "variants/eas.updates.json"
+        }
       }
     }
   }

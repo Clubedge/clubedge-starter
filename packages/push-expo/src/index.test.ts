@@ -20,7 +20,10 @@ function expo(ticket: (token: string) => object = () => ({ status: "ok", id: "ti
 describe("Expo's push service", () => {
   it("sends each notification with its data, and the access token when there is one", async () => {
     const fetch = expo();
-    const result = await createExpoPush({ accessToken: "secret", fetch }).send([device("a")], message);
+    const result = await createExpoPush({ accessToken: "secret", fetch }).send(
+      [device("a")],
+      message,
+    );
     expect(result).toEqual({ sent: 1, invalidTokens: [] });
     const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe("https://exp.host/--/api/v2/push/send");
@@ -51,7 +54,10 @@ describe("Expo's push service", () => {
           ? { status: "error", message: "rate", details: { error: "MessageRateExceeded" } }
           : { status: "ok", id: "ticket" },
     );
-    const result = await createExpoPush({ fetch }).send([device("a"), device("gone"), device("busy")], message);
+    const result = await createExpoPush({ fetch }).send(
+      [device("a"), device("gone"), device("busy")],
+      message,
+    );
     // A device refused for now keeps its token: only DeviceNotRegistered is for good.
     expect(result).toEqual({ sent: 1, invalidTokens: ["ExponentPushToken[gone]"] });
   });
@@ -60,11 +66,17 @@ describe("Expo's push service", () => {
     const fetch = expo();
     const devices = Array.from({ length: 250 }, (_, index) => device(String(index)));
     expect((await createExpoPush({ fetch }).send(devices, message)).sent).toBe(250);
-    expect(fetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).length)).toEqual([100, 100, 50]);
+    expect(fetch.mock.calls.map(([, init]) => JSON.parse(String(init?.body)).length)).toEqual([
+      100, 100, 50,
+    ]);
   });
 
   it("fails when the service refuses the request itself", async () => {
-    const fetch = vi.fn(async () => Response.json({ errors: [{ code: "PUSH_TOO_MANY" }] }, { status: 429 }));
-    await expect(createExpoPush({ fetch }).send([device("a")], message)).rejects.toThrow(ExpoPushError);
+    const fetch = vi.fn(async () =>
+      Response.json({ errors: [{ code: "PUSH_TOO_MANY" }] }, { status: 429 }),
+    );
+    await expect(createExpoPush({ fetch }).send([device("a")], message)).rejects.toThrow(
+      ExpoPushError,
+    );
   });
 });

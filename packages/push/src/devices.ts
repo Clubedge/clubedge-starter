@@ -1,7 +1,14 @@
 import { eq, inArray } from "drizzle-orm";
 import type { Database } from "@clubedge/db";
 import { pushDevices } from "./schema";
-import type { PushDevice, PushMessage, PushPlatform, PushProvider, PushResult, PushService } from "./types";
+import type {
+  PushDevice,
+  PushMessage,
+  PushPlatform,
+  PushProvider,
+  PushResult,
+  PushService,
+} from "./types";
 
 /** The push tokens of the app's users, in the push_devices table. */
 export function createPushDevices(db: Database) {

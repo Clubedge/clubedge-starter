@@ -3,5 +3,13 @@
   "name": "Capacitor",
   "role": "shell",
   "envExample": ".env.example",
-  "conditional": [".env.example"]
+  "conditional": [".env.example"],
+  "modules": {
+    "push": {
+      "none": {},
+      "native": {
+        "files": ["scripts/push.mjs"]
+      }
+    }
+  }
 }

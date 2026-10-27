@@ -52,7 +52,11 @@ beforeEach(async () => {
 describe("push devices", () => {
   it("keeps each user's tokens, and forgets one on request", async () => {
     await devices.register(ada, { token: expoToken("phone"), service: "expo", platform: "ios" });
-    await devices.register(ada, { token: expoToken("tablet"), service: "expo", platform: "android" });
+    await devices.register(ada, {
+      token: expoToken("tablet"),
+      service: "expo",
+      platform: "android",
+    });
     await devices.register(grace, { token: apnsToken, service: "apns", platform: "ios" });
 
     expect(await devices.forUser(ada)).toEqual([
@@ -92,13 +96,19 @@ describe("sendToUser", () => {
     await devices.register(ada, { token: apnsToken, service: "apns", platform: "ios" });
     const expo = provider([expoToken("old")]);
 
-    expect(await sendToUser(devices, expo, ada, message)).toEqual({ sent: 1, invalidTokens: [expoToken("old")] });
+    expect(await sendToUser(devices, expo, ada, message)).toEqual({
+      sent: 1,
+      invalidTokens: [expoToken("old")],
+    });
     // The APNs token is another provider's to reach: it is neither sent to nor removed.
     expect(vi.mocked(expo.send).mock.calls[0]![0].map(({ token }) => token)).toEqual([
       expoToken("phone"),
       expoToken("old"),
     ]);
-    expect((await devices.forUser(ada)).map(({ token }) => token)).toEqual([expoToken("phone"), apnsToken]);
+    expect((await devices.forUser(ada)).map(({ token }) => token)).toEqual([
+      expoToken("phone"),
+      apnsToken,
+    ]);
   });
 
   it("sends nothing to a user without a device it reaches", async () => {

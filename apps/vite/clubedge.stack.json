@@ -8,10 +8,12 @@
     "auth.server.mjs",
     "server.mjs",
     "src/components/billing/billing-card.tsx",
+    "src/components/dashboard/variants/account-button.supabase.tsx",
     "src/components/route-error.tsx",
     "src/lib/api.ts",
     "src/main.tsx",
     "src/routes/dashboard.tsx",
+    "src/routes/settings.tsx",
     "src/styles.css",
     "src/variants/api.better-auth.ts",
     "src/variants/api.supabase.ts",
@@ -147,6 +149,12 @@
     "deploy": {
       "docker": {},
       "railway": {}
+    },
+    "push": {
+      "none|expo": {},
+      "native": {
+        "files": ["src/components/settings/push-settings.tsx"]
+      }
     }
   }
 }

@@ -148,6 +148,9 @@
       },
       "none": {}
     },
+    "push": {
+      "none": {}
+    },
     "infra": {
       "docker": {},
       "supabase": {},

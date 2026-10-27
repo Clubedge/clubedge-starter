@@ -506,6 +506,115 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/NotConfigured"
+  /api/push/devices:
+    post:
+      operationId: registerPushDevice
+      summary: >-
+        Saves this device's push token for the signed-in user, who then gets notifications on it.
+        A token saved for another user moves to this one, as when someone else signs in on the
+        device. The app sends it again at each start, since a push service can change a token.
+      x-clubedge-module: push
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushDevice"
+      responses:
+        "204":
+          description: Saved.
+        "400":
+          description: >-
+            Not a push token, or not one of a service this server sends through (code
+            invalid_input): Expo push tokens with Expo's push service, FCM and APNs tokens with
+            FCM and APNs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+  /api/push/devices/remove:
+    post:
+      operationId: removePushDevice
+      summary: >-
+        Forgets a push token, when the app turns notifications off or signs out. The token is the
+        device's own secret, so it needs no session: a device whose session has ended can still
+        stop its notifications.
+      x-clubedge-module: push
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushDeviceRemoval"
+      responses:
+        "204":
+          description: Forgotten, or never saved.
+        "400":
+          description: No token (code invalid_input).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
+        "503":
+          $ref: "#/components/responses/NotConfigured"
+  /api/push/test:
+    post:
+      operationId: sendTestPush
+      summary: >-
+        Sends a notification to each of the signed-in user's devices, to check that they get
+        them. Limited to 5 a minute per user, and refused while the limit cannot be checked.
+      x-clubedge-module: push
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Sent.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushTestResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "426":
+          $ref: "#/components/responses/UpdateRequired"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: >-
+            No push service is set up on this server (code not_configured), or the push service
+            or the rate limit cannot be reached now (code unavailable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   # Answers that module operations share, each with its Error code.
   responses:
@@ -864,3 +973,43 @@ components:
         result:
           type: string
           enum: [applied, ignored, duplicate]
+    PushDevice:
+      type: object
+      required: [token, service, platform]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          description: The device's push token, as the push service gave it to the app.
+        service:
+          type: string
+          enum: [expo, fcm, apns]
+          description: >-
+            The service that delivers to the token: Expo's push service for an Expo push token,
+            Firebase Cloud Messaging for an Android device's, APNs for an Apple device's.
+        platform:
+          type: string
+          enum: [ios, android]
+    PushDeviceRemoval:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 4096
+    PushTestResult:
+      type: object
+      required: [sent, removed]
+      properties:
+        sent:
+          type: integer
+          minimum: 0
+          description: The devices the push service took the notification for.
+        removed:
+          type: integer
+          minimum: 0
+          description: >-
+            Devices forgotten because their push service no longer knows their token, such as an
+            uninstalled app's.

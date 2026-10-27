@@ -4,7 +4,13 @@
 // Node.js's crypto, HTTP/2, and fetch are used.
 import { sign } from "node:crypto";
 import { connect, type ClientHttp2Session } from "node:http2";
-import type { PushDevice, PushMessage, PushProvider, PushResult, PushService } from "@clubedge/push";
+import type {
+  PushDevice,
+  PushMessage,
+  PushProvider,
+  PushResult,
+  PushService,
+} from "@clubedge/push";
 
 /** A Firebase service account's fields: Project settings, Service accounts, Generate new key. */
 export interface FcmCredentials {
@@ -54,7 +60,9 @@ export function signJwt(
   claims: Record<string, string | number>,
   privateKey: string,
 ): string {
-  const data = Buffer.from(`${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claims))}`);
+  const data = Buffer.from(
+    `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claims))}`,
+  );
   const key = privateKey.replace(/\\n/g, "\n");
   const signature =
     header.alg === "ES256"
@@ -92,13 +100,22 @@ function fcmSender(credentials: FcmCredentials, request: typeof fetch, now: () =
     const issuedAt = Math.floor(now() / 1_000);
     const assertion = signJwt(
       { alg: "RS256", typ: "JWT" },
-      { iss: credentials.clientEmail, scope: FCM_SCOPE, aud: GOOGLE_TOKEN_URL, iat: issuedAt, exp: issuedAt + 3_600 },
+      {
+        iss: credentials.clientEmail,
+        scope: FCM_SCOPE,
+        aud: GOOGLE_TOKEN_URL,
+        iat: issuedAt,
+        exp: issuedAt + 3_600,
+      },
       credentials.privateKey,
     );
     const response = await request(GOOGLE_TOKEN_URL, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+      }),
     });
     if (!response.ok) {
       throw new NativePushError(
@@ -155,7 +172,11 @@ async function fcmErrorCode(response: Response): Promise<string | undefined> {
   }
 }
 
-function apnsSender(credentials: ApnsCredentials, origin: string | undefined, now: () => number): Send {
+function apnsSender(
+  credentials: ApnsCredentials,
+  origin: string | undefined,
+  now: () => number,
+): Send {
   let cached: { token: string; issuedAt: number } | null = null;
 
   /**
@@ -175,7 +196,8 @@ function apnsSender(credentials: ApnsCredentials, origin: string | undefined, no
   }
 
   const host =
-    origin ?? (credentials.production ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com");
+    origin ??
+    (credentials.production ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com");
 
   return async (devices, message, result) => {
     const session = connect(host);

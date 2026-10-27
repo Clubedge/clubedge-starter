@@ -136,6 +136,10 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
     );
   }
   // clubedge:end
+  // clubedge:if push=native
+  // A push service with only some of its credentials fails at its first notification.
+  invalid.push(...pushCredentialProblems(env));
+  // clubedge:end
   // clubedge:if email=smtp|resend
   // .env.example's placeholder sender: providers refuse a domain you haven't verified.
   if (/@example\.com\b/i.test(env.EMAIL_FROM ?? "")) {
@@ -144,3 +148,27 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   // clubedge:end
   return { missing, local, invalid };
 }
+// clubedge:if push=native
+
+/**
+ * FCM's and APNs' credentials, each set whole or not at all: a platform whose service has none
+ * gets no notifications, which may be deliberate, but half of them is a mistake.
+ */
+function pushCredentialProblems(env: Env): string[] {
+  const services = {
+    FCM: ["FCM_PROJECT_ID", "FCM_CLIENT_EMAIL", "FCM_PRIVATE_KEY"],
+    APNs: ["APNS_KEY_ID", "APNS_TEAM_ID", "APNS_PRIVATE_KEY", "APNS_TOPIC"],
+  };
+  const problems = Object.entries(services).flatMap(([service, keys]) => {
+    const unset = keys.filter((key) => !env[key]?.trim());
+    return unset.length > 0 && unset.length < keys.length
+      ? [`${service} needs ${unset.join(", ")} too`]
+      : [];
+  });
+  const environment = env.APNS_ENVIRONMENT?.trim();
+  if (environment && environment !== "production" && environment !== "development") {
+    problems.push("APNS_ENVIRONMENT must be production or development");
+  }
+  return problems;
+}
+// clubedge:end

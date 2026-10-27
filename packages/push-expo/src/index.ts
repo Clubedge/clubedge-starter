@@ -60,7 +60,8 @@ export function createExpoPush(options: ExpoPushOptions = {}): PushProvider {
           const ticket = data?.[index];
           if (ticket?.status === "ok") result.sent += 1;
           // The app was uninstalled, or its token expired: it will never work again.
-          else if (ticket?.details?.error === "DeviceNotRegistered") result.invalidTokens.push(token);
+          else if (ticket?.details?.error === "DeviceNotRegistered")
+            result.invalidTokens.push(token);
         });
       }
       return result;

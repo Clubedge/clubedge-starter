@@ -26,6 +26,7 @@ from clubedge_api.app_version import (
 )
 from clubedge_api.contract import AppVersion, GetCurrentUser
 from clubedge_api.http import NO_STORE, ApiError, api_error
+from clubedge_api.push import PushNotifications  # clubedge:only push!=none
 from clubedge_api.rate_limit import CreateRateLimiter, create_memory_limiter
 from clubedge_api.routes import billing as billing_routes  # clubedge:only payments!=none
 from clubedge_api.routes.account import AccountService, account_router  # clubedge:only auth!=none
@@ -33,6 +34,7 @@ from clubedge_api.routes.app_version import app_version_router
 from clubedge_api.routes.inngest import inngest_router  # clubedge:only jobs=inngest
 from clubedge_api.routes.jobs import BackgroundJobs, jobs_router  # clubedge:only jobs!=none
 from clubedge_api.routes.jobs_run import jobs_run_router  # clubedge:only jobs=bullmq
+from clubedge_api.routes.push import push_router  # clubedge:only push!=none
 from clubedge_api.settings import ClientIpSettings
 
 
@@ -72,6 +74,12 @@ class ApiDependencies:
     # clubedge:if payments!=none
     # Billing with the payment provider (server.py); payments are not configured while absent.
     payments: billing_routes.BillingDependencies | None = None
+    # clubedge:end
+    # clubedge:if push!=none
+    # Push notifications to the mobile apps (push.py); not configured while absent.
+    push: PushNotifications | None = None
+    # The project's name, which the test notification shows.
+    site_name: str = "Clubedge Starter"
     # clubedge:end
 
 
@@ -193,6 +201,16 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     app.include_router(
         billing_routes.billing_router(
             payments=dependencies.payments, get_current_user=dependencies.get_current_user
+        )
+    )
+    # clubedge:end
+    # clubedge:if push!=none
+    app.include_router(
+        push_router(
+            get_current_user=dependencies.get_current_user,
+            push=dependencies.push,
+            create_rate_limiter=dependencies.create_rate_limiter,
+            site_name=dependencies.site_name,
         )
     )
     # clubedge:end
