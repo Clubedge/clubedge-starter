@@ -72,8 +72,6 @@ jobs:
   ios:
     if: inputs.platform != 'android'
     runs-on: macos-15
-    env:
-      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
     steps:
       - uses: actions/checkout@v7
         with:
@@ -88,6 +86,8 @@ jobs:
       # profile where Xcode looks for them.
       - name: Install the certificate and the provisioning profile
         env:
+          # Set on each step that uses it: a job's env can't read the runner context.
+          KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
           IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
@@ -138,6 +138,8 @@ jobs:
             --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
       - name: Remove the keychain and the API key
         if: always()
+        env:
+          KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
         run: |
           security delete-keychain "$KEYCHAIN" || true
           rm -rf ~/.appstoreconnect/private_keys
