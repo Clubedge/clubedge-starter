@@ -1030,7 +1030,7 @@ The app compares its version, `version` in `app.json` (`MAJOR.MINOR.PATCH`; rais
 
 ### Store releases of the native app
 
-The app's version, which the stores show and the update notice compares, is `version` in `apps/mobile/app.json`, from which `app.config.ts` makes both stores' build number: 1.4.2 is build 1004002. Set a newer one for each release:
+The app's version, which the stores show and the update notice compares, is `version` in `apps/mobile/app.json`, from which `app.config.ts` makes both stores' build number: 1.4.2 is build 1004002. A project from Starter v0.29.0 or earlier kept its version in `app.config.ts`: after upgrading, keep the Starter's `app.config.ts`, and carry your version over with `set-version`. Set a newer one for each release:
 
 ```sh
 pnpm --filter @clubedge/mobile-app set-version 1.5.0

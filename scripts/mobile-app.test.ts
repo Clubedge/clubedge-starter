@@ -19,6 +19,7 @@ import { delegateWithPush, projectWithEntitlements } from "../apps/capacitor/scr
 import {
   buildNumber as shellBuildNumber,
   isNewer,
+  nativeVersion,
   versionGradle,
   versionXcodeProject,
 } from "../apps/capacitor/scripts/version.mjs";
@@ -350,6 +351,9 @@ describe("the store builds' versions", () => {
     expect(versionGradle('versionCode = 1\nversionName = "1.0"', "2.0.1")).toBe(
       'versionCode = 2000001\nversionName = "2.0.1"',
     );
+    // What a build compares with version.json, so it never takes a project's version back.
+    expect(nativeVersion(gradle)).toBe("1.0");
+    expect(nativeVersion("MARKETING_VERSION = 1.3.0;")).toBe("1.3.0");
     const xcode = "CURRENT_PROJECT_VERSION = 1;\nMARKETING_VERSION = 1.0;\n".repeat(2);
     expect(versionXcodeProject(xcode, "1.4.2")).toBe(
       "CURRENT_PROJECT_VERSION = 1004002;\nMARKETING_VERSION = 1.4.2;\n".repeat(2),

@@ -62,7 +62,18 @@ export function versionXcodeProject(text, version) {
     );
 }
 
-/** Writes the version into the native projects that exist. */
+/** The version a native project has now: versionName, or MARKETING_VERSION. */
+export function nativeVersion(text) {
+  return (
+    /versionName\s*=?\s*"([^"]*)"/.exec(text)?.[1] ?? /MARKETING_VERSION = ([^;]*);/.exec(text)?.[1]
+  );
+}
+
+/**
+ * Writes the version into the native projects that exist. A project with a newer version, such
+ * as one set by hand before the version moved to version.json, is not taken back: the build
+ * stops and says how to carry the version over.
+ */
 export function applyVersion(version = readVersion()) {
   const files = [
     ["android/app/build.gradle", versionGradle],
@@ -73,6 +84,12 @@ export function applyVersion(version = readVersion()) {
     const file = join(shellDirectory, path);
     if (!existsSync(file)) continue;
     const text = readFileSync(file, "utf8");
+    const current = nativeVersion(text);
+    if (parseVersion(current) && isNewer(current, version)) {
+      throw new Error(
+        `${path} has version ${current}, newer than version.json's ${version}. The version is kept in version.json now: carry it over with pnpm --filter @clubedge/shell set-version ${current}.`,
+      );
+    }
     const updated = edit(text, version);
     if (updated !== text) writeFileSync(file, updated);
   }
@@ -90,8 +107,14 @@ function setVersion(next) {
     );
     process.exit(1);
   }
+  // The native projects first: one with a newer version stops this before version.json changes.
+  try {
+    applyVersion(next);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
   writeFileSync(versionFile, `${JSON.stringify({ version: next }, null, 2)}\n`);
-  applyVersion(next);
   console.log(
     [
       `The app is version ${next} now (it was ${current}), build ${buildNumber(next)} in both stores.`,

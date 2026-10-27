@@ -96,7 +96,11 @@ export function build(args) {
     if (created) makeIcons(platform);
   }
   // The stores' version and build number, and push notifications, in each native project.
-  applyVersion();
+  try {
+    applyVersion();
+  } catch (error) {
+    fail(error.message);
+  }
   setUpPush(); // clubedge:only push=native
   if (options.includes("--open")) {
     for (const platform of targets) run(capacitor, ["open", platform], { cwd: shellDirectory });
