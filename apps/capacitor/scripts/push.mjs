@@ -51,8 +51,8 @@ const entitlements = `<?xml version="1.0" encoding="UTF-8"?>
 export function projectWithEntitlements(text) {
   if (text.includes("CODE_SIGN_ENTITLEMENTS")) return text;
   return text.replace(
-    /\n(\s*)INFOPLIST_FILE = App\/Info\.plist;/g,
-    "\n$1CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n$1INFOPLIST_FILE = App/Info.plist;",
+    /^([ \t]*)INFOPLIST_FILE = App\/Info\.plist;/gm,
+    "$1CODE_SIGN_ENTITLEMENTS = App/App.entitlements;\n$1INFOPLIST_FILE = App/Info.plist;",
   );
 }
 

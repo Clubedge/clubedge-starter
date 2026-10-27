@@ -149,7 +149,7 @@
       "none": {}
     },
     "push": {
-      "none": {}
+      "none|expo|native": {}
     },
     "infra": {
       "docker": {},

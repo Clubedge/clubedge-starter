@@ -26,7 +26,7 @@ APNS_PRODUCTION = "https://api.push.apple.com"
 APNS_SANDBOX = "https://api.sandbox.push.apple.com"
 # Requests in flight at once, per service.
 CONCURRENCY = 10
-# Each service's variables, in the order of its credentials' fields.
+# Each service's variables, which it needs all of.
 FCM_VARIABLES = ("FCM_PROJECT_ID", "FCM_CLIENT_EMAIL", "FCM_PRIVATE_KEY")
 APNS_VARIABLES = ("APNS_KEY_ID", "APNS_TEAM_ID", "APNS_PRIVATE_KEY", "APNS_TOPIC")
 
@@ -289,14 +289,28 @@ class NativePush:
 
 def native_push(env: Mapping[str, str] = os.environ) -> NativePush:
     """FCM and APNs, from FCM_* and APNS_*: each needs all of its variables."""
-    fcm_values = [env.get(name, "").strip() for name in FCM_VARIABLES]
-    apns_values = [env.get(name, "").strip() for name in APNS_VARIABLES]
-    fcm = FcmCredentials(*fcm_values) if all(fcm_values) else None
+
+    def value(name: str) -> str:
+        return env.get(name, "").strip()
+
+    fcm = (
+        FcmCredentials(
+            project_id=value("FCM_PROJECT_ID"),
+            client_email=value("FCM_CLIENT_EMAIL"),
+            private_key=value("FCM_PRIVATE_KEY"),
+        )
+        if all(value(name) for name in FCM_VARIABLES)
+        else None
+    )
     apns = (
         ApnsCredentials(
-            *apns_values, production=env.get("APNS_ENVIRONMENT", "").strip() != "development"
+            key_id=value("APNS_KEY_ID"),
+            team_id=value("APNS_TEAM_ID"),
+            private_key=value("APNS_PRIVATE_KEY"),
+            topic=value("APNS_TOPIC"),
+            production=value("APNS_ENVIRONMENT") != "development",
         )
-        if all(apns_values)
+        if all(value(name) for name in APNS_VARIABLES)
         else None
     )
     return NativePush(fcm, apns)
