@@ -52,7 +52,8 @@
         "target": "apps/mobile/.env.local"
       },
       "roles": ["mobile"],
-      "siteConfig": "apps/mobile/src/config/site.json"
+      "siteConfig": "apps/mobile/src/config/site.json",
+      "files": [".github/workflows/expo-release.yml"]
     },
     "shell": {
       "name": "Mobile shell",
@@ -66,7 +67,8 @@
       "roles": ["shell"],
       "packages": {
         "@clubedge/mobile": "packages/mobile"
-      }
+      },
+      "files": [".github/workflows/shell-release.yml"]
     }
   },
   "modules": [

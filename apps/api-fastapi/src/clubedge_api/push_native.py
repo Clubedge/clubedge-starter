@@ -136,10 +136,12 @@ class NativePush:
         self.transport = transport
         self.apns_origin = apns_origin
         self.now = now
-        self.services: tuple[PushService, ...] = (
-            *(("fcm",) if fcm else ()),
-            *(("apns",) if apns else ()),
-        )
+        services: list[PushService] = []
+        if fcm:
+            services.append("fcm")
+        if apns:
+            services.append("apns")
+        self.services: tuple[PushService, ...] = tuple(services)
         self._fcm_token: tuple[str, float] | None = None
         self._apns_token: tuple[str, float] | None = None
 

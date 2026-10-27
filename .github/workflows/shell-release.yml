@@ -1,0 +1,143 @@
+name: Mobile app release
+
+# Builds the mobile app (apps/shell) for the stores, signed: an App Bundle for Google Play, and an
+# IPA for the App Store, which it can send to TestFlight. Each build is kept as the run's artifact.
+# The signing settings are repository secrets, and the website the app calls the WEB_URL variable
+# (SETUP.md, "Store releases").
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: The stores to build for
+        type: choice
+        options: [all, android, ios]
+        default: all
+      testflight:
+        description: Upload the iOS build to TestFlight
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    if: inputs.platform != 'ios'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # Capacitor 8 builds with Java 21, whose jarsigner signs the bundle; the runner has the
+      # Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: pnpm install --frozen-lockfile
+      - name: Write the upload key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::Set the ANDROID_KEYSTORE_BASE64 secret to the upload key's keystore, as base64."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.keystore"
+      - name: Build and sign the App Bundle
+        env:
+          WEB_URL: ${{ vars.WEB_URL }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/upload.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # A project committed from Windows has lost the executable bit.
+          if [ -f apps/shell/android/gradlew ]; then chmod +x apps/shell/android/gradlew; fi
+          pnpm --filter @clubedge/shell release android
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-release
+          path: apps/shell/release/*.aab
+      - name: Remove the upload key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.keystore"
+
+  ios:
+    if: inputs.platform != 'android'
+    runs-on: macos-15
+    env:
+      KEYCHAIN: ${{ runner.temp }}/signing.keychain-db
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The distribution certificate goes into a keychain of this run's own, and the provisioning
+      # profile where Xcode looks for them.
+      - name: Install the certificate and the provisioning profile
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$IOS_CERTIFICATE_BASE64" ] || [ -z "$IOS_PROVISIONING_PROFILE_BASE64" ]; then
+            echo "::error::Set the IOS_CERTIFICATE_BASE64 and IOS_PROVISIONING_PROFILE_BASE64 secrets."
+            exit 1
+          fi
+          password="$(openssl rand -hex 16)"
+          security create-keychain -p "$password" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$password" "$KEYCHAIN"
+          echo "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$IOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          profiles="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$profiles"
+          echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$profiles/release.mobileprovision"
+      - name: Build and sign the IPA
+        env:
+          WEB_URL: ${{ vars.WEB_URL }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_SIGNING_CERTIFICATE: ${{ secrets.IOS_SIGNING_CERTIFICATE }}
+          # The provisioning profile's name or UUID.
+          IOS_PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+        run: pnpm --filter @clubedge/shell release ios
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-release
+          path: apps/shell/release/*.ipa
+      # With an App Store Connect API key (Users and Access, Integrations), of the App Manager role.
+      - name: Upload to TestFlight
+        if: inputs.testflight
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$APP_STORE_CONNECT_KEY" \
+            > ~/.appstoreconnect/private_keys/AuthKey_"$APP_STORE_CONNECT_KEY_ID".p8
+          xcrun altool --upload-app --type ios --file apps/shell/release/*.ipa \
+            --apiKey "$APP_STORE_CONNECT_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+      - name: Remove the keychain and the API key
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN" || true
+          rm -rf ~/.appstoreconnect/private_keys

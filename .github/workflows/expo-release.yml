@@ -1,0 +1,65 @@
+name: Native app release
+
+# Builds the native app (apps/mobile) in Expo's cloud with EAS Build, signed with the credentials
+# EAS keeps for the project, and can submit the builds to the App Store and Google Play. It needs
+# an EXPO_TOKEN repository secret (expo.dev, Account settings, Access tokens), the app linked to an
+# EAS project with `eas init`, and its signing credentials set up once by an interactive
+# `eas build` or `eas credentials` (SETUP.md, "Store releases").
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: The stores to build for
+        type: choice
+        options: [all, android, ios]
+        default: all
+      profile:
+        description: The build profile in apps/mobile/eas.json
+        type: choice
+        options: [production, preview]
+        default: production
+      submit:
+        description: Submit production builds to the stores once they are done
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check the Expo token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Set an EXPO_TOKEN repository secret, from expo.dev (Account settings, Access tokens)."
+            exit 1
+          fi
+      # The builds run in Expo's cloud, with the variables of the profile's EAS environment, such
+      # as EXPO_PUBLIC_API_URL: this job queues them, and expo.dev shows their progress.
+      - name: Queue the builds
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          PLATFORM: ${{ inputs.platform }}
+          PROFILE: ${{ inputs.profile }}
+          SUBMIT: ${{ inputs.submit && inputs.profile == 'production' }}
+        run: |
+          set -euo pipefail
+          args=(build --platform "$PLATFORM" --profile "$PROFILE" --non-interactive --no-wait)
+          if [ "$SUBMIT" = true ]; then args+=(--auto-submit); fi
+          pnpm dlx eas-cli@latest "${args[@]}"

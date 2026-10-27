@@ -6,8 +6,8 @@ import { createPushDevices, sendToUser, type PushProvider } from "@clubedge/push
 import { createNativePush, type ApnsCredentials, type FcmCredentials } from "@clubedge/push-native";
 import { optional, parseEnv } from "@/env";
 import type { PushNotifications } from "@/routes/push";
-import { getDb } from "./db";
-import { getUserProfileId } from "./users";
+import { getDb } from "@/server/db";
+import { getUserProfileId } from "@/server/users";
 
 const pushEnvSchema = z.object({
   // A Firebase service account's fields, for Android's devices.

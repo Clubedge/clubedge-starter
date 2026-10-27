@@ -460,6 +460,18 @@ jobs:
               framework: vite,
               modules: --auth supabase --api fastapi --mobile expo,
             }
+          # Push notifications through Expo's push service, with over-the-air updates; and straight
+          # through FCM and APNs to both mobile apps.
+          - {
+              name: vite-hono-expo-push,
+              framework: vite,
+              modules: --auth better-auth --api hono --mobile expo --push expo --ota eas,
+            }
+          - {
+              name: vite-fastapi-mobile-push,
+              framework: vite,
+              modules: --auth supabase --api fastapi --mobile expo --shell capacitor --push native,
+            }
           # Without a website: the API and the native app, which calls it directly, with Better Auth
           # running in the Hono API, and with Supabase next to the FastAPI API; and an API alone.
           - {
@@ -646,6 +658,14 @@ jobs:
             exit 1
           fi
           (cd apps/shell/android && ./gradlew assembleDebug)
+          # A store release: the version, and the build number from it, in the Android project, and
+          # an App Bundle signed with a key made for this run.
+          pnpm --filter @clubedge/shell run set-version 1.2.3
+          grep -q "versionCode 1002003" apps/shell/android/app/build.gradle
+          grep -q 'versionName "1.2.3"' apps/shell/android/app/build.gradle
+          keytool -genkeypair -keystore "$RUNNER_TEMP/upload.keystore" -alias upload -keyalg RSA             -keysize 2048 -validity 1 -storepass starter-ci -keypass starter-ci -dname "CN=Starter CI"
+          ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.keystore" ANDROID_KEYSTORE_PASSWORD=starter-ci             ANDROID_KEY_ALIAS=upload ANDROID_KEY_PASSWORD=starter-ci             pnpm --filter @clubedge/shell run release android
+          jarsigner -verify apps/shell/release/app-1.2.3.aab | grep -q "jar verified"
           # The demo's build: its own data, and no server.
           pnpm --filter @clubedge/shell run sync android --demo
           grep -rqF "demo.invalid" apps/web/dist-app/assets
@@ -673,7 +693,10 @@ jobs:
           set -euo pipefail
           pnpm exec expo install --check
           pnpm exec expo export --platform android --platform ios
+          # The version a release sets, and the build number both stores get from it.
+          pnpm run set-version 1.2.3
           pnpm exec expo prebuild --platform android
+          grep -q "versionCode 1002003" android/app/build.gradle
           (cd android && ./gradlew assembleRelease)
       - name: Upload the native app's APK
         if: contains(matrix.modules, '--mobile')

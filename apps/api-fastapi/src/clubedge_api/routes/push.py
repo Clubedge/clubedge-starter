@@ -51,11 +51,16 @@ def _device(body: object) -> PushDevice | None:
     token = _token(body)
     if token is None or not isinstance(body, dict):
         return None
-    service = body.get("service")
     platform = body.get("platform")
-    for known in PUSH_SERVICES:
-        if service == known and platform in ("ios", "android") and is_push_token(known, token):
-            return {"token": token, "service": known, "platform": platform}
+    if platform not in ("ios", "android"):
+        return None
+    for service in PUSH_SERVICES:
+        if body.get("service") == service and is_push_token(service, token):
+            return {
+                "token": token,
+                "service": service,
+                "platform": "ios" if platform == "ios" else "android",
+            }
     return None
 
 
