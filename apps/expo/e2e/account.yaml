@@ -1,0 +1,109 @@
+# The account from start to end, on a build of the app that calls a real API: creating it, the
+# account the API returns, a new display name, signing out and in, and deleting it. Each step
+# fails when the app can't do what a user would. e2e/README.md says how to run it.
+appId: ${APP_ID}
+name: Account
+env:
+  EMAIL: e2e@example.com
+  PASSWORD: e2e-password-1234
+  NAME: Robin Tester
+---
+- launchApp:
+    clearState: true
+# Signed out, the app opens on its welcome screen.
+- extendedWaitUntil:
+    visible: Create account
+    timeout: 60000
+- tapOn: Create account
+- tapOn: Email
+- inputText: ${EMAIL}
+- tapOn: Password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Create account
+
+# Signed in, Home greets the user the API found for the session.
+- extendedWaitUntil:
+    visible: Hey e2e
+    timeout: 30000
+- assertNotVisible: The API did not find your session.*
+- takeScreenshot: 1-home
+
+# Settings shows the account the API returns.
+- tapOn: Settings
+- extendedWaitUntil:
+    visible: ${EMAIL}
+    timeout: 15000
+- takeScreenshot: 2-settings
+
+# A display name, which the API keeps.
+- tapOn: Edit
+- extendedWaitUntil:
+    visible: ${EMAIL}
+    timeout: 15000
+- tapOn: Display name
+- eraseText: 40
+- inputText: ${NAME}
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Saved.
+    timeout: 15000
+- tapOn: Back
+- extendedWaitUntil:
+    visible: ${NAME}
+    timeout: 15000
+- tapOn: Home
+- extendedWaitUntil:
+    visible: Hey Robin
+    timeout: 15000
+- takeScreenshot: 3-name
+
+# Signing out, then in again: the session and the name come back.
+- tapOn: Settings
+- tapOn: Sign out
+- tapOn: Sign out of ${NAME}
+- extendedWaitUntil:
+    visible: Continue with email
+    timeout: 15000
+- tapOn: Continue with email
+- tapOn: Email
+- inputText: ${EMAIL}
+- tapOn: Password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Sign in
+- extendedWaitUntil:
+    visible: Hey Robin
+    timeout: 30000
+- takeScreenshot: 4-signed-in-again
+
+# Deleting the account signs out, and its password no longer signs in.
+- tapOn: Settings
+- tapOn: Delete account
+- tapOn: Password
+- inputText: ${PASSWORD}
+- hideKeyboard
+# The button, under the screen's title of the same name.
+- tapOn:
+    text: Delete account
+    index: 1
+- extendedWaitUntil:
+    visible: Delete your account\?
+    timeout: 10000
+# Android may show the dialog's buttons in capitals.
+- tapOn: (?i)delete
+- extendedWaitUntil:
+    visible: Continue with email
+    timeout: 30000
+- takeScreenshot: 5-deleted
+- tapOn: Continue with email
+- tapOn: Email
+- inputText: ${EMAIL}
+- tapOn: Password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Sign in
+- extendedWaitUntil:
+    visible: .*[Ii]nvalid email or password.*
+    timeout: 30000

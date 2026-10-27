@@ -6,6 +6,11 @@ import site from "../web/src/config/site.json" with { type: "json" };
 // reverse-domain id you own, such as com.yourcompany.app, before the first Android or iOS build.
 const appId = `com.example.${site.serviceId.replace(/[^a-z0-9]/gi, "").replace(/^[0-9]+/, "") || "app"}`;
 
+// A website on this computer, as in the end-to-end tests (e2e/README.md), may be plain HTTP
+// (scripts/build.mjs): Android then lets the app's https pages call it. A store build's website is
+// https, and keeps Android's refusal.
+const plainHttp = (process.env.WEB_URL ?? "").startsWith("http://");
+
 const config: CapacitorConfig = {
   appId,
   appName: site.name,
@@ -15,7 +20,9 @@ const config: CapacitorConfig = {
     // The app's pages load from https://localhost on Android and capacitor://localhost on iOS:
     // the origins the website's server takes the app's requests from (MOBILE_ORIGINS).
     androidScheme: "https",
+    ...(plainHttp ? { cleartext: true } : {}),
   },
+  ...(plainHttp ? { android: { allowMixedContent: true } } : {}),
   // How pnpm release signs the iOS build (scripts/release.mjs), from the environment, never from
   // this file: Xcode's automatic signing, or, with a provisioning profile named, manual signing as
   // in CI. The script signs Android's App Bundle itself.

@@ -111,6 +111,7 @@
     ".github/workflows/demo-app.yml",
     ".github/workflows/starter.yml",
     ".github/workflows/starter-ios.yml",
+    ".github/workflows/starter-mobile.yml",
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
     "apps/api/src/server/variants/auth.better-auth.test.ts",

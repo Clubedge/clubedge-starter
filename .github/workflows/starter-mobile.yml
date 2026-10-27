@@ -1,0 +1,240 @@
+# Maintainer check for the Starter repository: a generated project's mobile apps, run on an
+# Android emulator against the project's own website and API, the way a user goes through them
+# (each app's e2e folder). A build that signs in but can't load the account fails here, not on a
+# phone.
+name: Starter mobile
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cli-ref:
+        description: create-clubedge-app branch or tag used to generate projects
+        default: main
+permissions:
+  contents: read
+concurrency:
+  group: starter-mobile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The native app of a project without a website, as the native demo: it calls the API,
+          # which answers sign-in itself. React Native builds with Java 17.
+          - name: api-hono-expo
+            app: mobile
+            framework: none
+            modules: --api hono --auth better-auth --mobile expo
+            url: http://10.0.2.2:3001
+            java: 17
+          # The mobile app: the website's build in the app, which calls the website, whose server
+          # answers sign-in and forwards the API's routes. Capacitor 8 builds with Java 21.
+          - name: vite-hono-capacitor
+            app: shell
+            framework: vite
+            modules: --api hono --auth better-auth --shell capacitor
+            url: http://10.0.2.2:3000
+            java: 21
+    name: android (${{ matrix.name }})
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CLI_REF: ${{ inputs.cli-ref || 'main' }}
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # Maestro runs on the same Java; the runner has the Android SDK.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+      - name: Build create-clubedge-app
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$CLI_REF" https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Generate the project
+        run: |
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/generated-app" --template-dir "$GITHUB_WORKSPACE" \
+            --framework ${{ matrix.framework }} ${{ matrix.modules }} --infra none --no-git --no-install --yes
+      - name: Install and migrate
+        working-directory: ${{ runner.temp }}/generated-app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:migrate
+      # The API on port 3001 and, with a website, the website on port 3000, which forwards the
+      # API's routes to it (API_URL). Each starts on its own, so its log is written as it goes.
+      # Better Auth runs in the API without a website, and in the website with one, which the API
+      # then asks for sessions (its .env.local): only that server gets the secret, and the address
+      # the app calls, where the emulator reaches this runner at 10.0.2.2.
+      - name: Build and start the project
+        working-directory: ${{ runner.temp }}/generated-app
+        env:
+          AUTH_SECRET: starter-ci-secret-for-better-auth-0123456789
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e2e"
+          pnpm build
+          if [ "${{ matrix.framework }}" = none ]; then
+            BETTER_AUTH_SECRET=$AUTH_SECRET BETTER_AUTH_URL=${{ matrix.url }} \
+              nohup pnpm --filter @clubedge/api start > "$RUNNER_TEMP/e2e/api.log" 2>&1 &
+          else
+            nohup pnpm --filter @clubedge/api start > "$RUNNER_TEMP/e2e/api.log" 2>&1 &
+            BETTER_AUTH_SECRET=$AUTH_SECRET BETTER_AUTH_URL=${{ matrix.url }} \
+              nohup pnpm --filter @clubedge/web start > "$RUNNER_TEMP/e2e/server.log" 2>&1 &
+          fi
+          port=${{ matrix.framework == 'none' && '3001' || '3000' }}
+          for url in "http://127.0.0.1:3001/api/health" "http://127.0.0.1:$port/api/health"; do
+            for attempt in $(seq 1 90); do
+              curl --fail --silent --output /dev/null "$url" && break
+              sleep 1
+            done
+            curl --fail --silent --show-error "$url"
+          done
+          curl --fail --silent --show-error "http://127.0.0.1:$port/api/auth/ok"
+          # The session's own route, which the website forwards to the API: answered without one.
+          curl --fail --silent --show-error "http://127.0.0.1:$port/api/session"
+      # The mobile app's session, without the app: an account created from its origin, and the
+      # session its bearer token gets. A failure here is the website's or the API's, not the app's.
+      - name: Sign up from the mobile app's origin
+        if: matrix.app == 'shell'
+        run: |
+          set -uo pipefail
+          origin=https://localhost
+          cd "$RUNNER_TEMP/e2e"
+          curl --silent --show-error --dump-header sign-up.headers --output sign-up.json \
+            -H "Origin: $origin" -H "Content-Type: application/json" \
+            --data '{"email":"preflight@example.com","password":"preflight-password-1234","name":"preflight"}' \
+            http://127.0.0.1:3000/api/auth/sign-up/email
+          token=$(sed -n 's/^set-auth-token: *//Ip' sign-up.headers | tr -d '\r')
+          curl --silent --show-error --output session.json --write-out '%{http_code}' \
+            -H "Origin: $origin" -H "Authorization: Bearer $token" \
+            http://127.0.0.1:3000/api/session > session.status
+          echo "::warning title=Sign-up headers::$(grep -iv '^set-cookie\|^set-auth-token' sign-up.headers | tr -d '\r' | sed ':a;N;$!ba;s/\n/%0A/g')%0Atoken: ${token:+(${#token} characters)}"
+          echo "::warning title=Session for the token::$(cat session.status) $(cat session.json)"
+          grep -q '"email":"preflight@example.com"' session.json
+      # A release build, as the stores get, for the emulator's processor only, which saves most of
+      # the native build's time.
+      - name: Build the native app against this runner's API
+        if: matrix.app == 'mobile'
+        working-directory: ${{ runner.temp }}/generated-app/apps/mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ matrix.url }}
+        run: |
+          set -euo pipefail
+          pnpm exec expo prebuild --platform android
+          grep -q 'android:usesCleartextTraffic="true"' android/app/src/main/AndroidManifest.xml
+          (cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64)
+          echo "APK=$PWD/android/app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+      - name: Build the mobile app against this runner's website
+        if: matrix.app == 'shell'
+        working-directory: ${{ runner.temp }}/generated-app/apps/shell
+        env:
+          WEB_URL: ${{ matrix.url }}
+        run: |
+          set -euo pipefail
+          pnpm run sync android
+          (cd android && ./gradlew assembleDebug)
+          echo "APK=$PWD/android/app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+      - name: Find the app's id
+        working-directory: ${{ runner.temp }}/generated-app/apps/${{ matrix.app }}/android
+        run: |
+          set -euo pipefail
+          app_id=$(sed -nE "s/.*applicationId ['\"]([^'\"]+)['\"].*/\1/p" app/build.gradle)
+          test -n "$app_id"
+          echo "APP_ID=$app_id" >> "$GITHUB_ENV"
+      - name: Install Maestro
+        run: |
+          set -euo pipefail
+          curl -fsSL https://get.maestro.mobile.dev | MAESTRO_VERSION=2.11.0 bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # The emulator runs each line of its script in a shell of its own, so one script runs it
+      # all. When a step fails, the screen's elements are kept with the screenshots.
+      - name: Write the test script
+        env:
+          FLOWS: ${{ runner.temp }}/generated-app/apps/${{ matrix.app }}/e2e
+        run: |
+          cat > "$RUNNER_TEMP/e2e.sh" <<EOF
+          set -uo pipefail
+          adb logcat -c
+          adb logcat -v time > "$RUNNER_TEMP/e2e/logcat.txt" 2>&1 &
+          logcat=\$!
+          # Right after boot, Android's package manager may not answer yet.
+          for attempt in 1 2 3 4 5; do
+            adb wait-for-device
+            if adb install -r "$APK" > "$RUNNER_TEMP/e2e/install.log" 2>&1; then break; fi
+            [ "\$attempt" = 5 ] && exit 1
+            sleep 10
+          done
+          maestro test --platform android --format junit --output "$RUNNER_TEMP/e2e/report.xml" \
+            --test-output-dir "$RUNNER_TEMP/e2e/maestro" -e APP_ID="$APP_ID" "$FLOWS"
+          status=\$?
+          if [ "\$status" != 0 ]; then maestro hierarchy > "$RUNNER_TEMP/e2e/hierarchy.json" 2>&1; fi
+          kill "\$logcat" || true
+          exit "\$status"
+          EOF
+      - name: Go through the app on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          ram-size: 4096M
+          disable-animations: true
+          script: bash "$RUNNER_TEMP/e2e.sh"
+      # What the app and the servers logged, and where the flow stopped, as the run's annotations,
+      # which show at once with the run (gh run view), where its logs and files take longer.
+      - name: Show what the app and the servers logged
+        if: always()
+        run: |
+          annotate() {
+            local text
+            text=$(cat)
+            [ -n "$text" ] || return 0
+            text=${text//'%'/'%25'}
+            text=${text//$'\r'/'%0D'}
+            text=${text//$'\n'/'%0A'}
+            echo "::$1 title=$2::$text"
+          }
+          cd "$RUNNER_TEMP/e2e" 2>/dev/null || exit 0
+          grep -oE '<failure[^>]*>[^<]*' report.xml 2>/dev/null | sed 's/<failure[^>]*>//' |
+            annotate error "Where the flow stopped"
+          # The native app's JavaScript, and the mobile app's pages (Capacitor's console).
+          grep -E "ReactNativeJS|Capacitor/Console" logcat.txt 2>/dev/null |
+            sed -E 's/.*(ReactNativeJS|Capacitor\/Console)\( *[0-9]+\): //' |
+            tail -n 40 | annotate warning "The app's log"
+          for log in api server install; do
+            tail -n 30 "$log.log" 2>/dev/null | annotate warning "$log.log"
+          done
+      - name: Upload what the tests saw
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-android-${{ matrix.name }}
+          path: ${{ runner.temp }}/e2e
+          retention-days: 7
+          if-no-files-found: ignore

@@ -21,7 +21,8 @@ const platforms = ["android", "ios"];
 
 /**
  * The website's origin, from WEB_URL. It must be https: the app sends its session there, and
- * emailed links open it.
+ * emailed links open it. Only a website on this computer may be plain HTTP, as in the end-to-end
+ * tests: the Android emulator reaches it at 10.0.2.2, and the iOS simulator at localhost.
  */
 export function webOrigin(value) {
   const example = "such as https://app.example.com";
@@ -34,7 +35,8 @@ export function webOrigin(value) {
   } catch {
     throw new Error(`WEB_URL must be the website's address, ${example}, not "${value}".`);
   }
-  if (url.protocol !== "https:") {
+  const local = ["10.0.2.2", "localhost", "127.0.0.1"].includes(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) {
     throw new Error("WEB_URL must be an https:// address: the app sends its session there.");
   }
   if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {

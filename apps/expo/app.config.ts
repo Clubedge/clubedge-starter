@@ -1,4 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
+import { type ConfigPlugin, withAndroidManifest } from "expo/config-plugins";
 import site from "./src/config/site.json";
 
 // The app's id on Android and iOS, made from the project's name until you set your own. It
@@ -33,6 +34,18 @@ export function buildNumber(version: string): number {
   return major * 1_000_000 + minor * 1_000 + patch;
 }
 
+// A build that calls its API over plain HTTP, such as the API on this computer in the end-to-end
+// tests (e2e/README.md), may: Android and iOS refuse plain HTTP otherwise. A store build calls an
+// https address, and keeps that refusal.
+const plainHttp = (process.env.EXPO_PUBLIC_API_URL ?? "").startsWith("http://");
+
+const allowPlainHttpOnAndroid: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (android) => {
+    const application = android.modResults.manifest.application?.[0];
+    if (application) application.$["android:usesCleartextTraffic"] = "true";
+    return android;
+  });
+
 // Firebase's Android settings, which FCM needs to deliver notifications: the path to // clubedge:only push!=none
 // google-services.json, from .env.local or an EAS file variable of the same name. // clubedge:only push!=none
 const googleServicesFile = process.env.GOOGLE_SERVICES_JSON || undefined; // clubedge:only push!=none
@@ -58,6 +71,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: appId,
       buildNumber: String(buildNumber(version)),
       supportsTablet: true,
+      ...(plainHttp
+        ? { infoPlist: { NSAppTransportSecurity: { NSAllowsArbitraryLoads: true } } }
+        : {}),
     },
     android: {
       package: appId,
@@ -89,6 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           dark: { image: "./assets/splash-icon.png", backgroundColor: "#151515" },
         },
       ],
+      ...(plainHttp ? [allowPlainHttpOnAndroid] : []),
     ],
   };
 };
