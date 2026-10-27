@@ -83,6 +83,27 @@ describe("appVersionMiddleware", () => {
     expect(request?.headers.has("X-App-Version")).toBe(false);
   });
 
+  it("keeps a response of another class, as Expo's fetch answers", async () => {
+    // Not a Response to instanceof: openapi-fetch refused it when a middleware handed it back.
+    const fetch = async () => {
+      const answer = Response.json({ user: null });
+      return {
+        ok: answer.ok,
+        status: answer.status,
+        headers: answer.headers,
+        body: answer.body,
+        clone: () => answer.clone(),
+        json: () => answer.json(),
+        text: () => answer.text(),
+      } as unknown as Response;
+    };
+    const api = createApiClient({ baseUrl: "https://api.example.com", fetch });
+    api.use(appVersionMiddleware({ version: () => "1.0.0", platform: "ios", onRefused() {} }));
+    const { data, response } = await api.GET("/api/session");
+    expect(response.status).toBe(200);
+    expect(data).toEqual({ user: null });
+  });
+
   it("tells the app when the API refuses its version", async () => {
     const refused = vi.fn();
     const answers = [426, 200];

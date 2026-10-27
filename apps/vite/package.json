@@ -29,8 +29,8 @@
     "drizzle-orm": "^0.45.4",
     "firebase": "^12.15.0",
     "lucide-react": "^0.468.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

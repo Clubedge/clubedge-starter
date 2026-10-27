@@ -43,10 +43,10 @@ export function createApiClient(
   if (options.accessToken) {
     const getAccessToken = options.accessToken;
     client.use({
+      // It returns nothing, which keeps the request as it is (app-update.ts says why).
       async onRequest({ request }) {
         const token = await getAccessToken();
         if (token) request.headers.set("Authorization", `Bearer ${token}`);
-        return request;
       },
     });
   }

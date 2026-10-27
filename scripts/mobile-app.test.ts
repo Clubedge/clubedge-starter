@@ -231,6 +231,12 @@ describe("apps/capacitor/scripts/build.mjs", () => {
     expect(webOrigin("https://App.Example.com:8443/")).toBe("https://app.example.com:8443");
   });
 
+  it("takes a plain HTTP website only on this computer, as the end-to-end tests use", () => {
+    expect(webOrigin("http://10.0.2.2:3000")).toBe("http://10.0.2.2:3000");
+    expect(webOrigin("http://localhost:3000")).toBe("http://localhost:3000");
+    expect(() => webOrigin("http://10.0.2.3:3000")).toThrow("https://");
+  });
+
   it("refuses a WEB_URL the app cannot use", () => {
     expect(() => webOrigin(undefined)).toThrow("Set WEB_URL");
     expect(() => webOrigin("")).toThrow("Set WEB_URL");

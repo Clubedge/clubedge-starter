@@ -1,0 +1,116 @@
+# The account from start to end, in the app's build of the website, against the website and its
+# API: creating it, the account the API returns, a new display name, signing out and in, and
+# deleting it. Each step fails when the app can't do what a user would. e2e/README.md says how
+# to run it. The website's fields are found by their id.
+appId: ${APP_ID}
+name: Account
+env:
+  PASSWORD: e2e-password-1234
+  NAME: Robin Tester
+---
+# A new address for each run, so a run that stops before deleting its account doesn't block the
+# next one.
+- evalScript: ${output.email = 'e2e-' + Date.now() + '@example.com'}
+- launchApp:
+    clearState: true
+# The app opens on the website's start page; the dashboard asks a signed-out user to sign in.
+- extendedWaitUntil:
+    visible: Explore the dashboard.*
+    timeout: 60000
+- tapOn: Explore the dashboard.*
+- extendedWaitUntil:
+    visible: Create one
+    timeout: 30000
+- tapOn: Create one
+- extendedWaitUntil:
+    visible: Create your account
+    timeout: 15000
+- tapOn:
+    id: email
+- inputText: ${output.email}
+- tapOn:
+    id: password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Create account
+
+# Signed in: the dashboard, and Settings with the account the API returns.
+- extendedWaitUntil:
+    visible: A better place to start building.
+    timeout: 30000
+- takeScreenshot: 1-dashboard
+# On a phone, the account's links are in the dashboard's menu.
+- tapOn: Open navigation
+- tapOn: Settings
+- extendedWaitUntil:
+    visible: Signed in as ${output.email}.
+    timeout: 30000
+- takeScreenshot: 2-settings
+
+# A display name, which the API keeps.
+- tapOn:
+    id: displayName
+- inputText: ${NAME}
+- hideKeyboard
+- tapOn: Save profile
+- extendedWaitUntil:
+    visible: Your profile was saved.
+    timeout: 15000
+
+# Signing out, then in again: the session and the name come back.
+- tapOn: Dashboard
+- extendedWaitUntil:
+    visible: Open navigation
+    timeout: 15000
+- tapOn: Open navigation
+- tapOn: Sign out
+- extendedWaitUntil:
+    visible: Forgot password\?
+    timeout: 15000
+- tapOn:
+    id: email
+- inputText: ${output.email}
+- tapOn:
+    id: password
+- inputText: ${PASSWORD}
+- hideKeyboard
+# The button, under the page's title of the same name.
+- tapOn:
+    text: Sign in
+    index: 1
+- extendedWaitUntil:
+    visible: A better place to start building.
+    timeout: 30000
+- tapOn: Open navigation
+- tapOn: Settings
+- extendedWaitUntil:
+    visible: Signed in as ${output.email}.
+    timeout: 30000
+- assertVisible: ${NAME}
+- takeScreenshot: 3-signed-in-again
+
+# Deleting the account signs out, and its password no longer signs in.
+- scrollUntilVisible:
+    element: Delete my account
+- tapOn:
+    id: password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: Delete my account
+- extendedWaitUntil:
+    visible: Your account was deleted.
+    timeout: 30000
+- takeScreenshot: 4-deleted
+- tapOn:
+    id: email
+- inputText: ${output.email}
+- tapOn:
+    id: password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    text: Sign in
+    index: 1
+- extendedWaitUntil:
+    visible: Email or password could not be verified.
+    timeout: 30000
