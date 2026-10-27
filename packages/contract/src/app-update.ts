@@ -59,6 +59,10 @@ async function bestEffort<T>(operation: () => Promise<T>): Promise<T | undefined
  * Has each request say which version and platform the app is, and calls `onRefused` when the API
  * answers 426 update_required, so the app shows its update screen whatever it asked. A version
  * the device can't give leaves the request without it, rather than failing it.
+ *
+ * It returns nothing, which keeps the request and the response as they are: openapi-fetch checks
+ * what a middleware returns against its own Response class, and Expo's fetch answers with another,
+ * which failed every request of the native app.
  */
 export function appVersionMiddleware(app: {
   version: () => string | Promise<string>;
@@ -70,11 +74,9 @@ export function appVersionMiddleware(app: {
       const version = await bestEffort(async () => app.version());
       if (version) request.headers.set(APP_VERSION_HEADER, version);
       if (app.platform) request.headers.set(APP_PLATFORM_HEADER, app.platform);
-      return request;
     },
     onResponse({ response }) {
       if (response.status === 426) app.onRefused();
-      return response;
     },
   };
 }
