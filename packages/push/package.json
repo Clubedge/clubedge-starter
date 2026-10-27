@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/push",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Provider-neutral push notifications: the PushProvider interface, the devices table, and sending to a user's devices.",
   "private": true,
   "license": "Apache-2.0",
