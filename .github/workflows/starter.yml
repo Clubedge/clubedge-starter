@@ -665,7 +665,9 @@ jobs:
           grep -q 'versionName "1.2.3"' apps/shell/android/app/build.gradle
           keytool -genkeypair -keystore "$RUNNER_TEMP/upload.keystore" -alias upload -keyalg RSA             -keysize 2048 -validity 1 -storepass starter-ci -keypass starter-ci -dname "CN=Starter CI"
           ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/upload.keystore" ANDROID_KEYSTORE_PASSWORD=starter-ci             ANDROID_KEY_ALIAS=upload ANDROID_KEY_PASSWORD=starter-ci             pnpm --filter @clubedge/shell run release android
-          jarsigner -verify apps/shell/release/app-1.2.3.aab | grep -q "jar verified"
+          # The output first: grep -q would close the pipe early, which pipefail counts as a failure.
+          jarsigner -verify apps/shell/release/app-1.2.3.aab > "$RUNNER_TEMP/verify.txt"
+          grep -q "jar verified" "$RUNNER_TEMP/verify.txt"
           # The demo's build: its own data, and no server.
           pnpm --filter @clubedge/shell run sync android --demo
           grep -rqF "demo.invalid" apps/web/dist-app/assets
