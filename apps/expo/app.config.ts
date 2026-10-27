@@ -57,7 +57,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   // APP_LATEST_VERSION: raise it with each release.
   const version = config.version ?? "1.0.0";
   const projectId: unknown = config.extra?.eas?.projectId; // clubedge:only ota=eas
-  return {
+  const app: ExpoConfig = {
     ...config,
     name: site.name,
     slug: site.serviceId,
@@ -105,7 +105,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           dark: { image: "./assets/splash-icon.png", backgroundColor: "#151515" },
         },
       ],
-      ...(plainHttp ? [allowPlainHttpOnAndroid] : []),
     ],
   };
+  return plainHttp ? allowPlainHttpOnAndroid(app) : app;
 };
