@@ -1099,7 +1099,7 @@ await push_notifications().send(
 The notifications go through [Expo's push service](https://docs.expo.dev/push-notifications/overview/), which delivers them with credentials EAS keeps for the app. Use a phone to try them: simulators get no push token.
 
 1. Link the app to an Expo project with `eas init` ([Store releases of the native app](#store-releases-of-the-native-app)): its Expo push tokens need the project's id.
-2. Android: create a [Firebase](https://console.firebase.google.com) project, add an Android app with your app's id, and save its `google-services.json` in `apps/mobile`, or give it to EAS builds as a file variable named `GOOGLE_SERVICES_JSON`. Then upload the Firebase project's service account key to EAS: `pnpm dlx eas-cli@latest credentials`, Android, _Google Service Account_, _Push Notifications (FCM V1)_.
+2. Android: create a [Firebase](https://console.firebase.google.com) project, add an Android app with your app's id, save its `google-services.json` in `apps/mobile`, and set `GOOGLE_SERVICES_JSON=./google-services.json` in `apps/mobile/.env.local`; EAS builds take the file from an EAS file variable of that name. Then upload the Firebase project's service account key to EAS: `pnpm dlx eas-cli@latest credentials`, Android, _Google Service Account_, _Push Notifications (FCM V1)_.
 3. iOS: an interactive `eas build` or `eas credentials` sets up the app's push key with your Apple Developer account.
 4. Set `EXPO_ACCESS_TOKEN` in the API's environment only if you turn on enhanced push security in the Expo project's settings.
 
@@ -1109,7 +1109,7 @@ The notifications go through [Expo's push service](https://docs.expo.dev/push-no
 The API sends straight to FCM for Android and APNs for iOS. A platform whose credentials are unset gets no notifications, and its devices' tokens wait for them; `pnpm check:env` reports a service with only some of its credentials. Use a phone to try them: simulators get no push token.
 
 - Android: create a [Firebase](https://console.firebase.google.com) project and add an Android app with your app's id, then save its `google-services.json` where the apps' builds find it:
-  - in `apps/mobile`, or as a file variable of EAS builds named `GOOGLE_SERVICES_JSON`, for the native app; <!-- clubedge:only mobile!=none -->
+  - in `apps/mobile`, with `GOOGLE_SERVICES_JSON=./google-services.json` in `apps/mobile/.env.local` (EAS builds take it from an EAS file variable of that name), for the native app; <!-- clubedge:only mobile!=none -->
   - in `apps/shell`, from which each build of the mobile app copies it into `android/app`. <!-- clubedge:only shell!=none -->
 
   For the API, create a service account key (Project settings, Service accounts, Generate new private key) and set `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, and `FCM_PRIVATE_KEY` from it.

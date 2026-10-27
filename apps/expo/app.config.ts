@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs"; // clubedge:only push!=none
 import type { ConfigContext, ExpoConfig } from "expo/config";
 import site from "./src/config/site.json";
 
@@ -34,13 +33,9 @@ export function buildNumber(version: string): number {
   return major * 1_000_000 + minor * 1_000 + patch;
 }
 
-// clubedge:if push!=none
-// Firebase's Android settings, which FCM needs to deliver notifications: google-services.json in
-// this folder, or the file EAS gives the build (GOOGLE_SERVICES_JSON, an EAS file variable).
-const googleServicesFile =
-  process.env.GOOGLE_SERVICES_JSON ??
-  (existsSync("google-services.json") ? "./google-services.json" : undefined);
-// clubedge:end
+// Firebase's Android settings, which FCM needs to deliver notifications: the path to // clubedge:only push!=none
+// google-services.json, from .env.local or an EAS file variable of the same name. // clubedge:only push!=none
+const googleServicesFile = process.env.GOOGLE_SERVICES_JSON || undefined; // clubedge:only push!=none
 
 // app.json holds what the Expo tools write: the version (pnpm set-version), and the EAS project
 // id that `eas init` links the app to.
