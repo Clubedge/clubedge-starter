@@ -11,7 +11,8 @@
     "prebuild": "expo prebuild",
     "export": "expo export",
     "doctor": "expo-doctor",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "set-version": "node scripts/set-version.mjs"
   },
   "dependencies": {
     "@better-auth/expo": "^1.7.13",

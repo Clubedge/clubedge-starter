@@ -22,7 +22,12 @@
       "dependencies": ["expo-notifications", "@capacitor/push-notifications"],
       "requires": {
         "auth": ["supabase", "better-auth", "firebase", "appwrite"]
-      }
+      },
+      "files": [
+        "packages/mobile/src/push-settings.tsx",
+        "packages/mobile/src/push.test.ts",
+        "packages/mobile/src/push.ts"
+      ]
     },
     "none": {
       "name": "None"

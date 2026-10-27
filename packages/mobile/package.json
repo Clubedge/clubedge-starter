@@ -11,7 +11,9 @@
     "./update-notice": "./src/update-notice.tsx",
     "./demo/api": "./src/demo/api.ts",
     "./demo/auth": "./src/demo/auth.ts",
-    "./demo/banner": "./src/demo/banner.tsx"
+    "./demo/banner": "./src/demo/banner.tsx",
+    "./push": "./src/push.ts",
+    "./push-settings": "./src/push-settings.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

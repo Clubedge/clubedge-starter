@@ -82,11 +82,12 @@ async function eachLimited<T>(items: T[], task: (item: T) => Promise<void>): Pro
 
 /**
  * The data the apps read when a notification is tapped, such as `url`. Each app finds it in its
- * own place: Capacitor in the payload's keys, Expo's notifications library in `body`.
+ * own place: Capacitor in the payload's keys, Expo's notifications library in `body`, which FCM,
+ * taking only strings, carries as JSON.
  */
-function appData(message: PushMessage): Record<string, string> {
+function appData(message: PushMessage, service: "fcm" | "apns"): Record<string, unknown> {
   const data = message.data ?? {};
-  return { ...data, body: JSON.stringify(data) };
+  return { ...data, body: service === "fcm" ? JSON.stringify(data) : data };
 }
 
 type Send = (devices: PushDevice[], message: PushMessage, result: PushResult) => Promise<void>;
@@ -138,7 +139,7 @@ function fcmSender(credentials: FcmCredentials, request: typeof fetch, now: () =
           message: {
             token,
             notification: { title: message.title, body: message.body },
-            data: appData(message),
+            data: appData(message, "fcm"),
             android: { priority: "HIGH" },
           },
         }),
@@ -207,7 +208,7 @@ function apnsSender(
       const headers = { authorization: `bearer ${providerToken()}`, topic: credentials.topic };
       const payload = JSON.stringify({
         aps: { alert: { title: message.title, body: message.body }, sound: "default" },
-        ...appData(message),
+        ...appData(message, "apns"),
       });
       await eachLimited(devices, async ({ token }) => {
         const { status, reason } = await apnsRequest(session, token, headers, payload);

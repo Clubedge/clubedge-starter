@@ -36,7 +36,9 @@ def pem(key: rsa.RSAPrivateKey | ec.EllipticCurvePrivateKey) -> str:
 FCM = FcmCredentials("my-product", "push@my-product.iam.gserviceaccount.com", pem(RSA_KEY))
 APNS = ApnsCredentials("KEY123", "TEAM456", pem(EC_KEY), "com.example.app")
 MESSAGE = PushMessage("Hello", "From the test", {"url": "/settings"})
-APP_DATA = {"url": "/settings", "body": '{"url":"/settings"}'}
+# The data each service carries: FCM takes only strings, so its `body` is JSON.
+FCM_DATA = {"url": "/settings", "body": '{"url":"/settings"}'}
+APNS_DATA = {"url": "/settings", "body": {"url": "/settings"}}
 
 
 def android(token: str) -> PushDevice:
@@ -123,7 +125,7 @@ def test_sends_android_devices_their_notification_with_the_service_accounts_toke
         "message": {
             "token": "one",
             "notification": {"title": "Hello", "body": "From the test"},
-            "data": APP_DATA,
+            "data": FCM_DATA,
             "android": {"priority": "HIGH"},
         }
     }
@@ -168,7 +170,7 @@ def test_sends_apple_devices_an_alert_for_the_app_with_the_keys_token() -> None:
     assert decode(claims)["iss"] == "TEAM456"
     assert json.loads(sent.content) == {
         "aps": {"alert": {"title": "Hello", "body": "From the test"}, "sound": "default"},
-        **APP_DATA,
+        **APNS_DATA,
     }
 
 

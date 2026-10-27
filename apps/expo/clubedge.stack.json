@@ -5,12 +5,18 @@
   "envExample": ".env.example",
   "conditional": [
     ".env.example",
+    "app.config.ts",
+    "src/app/(app)/index.tsx",
+    "src/app/(app)/settings/index.tsx",
     "src/app/forgot-password.tsx",
     "src/app/sign-up.tsx",
+    "src/components/sign-out-sheet.tsx",
+    "src/components/update-gate.tsx",
     "src/lib/api.ts",
     "src/lib/auth-client.ts",
     "src/lib/config.ts",
     "src/variants/api.auth.ts",
+    "src/variants/app-layout.auth.tsx",
     "src/variants/auth.better-auth.ts",
     "src/variants/auth.supabase.ts"
   ],
@@ -54,7 +60,13 @@
     "push": {
       "none": {},
       "expo|native": {
-        "files": ["src/components/push-settings.tsx", "src/lib/push.ts"]
+        "files": ["src/components/push-settings.tsx", "src/lib/push.ts", "src/lib/push-token.ts"]
+      },
+      "native": {
+        "files": ["src/variants/push-token.native.ts"],
+        "replace": {
+          "src/lib/push-token.ts": "src/variants/push-token.native.ts"
+        }
       }
     },
     "ota": {

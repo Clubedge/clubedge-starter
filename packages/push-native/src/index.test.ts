@@ -217,7 +217,7 @@ describe("APNs", () => {
     expect(JSON.parse(sent.body)).toEqual({
       aps: { alert: { title: "Hello", body: "From the test" }, sound: "default" },
       url: "/settings",
-      body: '{"url":"/settings"}',
+      body: { url: "/settings" },
     });
   });
 

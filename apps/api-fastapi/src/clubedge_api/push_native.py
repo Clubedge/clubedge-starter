@@ -83,10 +83,14 @@ def sign_jwt(header: dict[str, str], claims: dict[str, str | int], private_key: 
     return f"{data.decode()}.{_base64url(signature)}"
 
 
-def _app_data(message: PushMessage) -> dict[str, str]:
+def _app_data(message: PushMessage, service: PushService) -> dict[str, object]:
     """The data the apps read when a notification is tapped, such as `url`: Capacitor finds it in
-    the payload's keys, Expo's notifications library in `body`."""
-    return {**message.data, "body": json.dumps(message.data, separators=(",", ":"))}
+    the payload's keys, Expo's notifications library in `body`, which FCM, taking only strings,
+    carries as JSON."""
+    body: object = (
+        json.dumps(message.data, separators=(",", ":")) if service == "fcm" else message.data
+    )
+    return {**message.data, "body": body}
 
 
 async def _each_limited(
@@ -201,7 +205,7 @@ class NativePush:
                         "message": {
                             "token": device["token"],
                             "notification": {"title": message.title, "body": message.body},
-                            "data": _app_data(message),
+                            "data": _app_data(message, "fcm"),
                             "android": {"priority": "HIGH"},
                         }
                     },
@@ -253,7 +257,7 @@ class NativePush:
         }
         payload = {
             "aps": {"alert": {"title": message.title, "body": message.body}, "sound": "default"},
-            **_app_data(message),
+            **_app_data(message, "apns"),
         }
         # APNs answers over HTTP/2 only (h2, in the push-native dependency group).
         async with httpx.AsyncClient(http2=True, transport=self.transport, timeout=15) as client:

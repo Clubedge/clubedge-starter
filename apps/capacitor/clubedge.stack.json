@@ -3,7 +3,7 @@
   "name": "Capacitor",
   "role": "shell",
   "envExample": ".env.example",
-  "conditional": [".env.example"],
+  "conditional": [".env.example", "scripts/build.mjs"],
   "modules": {
     "push": {
       "none": {},

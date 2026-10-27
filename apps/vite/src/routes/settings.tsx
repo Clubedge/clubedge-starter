@@ -183,9 +183,7 @@ export function SettingsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">Signed in as {settings.email}.</p>
       </div>
-
       {shown && <Notice tone={shown.tone}>{shown.text}</Notice>}
-
       <Card id="profile">
         <CardHeader>
           <CardTitle>Profile</CardTitle>
@@ -214,7 +212,7 @@ export function SettingsPage() {
           )}
         </CardContent>
       </Card>
-
+      <AppPushSettings /> {/* clubedge:only push=native && shell!=none */}
       <Card id="change-password">
         <CardHeader>
           <CardTitle>Password</CardTitle>
@@ -233,7 +231,6 @@ export function SettingsPage() {
           </SettingsForm>
         </CardContent>
       </Card>
-
       <Card id="delete-account">
         <CardHeader>
           <CardTitle>Delete account</CardTitle>
@@ -381,3 +378,21 @@ function SubmitButton({
     </Button>
   );
 }
+// clubedge:if push=native && shell!=none
+
+/**
+ * The mobile app's notifications (packages/mobile, push-settings.tsx), a card only the app's build
+ * loads, so the website never has Capacitor.
+ */
+function AppPushSettings() {
+  type PushSettings = typeof import("@clubedge/mobile/push-settings").PushSettings;
+  const [PushSettings, setPushSettings] = useState<PushSettings | null>(null);
+  useEffect(() => {
+    if (import.meta.env.MODE !== "app") return;
+    void import("@clubedge/mobile/push-settings").then((module) =>
+      setPushSettings(() => module.PushSettings),
+    );
+  }, []);
+  return PushSettings ? <PushSettings api={api} /> : null;
+}
+// clubedge:end

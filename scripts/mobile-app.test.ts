@@ -15,6 +15,15 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
 import { iconArguments, makeAndroidSplash, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
+import { delegateWithPush, projectWithEntitlements } from "../apps/capacitor/scripts/push.mjs";
+import {
+  buildNumber as shellBuildNumber,
+  isNewer,
+  versionGradle,
+  versionXcodeProject,
+} from "../apps/capacitor/scripts/version.mjs";
+import { buildNumber as nativeBuildNumber } from "../apps/expo/app.config";
+import { buildNumber as setVersionBuildNumber } from "../apps/expo/scripts/set-version.mjs";
 
 // The mobile apps call the API through the website's Node server (apps/vite/server.mjs): the
 // shell (apps/capacitor) from origins of its own, and the native app (apps/expo) with no origin,
@@ -312,5 +321,67 @@ describe("apps/capacitor/scripts/icons.mjs", () => {
       expect(styles()).not.toContain("splash_screen");
       warn.mockRestore();
     });
+  });
+});
+
+describe("the store builds' versions", () => {
+  it("gives a version the same build number in both apps, which grows with the version", () => {
+    for (const buildNumber of [nativeBuildNumber, setVersionBuildNumber, shellBuildNumber]) {
+      expect(buildNumber("1.4.2")).toBe(1_004_002);
+    }
+    expect(shellBuildNumber("1.10.0")).toBeGreaterThan(shellBuildNumber("1.9.999"));
+    expect(isNewer("1.10.0", "1.9.999")).toBe(true);
+    expect(isNewer("1.4.2", "1.4.2")).toBe(false);
+    expect(() => nativeBuildNumber("1.4")).toThrow("must be major.minor.patch");
+    expect(() => nativeBuildNumber("1.1000.0")).toThrow("too large for a build number");
+  });
+
+  it("starts both apps at 1.0.0", () => {
+    const read = (file: string) => JSON.parse(readFileSync(new URL(file, import.meta.url), "utf8"));
+    expect(read("../apps/expo/app.json").expo.version).toBe("1.0.0");
+    expect(read("../apps/capacitor/version.json").version).toBe("1.0.0");
+  });
+
+  it("writes the version into the shell's Android and Xcode projects, as cap add writes them", () => {
+    const gradle = 'defaultConfig {\n    versionCode 1\n    versionName "1.0"\n}\n';
+    expect(versionGradle(gradle, "1.4.2")).toBe(
+      'defaultConfig {\n    versionCode 1004002\n    versionName "1.4.2"\n}\n',
+    );
+    expect(versionGradle('versionCode = 1\nversionName = "1.0"', "2.0.1")).toBe(
+      'versionCode = 2000001\nversionName = "2.0.1"',
+    );
+    const xcode = "CURRENT_PROJECT_VERSION = 1;\nMARKETING_VERSION = 1.0;\n".repeat(2);
+    expect(versionXcodeProject(xcode, "1.4.2")).toBe(
+      "CURRENT_PROJECT_VERSION = 1004002;\nMARKETING_VERSION = 1.4.2;\n".repeat(2),
+    );
+  });
+});
+
+describe("apps/capacitor/scripts/push.mjs", () => {
+  // The app delegate and the project's build settings, as cap add writes them.
+  const delegate = [
+    "import UIKit",
+    "import Capacitor",
+    "",
+    "@UIApplicationMain",
+    "class AppDelegate: UIResponder, UIApplicationDelegate {",
+    "    var window: UIWindow?",
+    "}",
+    "",
+  ].join("\n");
+
+  it("passes APNs' answer to the push plugin, once", () => {
+    const once = delegateWithPush(delegate);
+    expect(once).toContain("didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data");
+    expect(once).toContain("name: .capacitorDidFailToRegisterForRemoteNotifications");
+    expect(once.trimEnd().endsWith("}")).toBe(true);
+    expect(delegateWithPush(once)).toBe(once);
+  });
+
+  it("gives each of the app's configurations its entitlements, once", () => {
+    const settings = "\t\t\t\tINFOPLIST_FILE = App/Info.plist;\n".repeat(2);
+    const once = projectWithEntitlements(settings);
+    expect(once.match(/CODE_SIGN_ENTITLEMENTS = App\/App\.entitlements;/g)).toHaveLength(2);
+    expect(projectWithEntitlements(once)).toBe(once);
   });
 });

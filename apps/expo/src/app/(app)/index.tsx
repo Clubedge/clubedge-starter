@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState, type ReactNode } from "react";
 import { RefreshControl, StyleSheet, Text, View } from "react-native";
 import site from "@/config/site.json";
+import { OtaBanner } from "@/components/ota-banner"; // clubedge:only ota=eas
 import { Avatar, Mark, Notice, Screen } from "@/components/ui";
 import { UpdateBanner, useUpdate } from "@/components/update-gate";
 import { api } from "@/lib/api";
@@ -93,6 +94,7 @@ export default function Dashboard() {
           updateUrl={update.versions?.updateUrl}
         />
       ) : null}
+      <OtaBanner /> {/* clubedge:only ota=eas */}
       {authEnabled && user === null ? (
         <Notice tone="error">The API did not find your session. Pull down to try again.</Notice>
       ) : null}

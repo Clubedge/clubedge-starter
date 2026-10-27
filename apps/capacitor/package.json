@@ -8,6 +8,8 @@
     "android": "node --env-file-if-exists=.env.local scripts/build.mjs android --open",
     "icons": "node scripts/icons.mjs",
     "ios": "node --env-file-if-exists=.env.local scripts/build.mjs ios --open",
+    "release": "node --env-file-if-exists=.env.local scripts/release.mjs",
+    "set-version": "node scripts/version.mjs",
     "sync": "node --env-file-if-exists=.env.local scripts/build.mjs",
     "typecheck": "tsc --noEmit"
   },

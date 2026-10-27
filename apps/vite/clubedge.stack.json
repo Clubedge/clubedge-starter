@@ -151,10 +151,7 @@
       "railway": {}
     },
     "push": {
-      "none|expo": {},
-      "native": {
-        "files": ["src/components/settings/push-settings.tsx"]
-      }
+      "none|expo|native": {}
     }
   }
 }
