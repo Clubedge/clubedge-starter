@@ -1,0 +1,35 @@
+{
+  "name": "@clubedge/push",
+  "version": "0.29.0",
+  "description": "Provider-neutral push notifications: the PushProvider interface, the devices table, and sending to a user's devices.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:check": "drizzle-kit check"
+  },
+  "dependencies": {
+    "@clubedge/db": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "clubedge": {
+    "migrations": {
+      "folder": "drizzle",
+      "table": "__drizzle_migrations_push"
+    }
+  }
+}

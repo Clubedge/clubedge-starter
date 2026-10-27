@@ -1,0 +1,21 @@
+{
+  "name": "@clubedge/push-expo",
+  "version": "0.29.0",
+  "description": "Expo's push service for @clubedge/push: notifications to the native app's Expo push tokens.",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clubedge/push": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
