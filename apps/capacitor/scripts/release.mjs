@@ -65,9 +65,10 @@ function newest(directory, extension, since) {
  */
 function releaseAndroid(target) {
   const android = join(shellDirectory, "android");
+  // Node.js runs a batch file only through the shell, as one command.
   const windows = process.platform === "win32";
-  // Node.js runs a batch file through the shell only.
-  run(windows ? "gradlew.bat" : "./gradlew", ["bundleRelease"], { cwd: android, shell: windows });
+  if (windows) run("gradlew.bat bundleRelease", [], { cwd: android, shell: true });
+  else run("./gradlew", ["bundleRelease"], { cwd: android });
   const bundle = join(android, "app/build/outputs/bundle/release/app-release.aab");
   if (!existsSync(bundle)) fail(`Gradle finished, but wrote no ${bundle}.`);
   // The JDK that runs Gradle has jarsigner.
