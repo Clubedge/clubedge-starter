@@ -5,11 +5,12 @@
 To run it on an Android emulator:
 
 1. Start the API with its database (`pnpm dev`, or `pnpm start` after `pnpm build`), with sign-in that needs no confirmed email.
-2. Build the app against it. The emulator reaches your computer at `10.0.2.2`; the iOS simulator at `localhost`. A plain-HTTP address is allowed only in such a build (`app.config.ts`):
+2. Build the app against it. The emulator reaches your computer at `10.0.2.2`; the iOS simulator at `localhost`. A plain-HTTP address is allowed only in such a build (`app.config.ts`). Keep `EXPO_PUBLIC_API_URL` set for both commands: the release build bundles the app's JavaScript with it.
 
    ```sh
    cd apps/mobile
-   EXPO_PUBLIC_API_URL=http://10.0.2.2:3001 pnpm exec expo prebuild --platform android
+   export EXPO_PUBLIC_API_URL=http://10.0.2.2:3001
+   pnpm exec expo prebuild --platform android
    (cd android && ./gradlew assembleRelease)
    adb install -r android/app/build/outputs/apk/release/app-release.apk
    ```
@@ -22,4 +23,4 @@ To run it on an Android emulator:
    maestro test -e APP_ID=com.example.yourapp e2e
    ```
 
-The flow deletes the account it creates, so it can run again. `-e EMAIL=...` and `-e PASSWORD=...` change the account it uses.
+Each run signs up with a new address, `e2e-<time>@example.com`, so a run that stops before deleting its account doesn't block the next one. `-e PASSWORD=...` changes its password.

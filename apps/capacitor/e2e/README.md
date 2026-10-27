@@ -20,4 +20,4 @@ To run it on an Android emulator:
    maestro test -e APP_ID=com.example.yourapp e2e
    ```
 
-The flow deletes the account it creates, so it can run again. `-e EMAIL=...` and `-e PASSWORD=...` change the account it uses.
+Each run signs up with a new address, `e2e-<time>@example.com`, so a run that stops before deleting its account doesn't block the next one. `-e PASSWORD=...` changes its password.

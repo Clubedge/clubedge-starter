@@ -5,10 +5,12 @@
 appId: ${APP_ID}
 name: Account
 env:
-  EMAIL: e2e@example.com
   PASSWORD: e2e-password-1234
   NAME: Robin Tester
 ---
+# A new address for each run, so a run that stops before deleting its account doesn't block the
+# next one.
+- evalScript: ${output.email = 'e2e-' + Date.now() + '@example.com'}
 - launchApp:
     clearState: true
 # The app opens on the website's start page; the dashboard asks a signed-out user to sign in.
@@ -25,7 +27,7 @@ env:
     timeout: 15000
 - tapOn:
     id: email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn:
     id: password
 - inputText: ${PASSWORD}
@@ -41,7 +43,7 @@ env:
 - tapOn: Open navigation
 - tapOn: Settings
 - extendedWaitUntil:
-    visible: Signed in as ${EMAIL}.
+    visible: Signed in as ${output.email}.
     timeout: 30000
 - takeScreenshot: 2-settings
 
@@ -67,7 +69,7 @@ env:
     timeout: 15000
 - tapOn:
     id: email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn:
     id: password
 - inputText: ${PASSWORD}
@@ -82,7 +84,7 @@ env:
 - tapOn: Open navigation
 - tapOn: Settings
 - extendedWaitUntil:
-    visible: Signed in as ${EMAIL}.
+    visible: Signed in as ${output.email}.
     timeout: 30000
 - assertVisible: ${NAME}
 - takeScreenshot: 3-signed-in-again
@@ -101,7 +103,7 @@ env:
 - takeScreenshot: 4-deleted
 - tapOn:
     id: email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn:
     id: password
 - inputText: ${PASSWORD}

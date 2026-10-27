@@ -4,10 +4,12 @@
 appId: ${APP_ID}
 name: Account
 env:
-  EMAIL: e2e@example.com
   PASSWORD: e2e-password-1234
   NAME: Robin Tester
 ---
+# A new address for each run, so a run that stops before deleting its account doesn't block the
+# next one.
+- evalScript: ${output.email = 'e2e-' + Date.now() + '@example.com'}
 - launchApp:
     clearState: true
 # Signed out, the app opens on its welcome screen.
@@ -16,7 +18,7 @@ env:
     timeout: 60000
 - tapOn: Create account
 - tapOn: Email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn: Password
 - inputText: ${PASSWORD}
 - hideKeyboard
@@ -24,7 +26,7 @@ env:
 
 # Signed in, Home greets the user the API found for the session.
 - extendedWaitUntil:
-    visible: Hey e2e
+    visible: Hey e2e-.*
     timeout: 30000
 - assertNotVisible: The API did not find your session.*
 - takeScreenshot: 1-home
@@ -32,14 +34,14 @@ env:
 # Settings shows the account the API returns.
 - tapOn: Settings
 - extendedWaitUntil:
-    visible: ${EMAIL}
+    visible: ${output.email}
     timeout: 15000
 - takeScreenshot: 2-settings
 
 # A display name, which the API keeps.
 - tapOn: Edit
 - extendedWaitUntil:
-    visible: ${EMAIL}
+    visible: ${output.email}
     timeout: 15000
 - tapOn: Display name
 - eraseText: 40
@@ -68,7 +70,7 @@ env:
     timeout: 15000
 - tapOn: Continue with email
 - tapOn: Email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn: Password
 - inputText: ${PASSWORD}
 - hideKeyboard
@@ -99,7 +101,7 @@ env:
 - takeScreenshot: 5-deleted
 - tapOn: Continue with email
 - tapOn: Email
-- inputText: ${EMAIL}
+- inputText: ${output.email}
 - tapOn: Password
 - inputText: ${PASSWORD}
 - hideKeyboard
