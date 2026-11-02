@@ -18,6 +18,7 @@ describe("apps/vite/client-ip.mjs", () => {
   it("finds the client's address as @clubedge/core does", () => {
     const socketAddress = "192.0.2.10";
     const cases: Array<[Record<string, string>, Parameters<typeof getClientIp>[1]]> = [
+      [{ "x-forwarded-for": "198.51.100.66, 203.0.113.1" }, {}],
       [{ "x-forwarded-for": "198.51.100.66, 203.0.113.1" }, { socketAddress }],
       [{ "x-forwarded-for": "198.51.100.66, 203.0.113.1" }, { trustedHops: 1, socketAddress }],
       [{ "x-forwarded-for": "198.51.100.66, 203.0.113.1, 10.0.0.2" }, { trustedHops: 2 }],

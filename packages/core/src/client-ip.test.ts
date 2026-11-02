@@ -29,9 +29,13 @@ describe("getClientIp", () => {
     expect(getClientIp(new Headers(), { trustedHops: 1, socketAddress })).toBe(socketAddress);
   });
 
-  it("trusts the nearest proxy where the runtime gives no connection address", () => {
-    // Next.js runs behind a host's edge or a proxy, which appends the address it saw.
-    expect(getClientIp(forwarded("198.51.100.66, 203.0.113.1"))).toBe("203.0.113.1");
+  it("trusts only the hops configured, never an entry the client sent itself", () => {
+    // Next.js runs behind a host's edge or a proxy but gives no connection address, so without
+    // TRUSTED_PROXY_HOPS the nearest entry is still a claim anyone can make: everyone is "unknown".
+    expect(getClientIp(forwarded("198.51.100.66, 203.0.113.1"))).toBe("unknown");
+    expect(getClientIp(forwarded("198.51.100.66, 203.0.113.1"), { trustedHops: 1 })).toBe(
+      "203.0.113.1",
+    );
     expect(getClientIp(forwarded("203.0.113.1, 10.0.0.2"), { trustedHops: 2 })).toBe("203.0.113.1");
   });
 

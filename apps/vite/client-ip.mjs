@@ -35,12 +35,13 @@ function headerValue(headers, name) {
  * (its first entry, should it hold a list). With `trustedHops`, the x-forwarded-for entry that
  * many places from the end: the one the outermost of your proxies added; entries before it are
  * whatever the client sent, so they never count. Without either, or when the request lacks what
- * they name, the connection's own address, else "unknown". Without a connection address and
- * either setting, it trusts the nearest proxy, whose entry is the last.
+ * they name, the connection's own address, else "unknown": a client's own x-forwarded-for entry
+ * is never trusted. A server with no connection address, such as Next.js, has none to fall back
+ * to, so without either setting every client shares the "unknown" bucket.
  */
 export function getClientIp(headers, options = {}) {
   const { header, socketAddress } = options;
-  const trustedHops = options.trustedHops || (header || socketAddress !== undefined ? 0 : 1);
+  const trustedHops = options.trustedHops ?? 0;
   let address;
   if (header) {
     address = headerValue(headers, header)?.split(",")[0];

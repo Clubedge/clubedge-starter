@@ -101,9 +101,11 @@ def test_falls_back_to_the_connections_address_when_fewer_proxies_added_an_entry
     assert client_ip(Headers()) == "unknown"
 
 
-def test_trusts_the_nearest_proxy_without_a_connection_address() -> None:
+def test_trusts_only_the_hops_configured_never_an_entry_the_client_sent() -> None:
+    # Without TRUSTED_PROXY_HOPS the nearest entry is still a claim anyone can make.
     forwarded = Headers({"x-forwarded-for": "198.51.100.66, 203.0.113.1"})
-    assert client_ip(forwarded) == "203.0.113.1"
+    assert client_ip(forwarded) == "unknown"
+    assert client_ip(forwarded, ONE_PROXY) == "203.0.113.1"
 
 
 def test_reads_the_hosts_own_header_first_and_the_connections_address_without_it() -> None:

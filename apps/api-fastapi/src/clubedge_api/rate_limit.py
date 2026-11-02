@@ -113,10 +113,8 @@ def client_ip(
     the X-Forwarded-For entry that many places from the end: the one the outermost of your
     proxies added; entries before it are whatever the client sent, so they never count. Without
     either, or when the request lacks what they name, the connection's own address, else
-    "unknown". Without a connection address and either setting, it trusts the nearest proxy,
-    whose entry is the last."""
-    no_connection = not settings.header and socket_address is None
-    hops = settings.trusted_hops or (1 if no_connection else 0)
+    "unknown": never an X-Forwarded-For entry the client may have sent itself."""
+    hops = settings.trusted_hops or 0
     address = ""
     if settings.header:
         address = _entries(headers, settings.header)[0]
