@@ -103,13 +103,27 @@ const withSiteConfig = new Set(
     .map((stack) => stack.id),
 );
 
+/**
+ * Whether a rule refuses a stack an option whatever else is selected: its condition names only
+ * the stack's slot and the module, and holds for them, such as
+ * `framework=next|tanstack-start && deploy=cloudflare`.
+ */
+function refuses(when: string, slotId: string, stackId: string, moduleId: string, option: string) {
+  return when.split("&&").every((part) => {
+    const [, key, operator, values] = /^\s*([a-z-]+)\s*(!?=)\s*([a-z0-9|-]+)\s*$/.exec(part)!;
+    const selected = key === slotId ? stackId : key === moduleId ? option : undefined;
+    return selected !== undefined && values!.split("|").includes(selected) === (operator === "=");
+  });
+}
+
 describe("stack packs", () => {
   it.each(stackDescriptors.map((stack) => [stack.app, stack]))(
     "%s fills a slot and implements every option of the app modules",
     (_app, stack) => {
-      expect(
-        Object.values<{ roles: string[] }>(root.slots).some((s) => s.roles.includes(stack.role)),
-      ).toBe(true);
+      const slotId = Object.entries<{ roles: string[] }>(root.slots).find(([, s]) =>
+        s.roles.includes(stack.role),
+      )?.[0];
+      expect(slotId).toBeDefined();
       for (const [id, module] of Object.entries<{ scope?: string; options: object }>(
         moduleDescriptors,
       )) {
@@ -117,11 +131,19 @@ describe("stack packs", () => {
         const implemented = [
           ...new Set(Object.keys(stack.modules?.[id] ?? {}).flatMap((key) => key.split("|"))),
         ];
-        // Full-stack apps implement every option; frontends and APIs say what they implement.
-        if (stack.role === "fullstack")
-          expect(implemented.sort(), `${stack.id}: ${id}`).toEqual(
+        // Full-stack apps implement every option but those a rule refuses them, such as a
+        // deploy target that only fits a frontend with its API; frontends and APIs say what
+        // they implement.
+        if (stack.role === "fullstack") {
+          const refused = Object.keys(module.options).filter((option) =>
+            (root.rules as { when: string }[]).some((rule) =>
+              refuses(rule.when, slotId!, stack.id, id, option),
+            ),
+          );
+          expect([...implemented, ...refused].sort(), `${stack.id}: ${id}`).toEqual(
             Object.keys(module.options).sort(),
           );
+        }
         for (const option of implemented)
           expect(Object.keys(module.options), `${stack.id}: ${id}`).toContain(option);
       }

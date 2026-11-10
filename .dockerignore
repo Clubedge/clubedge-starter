@@ -9,3 +9,9 @@ playwright-report
 .output
 .nitro
 .tanstack
+# clubedge:if deploy=cloudflare
+# Wrangler's working files and local secrets (deploy/cloudflare), which change between builds.
+deploy/cloudflare/.wrangler
+deploy/cloudflare/.dev.vars*
+deploy/cloudflare/*.named.jsonc
+# clubedge:end

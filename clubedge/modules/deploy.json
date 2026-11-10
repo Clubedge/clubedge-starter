@@ -24,6 +24,16 @@
     "netlify": {
       "name": "Netlify",
       "files": [".github/workflows/deploy.yml"]
+    },
+    "cloudflare": {
+      "name": "Cloudflare",
+      "packages": {
+        "@clubedge/deploy-cloudflare": "deploy/cloudflare"
+      },
+      "scripts": {
+        "deploy:cloudflare": "pnpm --filter @clubedge/web build && pnpm --filter @clubedge/deploy-cloudflare run deploy",
+        "deploy:cloudflare:website": "pnpm --filter @clubedge/web build && pnpm --filter @clubedge/deploy-cloudflare run deploy:website"
+      }
     }
   }
 }

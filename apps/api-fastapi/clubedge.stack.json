@@ -212,7 +212,10 @@
     },
     "deploy": {
       "docker": {},
-      "railway": {}
+      "railway": {},
+      "cloudflare": {
+        "files": ["cloudflare.json"]
+      }
     }
   }
 }

@@ -1,0 +1,24 @@
+// The website alone, on Cloudflare's free plan: Cloudflare serves its files, which counts against
+// none of the plan's limits. The API runs on another host, which the website calls at
+// VITE_API_URL, set when it is built; the API's FRONTEND_URL is this website's address. Every five
+// minutes, a small Worker (src/website.ts) asks that API for its health, so a host that stops an
+// idle API, as Render's free plan does after 15 minutes, keeps it running. `pnpm
+// deploy:cloudflare:website` deploys it, and names the Worker after the project
+// (scripts/wrangler.mjs), so this file has no "name"; one written here is used instead. The whole
+// app on Cloudflare (Workers Paid) is wrangler.jsonc. Steps: SETUP.md (Deploy).
+{
+  "main": "src/website.ts",
+  "compatibility_date": "2026-10-30",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../../apps/web/dist",
+    "binding": "ASSETS",
+    // A page's address that is no file, such as /dashboard, opens the app, which shows it.
+    "not_found_handling": "single-page-application",
+  },
+  // Every five minutes: well within the 15 after which Render's free plan stops an API that no
+  // request reaches, even when a run is missed. The API's address, API_URL, is the website's
+  // VITE_API_URL, which `pnpm deploy:cloudflare:website` passes on (scripts/wrangler.mjs).
+  // Removing this stops the requests.
+  "triggers": { "crons": ["*/5 * * * *"] },
+}
