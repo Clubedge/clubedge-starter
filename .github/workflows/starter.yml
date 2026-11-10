@@ -1234,12 +1234,15 @@ jobs:
           E2E_DATABASE: "1"
         # In every engine: sessions, cookies, and forms are where browsers differ. One engine at a
         # time, each with servers of its own, so the auth provider's limit on sign-ups from one
-        # address counts each engine's alone.
+        # address counts each engine's alone. The app's own limit, ten sign-ins a minute from one
+        # address, is counted in Redis where the project has it (Docker), which outlives those
+        # servers: there, a minute passes between engines, or the third one's sign-ins are refused.
         run: |
           pnpm exec playwright install --with-deps chromium firefox webkit
           for engine in chromium firefox webkit; do
             pnpm test:e2e --project=$engine e2e/auth-flow.spec.ts e2e/password-reset.spec.ts \
               e2e/ready.spec.ts e2e/settings.spec.ts
+            if [ "${{ matrix.infra }}" = docker ] && [ "$engine" != webkit ]; then sleep 60; fi
           done
       - name: Run a background job (the dev server's worker, or Inngest)
         if: contains(matrix.modules, '--jobs')
