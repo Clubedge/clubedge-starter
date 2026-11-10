@@ -16,6 +16,7 @@
     "src/routes/index.tsx",
     "src/server/auth-email.ts",
     "src/server/settings-forms.ts",
+    "src/server/storage.test.ts",
     "src/server/storage.ts",
     "src/start.ts",
     "vite.config.ts"
@@ -74,7 +75,7 @@
     },
     "storage": {
       "s3|supabase": {
-        "files": ["src/server/storage.ts"]
+        "files": ["src/server/storage.test.ts", "src/server/storage.ts"]
       },
       "supabase": {
         "replace": {
