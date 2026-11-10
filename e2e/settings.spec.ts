@@ -64,7 +64,9 @@ test("updates the profile, changes the password, and deletes the account", async
   const deleteCard = page.locator("#delete-account");
   if ((await deleteCard.getByRole("button", { name: "Delete my account" }).count()) === 0) {
     // This provider cannot delete accounts here: check the new password instead.
+    await page.waitForLoadState("networkidle");
     await page.goto("/dashboard");
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Sign out" }).first().click();
     await signIn(page, email, newPassword);
     await expect(page).toHaveURL(/\/dashboard$/);

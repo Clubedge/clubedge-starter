@@ -37,6 +37,9 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await expect(page).toHaveURL(/\/login\?notice=reset-sent$/, { timeout: 20_000 });
   await expect(page.getByRole("status")).toContainText("we sent it a link");
 
+  // Leave the page once it has loaded: WebKit loads a page again when its scripts are cut off,
+  // which would undo the navigation.
+  await page.waitForLoadState("networkidle");
   await page.goto(await emailedLink(email, /reset/i));
   await expect(page).toHaveURL(/\/reset-password/);
   await page.waitForLoadState("networkidle");
