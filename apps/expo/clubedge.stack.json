@@ -20,7 +20,6 @@
     "src/variants/auth.better-auth.ts",
     "src/variants/auth.supabase.ts"
   ],
-  "auditIgnores": ["GHSA-mrhx-c7xc-m3w5"],
   "modules": {
     "auth": {
       "none": {},

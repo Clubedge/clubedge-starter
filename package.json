@@ -56,11 +56,6 @@
       "systeminformation@<5.33.16": "^5.33.16",
       "undici@>=6.23.0 <6.29.1": "^6.29.1",
       "uuid@<11.1.1": "^11.1.1"
-    },
-    "auditConfig": {
-      "ignoreGhsas": [
-        "GHSA-mrhx-c7xc-m3w5"
-      ]
     }
   }
 }
