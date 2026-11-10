@@ -329,6 +329,9 @@ Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which se
 
 Set `SMTP_URL` to any SMTP server, for example `smtps://user:password@smtp.example.com:465`, and `EMAIL_FROM` to the sender, as `Name <address>` or an address. Most email providers (Resend, Postmark, Amazon SES, SendGrid, Mailgun) offer an SMTP endpoint.
 
+A send gives up after 10 seconds without a connection or the server's greeting, and after 20 seconds of silence in the middle, so a host that blocks SMTP's ports fails at once. Some hosts' free plans block ports 25, 465 and 587: use the provider's port 2525 there. To wait longer, say so in the URL, as `?connectionTimeout=30000` (in milliseconds; `greetingTimeout` and `socketTimeout` too). <!-- clubedge:only api!=fastapi -->
+A send gives up after 30 seconds without an answer, so a host that blocks SMTP's ports fails soon. Some hosts' free plans block ports 25, 465 and 587: use the provider's port 2525 there. <!-- clubedge:only api=fastapi -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if email=resend -->
 

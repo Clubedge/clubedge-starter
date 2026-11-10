@@ -1,6 +1,6 @@
 import { createServer } from "node:net";
 import { describe, expect, it } from "vitest";
-import { createSmtpEmail } from "./index";
+import { createSmtpEmail, TIMEOUTS } from "./index";
 
 /** A minimal SMTP server that accepts one message and records it. */
 function fakeSmtpServer() {
@@ -64,6 +64,50 @@ describe("createSmtpEmail", () => {
     } finally {
       smtp.close();
     }
+  });
+
+  it("gives up on a server that never answers, in seconds rather than minutes", async () => {
+    // It takes the connection and says nothing, as a port a host silently drops.
+    const silent = createServer(() => {});
+    await new Promise<void>((resolve) => silent.listen(0, "127.0.0.1", resolve));
+    const address = silent.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    try {
+      const email = createSmtpEmail({
+        url: `smtp://127.0.0.1:${port}`,
+        from: "no-reply@example.com",
+        timeouts: { greetingMs: 300 },
+      });
+      const started = Date.now();
+      await expect(
+        email.send({ to: "ada@example.com", subject: "Hello", text: "Hello." }),
+      ).rejects.toThrow(/greeting|timeout/i);
+      expect(Date.now() - started).toBeLessThan(5_000);
+    } finally {
+      silent.close();
+    }
+  });
+
+  it("lets the URL say its own wait, as a query", async () => {
+    const silent = createServer(() => {});
+    await new Promise<void>((resolve) => silent.listen(0, "127.0.0.1", resolve));
+    const address = silent.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    try {
+      const email = createSmtpEmail({
+        url: `smtp://127.0.0.1:${port}?greetingTimeout=300`,
+        from: "no-reply@example.com",
+      });
+      const started = Date.now();
+      await expect(email.verify()).rejects.toThrow(/greeting|timeout/i);
+      expect(Date.now() - started).toBeLessThan(5_000);
+    } finally {
+      silent.close();
+    }
+  });
+
+  it("waits seconds, not nodemailer's minutes, unless told otherwise", () => {
+    expect(TIMEOUTS).toEqual({ connectMs: 10_000, greetingMs: 10_000, idleMs: 20_000 });
   });
 
   it("fails verification when no server listens", async () => {
