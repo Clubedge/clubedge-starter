@@ -6,6 +6,8 @@ import { startTelemetryFake, type TelemetryFake } from "./telemetry-fake";
 // http://127.0.0.1:4319, or SENTRY_DSN=http://public@127.0.0.1:4319/1 with
 // SENTRY_TRACES_SAMPLE_RATE=1), so it runs only with E2E_OBSERVABILITY=1.
 test.skip(!process.env.E2E_OBSERVABILITY, "needs the app pointed at the fake telemetry receiver");
+// The receiver listens on one port, so one browser runs this.
+test.skip(({ browserName }) => browserName !== "chromium", "one telemetry receiver: one browser");
 
 // One receiver on one port for the whole file, so the tests run one after the other. The dev
 // server compiles pages and routes on first use, so they get more time than the default.

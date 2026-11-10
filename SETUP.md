@@ -906,10 +906,10 @@ pnpm build
 
 <!-- clubedge:if framework!=none -->
 
-Browser checks use Playwright. Install Chromium once, then run `pnpm test:e2e`:
+Browser checks use Playwright, and run in each engine visitors use (`playwright.config.ts`): `chromium` (Chrome, Edge, and Android's browsers), `firefox`, and `webkit` (Safari, and every browser on an iPhone). Install the engines once, then run `pnpm test:e2e`, or one engine with `pnpm test:e2e --project=chromium`:
 
 ```sh
-pnpm exec playwright install chromium
+pnpm exec playwright install chromium firefox webkit
 pnpm test:e2e
 ```
 
@@ -1290,5 +1290,5 @@ This project is a starting point; review the security and operational choices fo
 - **The mobile app cannot reach the API:** check that `WEB_URL` in `apps/shell/.env.local` is the deployed website's address and that the website's `MOBILE_ORIGINS` lists the app's origins, then run `pnpm --filter @clubedge/shell sync` again. <!-- clubedge:only shell!=none -->
 - **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the website's `https://` address, and a phone in development your computer's address on the same network. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none && framework!=none -->
 - **The native app cannot reach the API:** check `EXPO_PUBLIC_API_URL` in `apps/mobile/.env.local`. A release build needs the API's `https://` address, and a phone in development your computer's address on the same network, with port 3001. The value is built into the app, so build it again after changing it. <!-- clubedge:only mobile!=none && framework=none -->
-- **Playwright cannot find Chromium:** run `pnpm exec playwright install chromium`. <!-- clubedge:only framework!=none -->
+- **Playwright cannot find a browser:** run `pnpm exec playwright install chromium firefox webkit`. On Linux they also need system libraries: add `--with-deps`. <!-- clubedge:only framework!=none -->
 - **A package file appears missing after an offline install:** retry with a normal registry-backed `pnpm install`; an incomplete local package cache can satisfy offline resolution while leaving package contents incomplete.
