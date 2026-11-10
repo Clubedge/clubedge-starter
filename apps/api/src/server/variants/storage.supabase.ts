@@ -5,7 +5,14 @@ import { createSupabaseBearerClient } from "@clubedge/auth-supabase";
 import { withSpans } from "@clubedge/core";
 import { optional, parseEnv } from "@/env";
 
-export type { SignedUrlOptions, StorageProvider, UploadInput } from "@clubedge/storage";
+export type {
+  ByteRange,
+  DownloadOptions,
+  SignedUrlOptions,
+  StorageProvider,
+  UploadInput,
+} from "@clubedge/storage";
+export { parseByteRange } from "@clubedge/storage";
 
 // Supabase Storage, through a Supabase client that carries the request's access token, so
 // bucket policies can use the signed-in user.
@@ -51,7 +58,7 @@ export function getStorage(request: Request): StorageProvider {
   });
   return withSpans("storage", {
     upload: (input) => provider.upload(input),
-    download: (key) => provider.download(key),
+    download: (key, options) => provider.download(key, options),
     delete: (key) => provider.delete(key),
     exists: (key) => provider.exists(key),
     getSignedUrl: (key, options) => provider.getSignedUrl(key, options),

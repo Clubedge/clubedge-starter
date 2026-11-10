@@ -11,6 +11,7 @@ from fastapi import Request
 from clubedge_api import storage
 from clubedge_api.check_services import service_checks
 from clubedge_api.settings import get_settings
+from clubedge_api.storage_provider import ByteRange
 from clubedge_api.storage_s3 import S3Storage
 
 STORAGE_VARIABLES = [
@@ -46,6 +47,7 @@ class FakeS3:
     def __init__(self) -> None:
         self.objects: dict[tuple[str, str], bytes] = {}
         self.uploads: list[dict[str, Any]] = []
+        self.downloads: list[dict[str, Any]] = []
         self.head_error: str | None = None
 
     def put_object(self, **kwargs: Any) -> Any:
@@ -54,9 +56,14 @@ class FakeS3:
         return {}
 
     def get_object(self, **kwargs: Any) -> Any:
+        self.downloads.append(kwargs)
         data = self.objects.get((kwargs["Bucket"], kwargs["Key"]))
         if data is None:
             raise ClientError("NoSuchKey")
+        if "Range" in kwargs:
+            # "bytes=4-6" or "bytes=7-", as S3Storage writes a range.
+            first, _, last = kwargs["Range"].removeprefix("bytes=").partition("-")
+            data = data[int(first) : int(last) + 1 if last else None]
         return {"Body": Body(data)}
 
     def head_object(self, **kwargs: Any) -> Any:
@@ -104,6 +111,18 @@ def test_uploads_reads_checks_and_deletes_objects() -> None:
     assert asyncio.run(round_trip()) == (None, b"image", True, False)
     expected = {"Bucket": "app", "Key": "avatars/ada.png", "ContentType": "image/png"}
     assert client.uploads == [{**expected, "Body": b"image"}]
+
+
+def test_reads_part_of_an_object() -> None:
+    client = FakeS3()
+    s3 = S3Storage(bucket="app", client=client)
+    asyncio.run(s3.upload("media/clip.mp4", b"0123456789", "video/mp4"))
+
+    assert asyncio.run(s3.download("media/clip.mp4", ByteRange(4, 6))) == b"456"
+    assert asyncio.run(s3.download("media/clip.mp4", ByteRange(7))) == b"789"
+    assert asyncio.run(s3.download("media/clip.mp4")) == b"0123456789"
+    clip = {"Bucket": "app", "Key": "media/clip.mp4"}
+    assert client.downloads == [{**clip, "Range": "bytes=4-6"}, {**clip, "Range": "bytes=7-"}, clip]
 
 
 def test_gives_the_public_url_and_signs_urls_that_expire() -> None:

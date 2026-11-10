@@ -12,13 +12,28 @@ class UploadResult:
     url: str | None = None
 
 
+@dataclass(frozen=True)
+class ByteRange:
+    """Part of an object: bytes `start` to `end`, both included, as an HTTP Range names them."""
+
+    start: int
+    # The last byte; the object's last when None.
+    end: int | None = None
+
+    def header(self) -> str:
+        """The range as a Range header's value, such as "bytes=0-499" or "bytes=500-"."""
+        return f"bytes={self.start}-{'' if self.end is None else self.end}"
+
+
 class StorageProvider(Protocol):
     """Objects by key, such as "avatars/user-1.png". Keys and bodies are not checked: the route
     checks the user, the file's size and type, and the key before calling it."""
 
     async def upload(self, key: str, body: bytes, content_type: str) -> UploadResult: ...
 
-    async def download(self, key: str) -> bytes: ...
+    async def download(self, key: str, byte_range: ByteRange | None = None) -> bytes:
+        """The object's bytes, or only those of `byte_range`, as a browser asks for a video's."""
+        ...
 
     async def delete(self, key: str) -> None: ...
 

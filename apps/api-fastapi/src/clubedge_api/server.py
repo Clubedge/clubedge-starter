@@ -51,6 +51,7 @@ def dependencies() -> ApiDependencies:
         is_ready=is_ready,
         get_current_user=get_current_user,
         frontend_origin=settings.frontend_origin,
+        frontend_aliases=settings.frontend_aliases,
         create_rate_limiter=create_rate_limiter,
         app_version=app_version,
         client_ip_settings=settings.client_ip_settings,

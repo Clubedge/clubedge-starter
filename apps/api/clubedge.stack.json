@@ -15,6 +15,7 @@
     "src/server/account.ts",
     "src/server/auth.ts",
     "src/server/index.ts",
+    "src/server/storage.test.ts",
     "src/server/storage.ts",
     "src/server/variants/auth.better-auth.ts"
   ],
@@ -61,7 +62,7 @@
     },
     "storage": {
       "s3|supabase": {
-        "files": ["src/server/storage.ts"]
+        "files": ["src/server/storage.test.ts", "src/server/storage.ts"]
       },
       "supabase": {
         "replace": {

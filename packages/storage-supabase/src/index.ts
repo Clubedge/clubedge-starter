@@ -36,9 +36,13 @@ export function createSupabaseStorage({
       if (error) throw error;
       return { key };
     },
-    async download(key) {
+    async download(key, options) {
       const supabase = await getClient();
-      const { data, error } = await supabase.storage.from(bucketName()).download(key);
+      const files = supabase.storage.from(bucketName());
+      const range = options?.range;
+      // `from` makes a client of its own for each call, so the header stays on this download.
+      if (range) files.setHeader("Range", `bytes=${range.start}-${range.end ?? ""}`);
+      const { data, error } = await files.download(key);
       if (error) throw error;
       return data.stream() as ReadableStream<Uint8Array>;
     },

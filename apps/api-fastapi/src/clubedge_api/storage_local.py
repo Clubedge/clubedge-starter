@@ -5,7 +5,7 @@ import os
 import uuid
 from pathlib import Path
 
-from clubedge_api.storage_provider import UploadResult
+from clubedge_api.storage_provider import ByteRange, UploadResult
 
 
 def _is_inside(root: Path, path: Path) -> bool:
@@ -68,11 +68,17 @@ class FileSystemStorage:
             partial.unlink(missing_ok=True)
             raise
 
-    def _read(self, key: str) -> bytes:
+    def _read(self, key: str, byte_range: ByteRange | None) -> bytes:
         path = self._existing_path(key)
         if path is None or not path.is_file():
             raise FileNotFoundError(f"Object not found: {key}")
-        return path.read_bytes()
+        if byte_range is None:
+            return path.read_bytes()
+        with path.open("rb") as file:
+            file.seek(byte_range.start)
+            if byte_range.end is None:
+                return file.read()
+            return file.read(max(0, byte_range.end - byte_range.start + 1))
 
     def _delete(self, key: str) -> None:
         path = self._existing_path(key)
@@ -87,8 +93,8 @@ class FileSystemStorage:
         await asyncio.to_thread(self._write, key, body)
         return UploadResult(key)
 
-    async def download(self, key: str) -> bytes:
-        return await asyncio.to_thread(self._read, key)
+    async def download(self, key: str, byte_range: ByteRange | None = None) -> bytes:
+        return await asyncio.to_thread(self._read, key, byte_range)
 
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self._delete, key)

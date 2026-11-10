@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def load_env_file(path: Path) -> None:
@@ -52,6 +53,44 @@ def parse_client_ip_settings(env: Mapping[str, str]) -> ClientIpSettings:
     return ClientIpSettings(header=header.lower() or None, trusted_hops=int(hops or "0"))
 
 
+# The port browsers leave out of an origin, for the schemes a website is served with.
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url: str) -> str | None:
+    """The origin of an absolute URL as browsers send it, which is what CORS compares: the host in
+    lower case, and the port unless it is the scheme's own. None for a value that isn't one."""
+    try:
+        parts = urlsplit(url)
+        host, port = parts.hostname, parts.port
+    except ValueError:
+        return None
+    if not parts.scheme or not host:
+        return None
+    if ":" in host:
+        # An IPv6 address, which urlsplit gives without its brackets.
+        host = f"[{host}]"
+    if port is None or port == _DEFAULT_PORTS.get(parts.scheme):
+        return f"{parts.scheme}://{host}"
+    return f"{parts.scheme}://{host}:{port}"
+
+
+def parse_frontend_aliases(value: str) -> tuple[str, ...]:
+    """The origins of FRONTEND_ALIASES: other addresses the website is served at, comma-separated,
+    such as the one it had before a new domain. Links name FRONTEND_URL alone. Raises ValueError
+    for one that isn't an absolute URL, so the API stops at startup instead of refusing its
+    pages."""
+    origins = []
+    for alias in (each.strip() for each in value.split(",")):
+        if not alias:
+            continue
+        origin = _origin(alias)
+        if origin is None:
+            raise ValueError(f'FRONTEND_ALIASES has "{alias}", not an absolute URL')
+        origins.append(origin)
+    return tuple(origins)
+
+
 @dataclass(frozen=True)
 class Settings:
     # The frontend proxies /api here in development; containers listen on every interface.
@@ -59,6 +98,8 @@ class Settings:
     port: int
     database_url: str | None
     frontend_origin: str
+    # Other addresses the website is served at, whose pages may call the API too.
+    frontend_aliases: tuple[str, ...]
     supabase_url: str | None
     supabase_publishable_key: str | None
     client_ip_settings: ClientIpSettings
@@ -72,6 +113,7 @@ def get_settings() -> Settings:
         port=int(os.environ.get("PORT") or "3001"),
         database_url=os.environ.get("DATABASE_URL") or None,
         frontend_origin=os.environ.get("FRONTEND_URL") or "http://localhost:3000",
+        frontend_aliases=parse_frontend_aliases(os.environ.get("FRONTEND_ALIASES") or ""),
         supabase_url=os.environ.get("SUPABASE_URL") or None,
         supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY") or None,
         client_ip_settings=parse_client_ip_settings(os.environ),

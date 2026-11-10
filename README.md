@@ -557,7 +557,9 @@ Each phase ends with a Starter release and a create-clubedge-app release pinned 
 | v0.22.0 to v0.26.0 | React + Vite with a separate Hono or FastAPI API, and every module on both                     |
 | v0.27.0            | Mobile apps with Capacitor                                                                     |
 | v0.28.0            | The native app with Expo, and projects without a website                                       |
-| next               | Proposed: organizations and teams, shipping the native app to stores, and an admin area        |
+| v0.29.0            | An update policy for installed apps, and a new design for the native app                       |
+| v0.30.0            | Shipping the mobile apps to stores, push notifications, and over-the-air updates               |
+| next               | Proposed: real-time, Cloudflare, two-step verification, then organizations and teams           |
 
 ## Community
 

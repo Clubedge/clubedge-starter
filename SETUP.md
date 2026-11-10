@@ -103,6 +103,8 @@ Create or select a Supabase project and copy its URL and publishable key from th
 To let users delete their account from the settings page, set `SUPABASE_SECRET_KEY` in `apps/api/.env.local` to a secret key from the project's API settings; only the API uses it. <!-- clubedge:only framework=vite && api=hono|fastapi -->
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env.local`. The API validates the access token each request carries with Supabase, and the publishable key is all it needs. To let users delete their account, also set `SUPABASE_SECRET_KEY` there to a secret key from the same settings; only the API uses it. <!-- clubedge:only framework=none -->
 
+The API checks each request's access token against the signing keys the project publishes, which it fetches once and keeps for ten minutes, so it doesn't ask Supabase on every request. A token whose session ended elsewhere, such as after a password change on another device, keeps working until it expires: an hour by default, which the project's JWT settings can shorten. A project that still signs tokens with a shared secret is asked each time. <!-- clubedge:only api=hono -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if auth=supabase && framework!=none -->
 
@@ -329,6 +331,9 @@ Better Auth runs in the frontend's server (`apps/web/auth.server.mjs`), which se
 
 Set `SMTP_URL` to any SMTP server, for example `smtps://user:password@smtp.example.com:465`, and `EMAIL_FROM` to the sender, as `Name <address>` or an address. Most email providers (Resend, Postmark, Amazon SES, SendGrid, Mailgun) offer an SMTP endpoint.
 
+A send gives up after 10 seconds without a connection or the server's greeting, and after 20 seconds of silence in the middle, so a host that blocks SMTP's ports fails at once. Some hosts' free plans block ports 25, 465 and 587: use the provider's port 2525 there. To wait longer, say so in the URL, as `?connectionTimeout=30000` (in milliseconds; `greetingTimeout` and `socketTimeout` too). <!-- clubedge:only api!=fastapi -->
+A send gives up after 30 seconds without an answer, so a host that blocks SMTP's ports fails soon. Some hosts' free plans block ports 25, 465 and 587: use the provider's port 2525 there. <!-- clubedge:only api=fastapi -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if email=resend -->
 
@@ -528,6 +533,92 @@ The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.e
 <!-- clubedge:if storage!=none -->
 
 The storage adapter does not authorize users or validate uploads. Before calling it, the route must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
+
+### Serving part of a file
+
+Browsers ask for audio and video in parts, with a `Range` header, so a player can seek without downloading the whole file, and Safari plays no media from a route that ignores the header. `download` takes the part to read as its `range` option, and `parseByteRange` reads a `Range` header into one. It needs the file's size, which the storage adapter does not report: save the size with the file's key and type when the file is uploaded, where the route checks them. A route then answers with the whole file or the part asked for: <!-- clubedge:only api!=fastapi -->
+Browsers ask for audio and video in parts, with a `Range` header, so a player can seek without downloading the whole file, and Safari plays no media from a route that ignores the header. `download` takes the part to read as a `ByteRange`, and `parse_byte_range` reads a `Range` header into one. It needs the file's size, which the storage adapter does not report: save the size with the file's key and type when the file is uploaded, where the route checks them. A route then answers with the whole file or the part asked for: <!-- clubedge:only api=fastapi -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=none -->
+
+```ts
+import { parseByteRange, storage } from "@/server/storage";
+
+export async function fileResponse(
+  request: Request,
+  file: { key: string; type: string; size: number },
+): Promise<Response> {
+  const headers = new Headers({ "Accept-Ranges": "bytes" });
+  const range = parseByteRange(request.headers.get("range"), file.size);
+  if (range === "unsatisfiable") {
+    headers.set("Content-Range", `bytes */${file.size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  const body = await storage.download(file.key, range ? { range } : undefined);
+  const { start, end } = range ?? { start: 0, end: file.size - 1 };
+  headers.set("Content-Type", file.type);
+  headers.set("Content-Length", String(end - start + 1));
+  if (range) headers.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=hono -->
+
+```ts
+import { getStorage, parseByteRange } from "@/server/storage";
+
+export async function fileResponse(
+  request: Request,
+  file: { key: string; type: string; size: number },
+): Promise<Response> {
+  const headers = new Headers({ "Accept-Ranges": "bytes" });
+  const range = parseByteRange(request.headers.get("range"), file.size);
+  if (range === "unsatisfiable") {
+    headers.set("Content-Range", `bytes */${file.size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  const body = await getStorage(request).download(file.key, range ? { range } : undefined);
+  const { start, end } = range ?? { start: 0, end: file.size - 1 };
+  headers.set("Content-Type", file.type);
+  headers.set("Content-Length", String(end - start + 1));
+  if (range) headers.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=fastapi -->
+
+```python
+from fastapi import Request, Response
+
+from clubedge_api.storage import get_storage, parse_byte_range
+
+
+async def file_response(request: Request, key: str, content_type: str, size: int) -> Response:
+    headers = {"Accept-Ranges": "bytes"}
+    byte_range = parse_byte_range(request.headers.get("range"), size)
+    if byte_range == "unsatisfiable":
+        headers["Content-Range"] = f"bytes */{size}"
+        return Response(status_code=416, headers=headers)
+    body = await get_storage(request).download(key, byte_range)
+    if byte_range:
+        headers["Content-Range"] = f"bytes {byte_range.start}-{byte_range.end}/{size}"
+    status = 206 if byte_range else 200
+    return Response(body, status_code=status, media_type=content_type, headers=headers)
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none -->
+
+Call it from a route handler with the request and your record of the file, once the route has checked that the user may read it. <!-- clubedge:only api=none -->
+Call it from a route with `c.req.raw` and your record of the file, once the route has checked that the user may read it. <!-- clubedge:only api=hono -->
+Call it from a route with the request and the file's key, type, and size from your record of it, once the route has checked that the user may read it. <!-- clubedge:only api=fastapi -->
+
+A range that starts past the file's end gets `416`. A header that asks for several ranges, or is not valid, gets the whole file, as HTTP allows. Send a file under its own type only when the upload route allows that type: a stored HTML or SVG file served as such runs as a page of your site, so send any other file as `application/octet-stream` with `Content-Disposition: attachment`.
 
 <!-- clubedge:end -->
 <!-- clubedge:if framework!=none -->
@@ -863,6 +954,8 @@ The app is two apps that meet at one HTTP contract:
 - `packages/contract/openapi.yaml` is the contract between them. The frontend calls the API only through the client generated from it, so the API can be replaced by one in another language.
 
 `pnpm dev` starts both: the frontend on <http://localhost:3000>, and the API on port 3001. The frontend's server forwards `/api` to the API (its `API_URL`), so the browser sees one origin and cookies stay first-party.
+
+Pages that call the API at its own address instead (`VITE_API_URL`) are on another origin, so the browser asks the API first. The API lets in pages from `FRONTEND_URL`, with every method a route can have. When the website is served at more than one address, such as the one it had before a new domain, list the others in `FRONTEND_ALIASES` on the API, comma-separated; links in emails and redirects keep naming `FRONTEND_URL`.
 
 <!-- clubedge:end -->
 <!-- clubedge:if framework=none -->

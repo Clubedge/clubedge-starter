@@ -66,8 +66,15 @@ export function createS3Storage(config: S3StorageConfig): StorageProvider {
       const url = config.publicUrl ? `${config.publicUrl.replace(/\/$/, "")}/${key}` : undefined;
       return { key, url };
     },
-    async download(key) {
-      const result = await client().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+    async download(key, options) {
+      const range = options?.range;
+      const result = await client().send(
+        new GetObjectCommand({
+          Bucket: bucket(),
+          Key: key,
+          ...(range ? { Range: `bytes=${range.start}-${range.end ?? ""}` } : {}),
+        }),
+      );
       if (!result.Body) throw new Error(`Storage object not found: ${key}`);
       return result.Body.transformToWebStream() as ReadableStream<Uint8Array>;
     },

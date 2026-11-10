@@ -16,6 +16,27 @@ export function parseEnv<T extends z.ZodType>(schema: T, module: string): z.infe
   return parsed.data;
 }
 
+/**
+ * The origins of FRONTEND_ALIASES: other addresses the website is served at, comma-separated,
+ * such as the one it had before a new domain. Links name FRONTEND_URL alone. Throws for one that
+ * isn't an absolute URL, so the API stops at startup instead of refusing its pages.
+ */
+export function parseFrontendAliases(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((alias) => alias.trim())
+    .filter(Boolean)
+    .map((alias) => {
+      // An address without its scheme still parses when it has a port, as localhost:3000 does,
+      // with the origin "null": the one browsers send for a page that has no address.
+      const origin = URL.canParse(alias) ? new URL(alias).origin : "null";
+      if (origin === "null") {
+        throw new Error(`FRONTEND_ALIASES has "${alias}", not an absolute URL`);
+      }
+      return origin;
+    });
+}
+
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   // The frontend proxies /api here in development; containers listen on every interface.

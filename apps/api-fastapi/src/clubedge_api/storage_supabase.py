@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 import httpx
 
-from clubedge_api.storage_provider import UploadResult
+from clubedge_api.storage_provider import ByteRange, UploadResult
 
 # The characters JavaScript's encodeURI leaves as they are, besides letters, digits, and "-_.~".
 _URI_SAFE = ";,/?:@&=+$!*'()#"
@@ -83,8 +83,13 @@ class SupabaseStorage:
         )
         return UploadResult(key)
 
-    async def download(self, key: str) -> bytes:
-        response = await self._request("download the object", "GET", f"/object/{self._object(key)}")
+    async def download(self, key: str, byte_range: ByteRange | None = None) -> bytes:
+        response = await self._request(
+            "download the object",
+            "GET",
+            f"/object/{self._object(key)}",
+            headers={"Range": byte_range.header()} if byte_range else None,
+        )
         return response.content
 
     async def delete(self, key: str) -> None:

@@ -11,10 +11,11 @@ from fastapi import Request
 
 from clubedge_api.settings import get_settings
 from clubedge_api.storage_local import FileSystemStorage  # clubedge:only infra=local
-from clubedge_api.storage_provider import StorageProvider, UploadResult
+from clubedge_api.storage_provider import ByteRange, StorageProvider, UploadResult
+from clubedge_api.storage_range import parse_byte_range
 from clubedge_api.storage_s3 import S3Storage
 
-__all__ = ["StorageProvider", "UploadResult", "get_storage"]
+__all__ = ["ByteRange", "StorageProvider", "UploadResult", "get_storage", "parse_byte_range"]
 
 
 def _env(name: str) -> str | None:
