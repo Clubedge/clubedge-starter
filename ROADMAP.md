@@ -32,13 +32,21 @@ Every phase follows the rules the existing modules already follow:
 | 16      | v0.22.0 to v0.26.0 | Stack packs (template schema 4), and React + Vite with a separate Hono or FastAPI API, with every module on both                   |
 | 17      | v0.27.0            | Mobile apps with Capacitor (template schema 5), client addresses per platform, and Docker Compose behind Caddy with images on GHCR |
 | 18      | v0.28.0            | The native app with Expo (template schema 6), and projects without a website: an API, with or without the native app               |
+| 19      | v0.29.0            | An update policy for installed apps, with a minimum version the APIs enforce, and a new design for the native app                  |
+| 20      | v0.30.0 to v0.30.1 | Shipping to stores: release workflows for both mobile apps, push notifications, and over-the-air updates with EAS Update           |
 
 ## Next
 
 These are the candidates for the next phases, in the order proposed. The order is not settled yet.
 
+The first four come from two apps built from the Starter that run in production, [Chess](https://starter.clubedge.live/case-studies/chess) and [Chat App](https://starter.clubedge.live/case-studies/chat-app): each is something one of them had to add itself.
+
+- **Real-time:** a `realtime` module that delivers short messages to every server instance over PostgreSQL's LISTEN/NOTIFY, with no extra service, and live events for a signed-in page over Server-Sent Events.
+- **Deploying to Cloudflare:** for React + Vite with a separate API, the website's files served by Cloudflare with the API's image as a Cloudflare Container, or the website alone on the free plan with the API on another host.
+- **Email codes and two-step verification:** a new account's email confirmed with a code from the email, where a link is today, and two-step verification with an authenticator app, asked for at sign-in and before a password changes, for the auth providers that support them.
+- **Media in storage:** downloads by byte range, which browsers ask for to play and seek in video and audio.
+- **Sign-in with Firebase and Appwrite in the native app,** which has Supabase and Better Auth today.
 - **Organizations and teams:** workspaces, members, roles (owner, admin, member), email invitations, and an active-organization switcher, with data and billing per organization, across the web apps, the API contract, and the native app. Better Auth has an organizations plugin; Supabase would use tables and row-level security; Appwrite has Teams.
-- **Mobile, part 3: shipping to stores:** push notifications (a `notifications` module, with Expo's push service for the native app), store builds through EAS Build, over-the-air updates, and Firebase and Appwrite sign-in in the native app.
 - **An admin area:** a user list, roles, banning users, and impersonating a user for support, built on the roles of organizations and teams.
 
 Later options: an AI module (language model providers behind one interface, with streaming), internationalization, and product analytics with feature flags.
@@ -47,4 +55,5 @@ Later options: an AI module (language model providers behind one interface, with
 
 - Keep framework and provider dependencies current (Next.js, TanStack Start, Vite, Hono, FastAPI, Expo, Better Auth, Drizzle, PGlite), with each update going through the full `starter.yml` matrix.
 - Keep `pnpm check:services` and the local-infra jobs covering every service the Starter can use.
+- Bring back what apps built from the Starter fix in production, each as its own change with a test, so the next project starts with it.
 - Every new module must survive `add`, `remove`, and `upgrade`: the CLI's change-modules and upgrade-project jobs exercise them, so blocks in code stay additive and variants stay in `variants/`.
