@@ -1,1 +1,8 @@
-export type { SignedUrlOptions, StorageProvider, UploadInput } from "./types";
+export type {
+  ByteRange,
+  DownloadOptions,
+  SignedUrlOptions,
+  StorageProvider,
+  UploadInput,
+} from "./types";
+export { parseByteRange } from "./range";

@@ -31,6 +31,24 @@ describe("createFileSystemStorage", () => {
     expect(await storage.exists("avatars/user-1.txt")).toBe(false);
   });
 
+  it("reads part of an object", async () => {
+    const storage = createFileSystemStorage({ directory });
+    await storage.upload({
+      key: "media/clip.mp4",
+      body: new TextEncoder().encode("0123456789"),
+      contentType: "video/mp4",
+    });
+    const read = async (range: { start: number; end?: number }) =>
+      new Response(await storage.download("media/clip.mp4", { range })).text();
+
+    expect(await read({ start: 0, end: 1 })).toBe("01");
+    expect(await read({ start: 4, end: 6 })).toBe("456");
+    expect(await read({ start: 7 })).toBe("789");
+    // Without a range, and with a range of the whole object, every byte.
+    expect(await new Response(await storage.download("media/clip.mp4")).text()).toBe("0123456789");
+    expect(await read({ start: 0, end: 9 })).toBe("0123456789");
+  });
+
   it("accepts blobs and streams as bodies", async () => {
     const storage = createFileSystemStorage({ directory });
     await storage.upload({
