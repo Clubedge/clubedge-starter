@@ -22,9 +22,20 @@ const supabase = {
   publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
 };
 
+// clubedge:if framework!=none
+// Other addresses the website is served at (FRONTEND_ALIASES, comma-separated), such as the one
+// it had before a new domain: their pages may call the API too. Links name FRONTEND_URL alone.
+const frontendAliases = (process.env.FRONTEND_ALIASES ?? "")
+  .split(",")
+  .map((alias) => alias.trim())
+  .filter(Boolean)
+  .map((alias) => new URL(alias).origin);
+// clubedge:end
+
 export const dependencies: ApiDependencies = {
   serviceId: siteConfig.serviceId,
   frontendOrigin: process.env.FRONTEND_URL ?? "http://localhost:3000",
+  frontendAliases, // clubedge:only framework!=none
   isReady,
   getCurrentUser: (request) => getCurrentUser(request, supabase),
   createRateLimiter,

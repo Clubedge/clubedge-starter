@@ -122,6 +122,17 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
             invalid.append(
                 "DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler"
             )
+    # clubedge:if framework!=none
+    # Optional too: other addresses the website is served at, comma-separated, whose pages may
+    # call the API as well.
+    for alias in (each.strip() for each in values.get("FRONTEND_ALIASES", "").split(",")):
+        if not alias:
+            continue
+        if _url_host(alias) is None:
+            invalid.append(f'FRONTEND_ALIASES has "{alias}", not an absolute URL')
+        elif is_local_url(alias):
+            local.append("FRONTEND_ALIASES")
+    # clubedge:end
     # Optional too: the versions /api/app-version tells the apps installed on phones.
     invalid.extend(app_version_problems(values))
     # Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").

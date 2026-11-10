@@ -107,6 +107,16 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
       invalid.push("DATABASE_URL_DIRECT points at Neon's pooler: use the host without -pooler");
     }
   }
+  // clubedge:if framework!=none
+  // Optional too: other addresses the website is served at, comma-separated, whose pages may
+  // call the API as well.
+  for (const alias of (env.FRONTEND_ALIASES ?? "").split(",").map((each) => each.trim())) {
+    if (!alias) continue;
+    if (urlHost(alias) === null) {
+      invalid.push(`FRONTEND_ALIASES has "${alias}", not an absolute URL`);
+    } else if (isLocalUrl(alias)) local.push("FRONTEND_ALIASES");
+  }
+  // clubedge:end
   // Optional too: the versions /api/app-version tells the apps installed on phones.
   invalid.push(...appVersionProblems(env));
   // Optional too: where rate limits find the client's address (SETUP.md, "Client addresses").

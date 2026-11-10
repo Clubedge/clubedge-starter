@@ -24,6 +24,24 @@ describe("production env check", () => {
   });
   // clubedge:end
 
+  // clubedge:if framework!=none
+  it("checks the website's other addresses", () => {
+    const aliases = (value: string) =>
+      checkProductionEnv({ ...complete(), FRONTEND_ALIASES: value });
+    expect(aliases("https://app.example.workers.dev, https://old.example.com")).toEqual({
+      missing: [],
+      local: [],
+      invalid: [],
+    });
+    expect(aliases("app.example.com").invalid).toEqual([
+      'FRONTEND_ALIASES has "app.example.com", not an absolute URL',
+    ]);
+    expect(aliases("https://old.example.com,http://localhost:3000").local).toEqual([
+      "FRONTEND_ALIASES",
+    ]);
+  });
+  // clubedge:end
+
   it("counts empty values as unset", () => {
     const env = { ...complete(), DATABASE_URL: "  " };
     expect(checkProductionEnv(env).missing.map(({ key }) => key)).toEqual(["DATABASE_URL"]);

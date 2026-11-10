@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def load_env_file(path: Path) -> None:
@@ -52,6 +53,20 @@ def parse_client_ip_settings(env: Mapping[str, str]) -> ClientIpSettings:
     return ClientIpSettings(header=header.lower() or None, trusted_hops=int(hops or "0"))
 
 
+def parse_frontend_aliases(value: str) -> tuple[str, ...]:
+    """The origins of FRONTEND_ALIASES: other addresses the website is served at, comma-separated,
+    such as the one it had before a new domain. Links name FRONTEND_URL alone."""
+    origins = []
+    for alias in (each.strip() for each in value.split(",")):
+        if not alias:
+            continue
+        parts = urlsplit(alias)
+        if not parts.scheme or not parts.netloc:
+            raise ValueError(f'FRONTEND_ALIASES has "{alias}", not an absolute URL')
+        origins.append(f"{parts.scheme}://{parts.netloc}")
+    return tuple(origins)
+
+
 @dataclass(frozen=True)
 class Settings:
     # The frontend proxies /api here in development; containers listen on every interface.
@@ -59,6 +74,8 @@ class Settings:
     port: int
     database_url: str | None
     frontend_origin: str
+    # Other addresses the website is served at, whose pages may call the API too.
+    frontend_aliases: tuple[str, ...]
     supabase_url: str | None
     supabase_publishable_key: str | None
     client_ip_settings: ClientIpSettings
@@ -72,6 +89,7 @@ def get_settings() -> Settings:
         port=int(os.environ.get("PORT") or "3001"),
         database_url=os.environ.get("DATABASE_URL") or None,
         frontend_origin=os.environ.get("FRONTEND_URL") or "http://localhost:3000",
+        frontend_aliases=parse_frontend_aliases(os.environ.get("FRONTEND_ALIASES") or ""),
         supabase_url=os.environ.get("SUPABASE_URL") or None,
         supabase_publishable_key=os.environ.get("SUPABASE_PUBLISHABLE_KEY") or None,
         client_ip_settings=parse_client_ip_settings(os.environ),

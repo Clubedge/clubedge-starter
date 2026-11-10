@@ -71,6 +71,19 @@ def test_checks_the_optional_direct_database_url() -> None:
     ]
 
 
+# clubedge:if framework!=none
+def test_checks_the_websites_other_addresses() -> None:
+    def aliases(value: str) -> ProductionEnvCheck:
+        return check_production_env(complete(FRONTEND_ALIASES=value))
+
+    assert aliases("https://app.example.workers.dev, https://old.example.com").ok
+    assert aliases("app.example.com").invalid == [
+        'FRONTEND_ALIASES has "app.example.com", not an absolute URL'
+    ]
+    assert aliases("https://old.example.com,http://localhost:3000").local == ["FRONTEND_ALIASES"]
+
+
+# clubedge:end
 def test_checks_the_optional_app_versions() -> None:
     versions = complete(
         APP_MINIMUM_VERSION="1.2.0",

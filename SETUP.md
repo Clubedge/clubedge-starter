@@ -816,6 +816,8 @@ The app is two apps that meet at one HTTP contract:
 
 `pnpm dev` starts both: the frontend on <http://localhost:3000>, and the API on port 3001. The frontend's server forwards `/api` to the API (its `API_URL`), so the browser sees one origin and cookies stay first-party.
 
+Pages that call the API at its own address instead (`VITE_API_URL`) are on another origin, so the browser asks the API first. The API lets in pages from `FRONTEND_URL`, with every method a route can have. When the website is served at more than one address, such as the one it had before a new domain, list the others in `FRONTEND_ALIASES` on the API, comma-separated; links in emails and redirects keep naming `FRONTEND_URL`.
+
 <!-- clubedge:end -->
 <!-- clubedge:if framework=none -->
 

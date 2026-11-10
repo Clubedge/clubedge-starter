@@ -46,6 +46,8 @@ import { pushRoutes, type PushNotifications } from "@/routes/push";
 export interface ApiDependencies {
   serviceId: string;
   frontendOrigin?: string;
+  /** Other addresses the website is served at, whose pages may call the API too. */
+  frontendAliases?: string[];
   isReady(): Promise<boolean>;
   getCurrentUser(request: Request): Promise<User | null>;
   /** Limits for routes anyone can call (src/server/cache); process memory when absent. */
@@ -93,9 +95,14 @@ export function createApp(dependencies: ApiDependencies) {
   app.use(
     "/api/*",
     cors({
-      origin: dependencies.frontendOrigin ?? "http://localhost:3000",
+      origin: [
+        dependencies.frontendOrigin ?? "http://localhost:3000",
+        ...(dependencies.frontendAliases ?? []),
+      ],
       allowHeaders: ["Authorization", "Content-Type"],
-      allowMethods: ["GET", "POST", "OPTIONS"],
+      // Every method a route can have. In development the frontend forwards /api, so the
+      // browser never asks; a method missing here only fails once pages call the API directly.
+      allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       maxAge: 600,
     }),
   );

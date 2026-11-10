@@ -50,6 +50,8 @@ class ApiDependencies:
     is_ready: Callable[[], Awaitable[bool]]
     get_current_user: GetCurrentUser
     frontend_origin: str = "http://localhost:3000"
+    # Other addresses the website is served at, whose pages may call the API too.
+    frontend_aliases: tuple[str, ...] = ()
     # Makes the limits for routes anyone can call: in process memory unless server.py says where.
     create_rate_limiter: CreateRateLimiter = create_memory_limiter
     # The app versions installed apps check, for their platform (app_version.py); every one None
@@ -131,9 +133,11 @@ def create_app(dependencies: ApiDependencies) -> FastAPI:
     app.add_middleware(BaseHTTPMiddleware, dispatch=refuse_outdated_apps)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[dependencies.frontend_origin],
+        allow_origins=[dependencies.frontend_origin, *dependencies.frontend_aliases],
         allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        # Every method a route can have. In development the frontend forwards /api, so the
+        # browser never asks; a method missing here only fails once pages call the API directly.
+        allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
     # clubedge:if observability!=none
