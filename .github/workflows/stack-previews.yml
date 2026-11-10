@@ -237,6 +237,21 @@ jobs:
         with:
           name: stack-preview-cloudflare
           path: ${{ runner.temp }}/stack-preview-cloudflare.txt
+      # Wrangler names the request Cloudflare refused, not why. This asks Cloudflare whether the
+      # token may use Containers and shows its answer: the errors alone, which name a missing
+      # permission or an account without Containers.
+      - name: Ask Cloudflare whether the token may use Containers
+        if: failure() && steps.credentials.outputs.configured == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          answer="$RUNNER_TEMP/cloudflare-containers.json"
+          status=$(curl --silent --max-time 30 --output "$answer" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/me") || status="none"
+          echo "GET /accounts/<account>/containers/me: HTTP $status"
+          jq '{success, errors, messages}' "$answer" 2>/dev/null || echo "The answer was not JSON."
 
   comment:
     if: >-
