@@ -69,7 +69,12 @@
     },
     "storage": {
       "s3|supabase": {
-        "files": ["src/clubedge_api/storage.py", "src/clubedge_api/storage_provider.py"]
+        "files": [
+          "src/clubedge_api/storage.py",
+          "src/clubedge_api/storage_provider.py",
+          "src/clubedge_api/storage_range.py",
+          "tests/test_storage_range.py"
+        ]
       },
       "s3": {
         "files": [

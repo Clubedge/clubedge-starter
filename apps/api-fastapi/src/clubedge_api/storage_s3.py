@@ -10,7 +10,7 @@ from typing import Any, Protocol, cast
 import boto3  # type: ignore[import-untyped, unused-ignore]
 from botocore.config import Config  # type: ignore[import-untyped, unused-ignore]
 
-from clubedge_api.storage_provider import UploadResult
+from clubedge_api.storage_provider import ByteRange, UploadResult
 
 
 class S3Client(Protocol):
@@ -106,9 +106,10 @@ class S3Storage:
         url = f"{self._public_url.rstrip('/')}/{key}" if self._public_url else None
         return UploadResult(key, url)
 
-    async def download(self, key: str) -> bytes:
+    async def download(self, key: str, byte_range: ByteRange | None = None) -> bytes:
         def get() -> bytes:
-            response = self._client().get_object(Bucket=self._bucket(), Key=key)
+            part = {"Range": byte_range.header()} if byte_range else {}
+            response = self._client().get_object(Bucket=self._bucket(), Key=key, **part)
             body: bytes = response["Body"].read()
             return body
 
