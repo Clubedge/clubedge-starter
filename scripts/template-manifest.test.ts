@@ -110,7 +110,10 @@ const withSiteConfig = new Set(
  */
 function refuses(when: string, slotId: string, stackId: string, moduleId: string, option: string) {
   return when.split("&&").every((part) => {
-    const [, key, operator, values] = /^\s*([a-z-]+)\s*(!?=)\s*([a-z0-9|-]+)\s*$/.exec(part)!;
+    // A part written another way says more than this reads, so its rule is not one that refuses.
+    const match = /^\s*([a-z-]+)\s*(!?=)\s*([a-z0-9|-]+)\s*$/.exec(part);
+    if (!match) return false;
+    const [, key, operator, values] = match;
     const selected = key === slotId ? stackId : key === moduleId ? option : undefined;
     return selected !== undefined && values!.split("|").includes(selected) === (operator === "=");
   });
