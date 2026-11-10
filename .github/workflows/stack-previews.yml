@@ -99,7 +99,7 @@ jobs:
   # and runs the API's image as a Container. It needs CLOUDFLARE_API_TOKEN, a secret, and
   # CLOUDFLARE_ACCOUNT_ID, a secret or a variable. A job's `if` cannot read secrets, so the first
   # step looks for the token and the others run only with it: without it, they are skipped and the
-  # job passes. Only the steps that call Wrangler are given the token.
+  # job passes. Only the steps that call Cloudflare are given the token.
   cloudflare:
     # After the Render stacks, whatever their result, since the Hono one creates the Neon branch
     # used here. A run that a newer push cancelled deploys nothing.
@@ -114,6 +114,8 @@ jobs:
     outputs:
       # Whether the repository has the token, which tells the comment to expect a URL.
       configured: ${{ steps.credentials.outputs.configured }}
+      # Whether the account can run Containers; without them, nothing is deployed.
+      containers: ${{ steps.containers.outputs.available }}
     env:
       WRANGLER_SEND_METRICS: "false"
       # The Hono stack's branch, not one more: the Neon project allows few, and each pull request
@@ -130,41 +132,66 @@ jobs:
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ]; then configured=true; else configured=false; fi
           echo "configured=$configured" >> "$GITHUB_OUTPUT"
+      # The API runs as a Container, which needs the Workers Paid plan. On an account without
+      # Containers the job deploys nothing and says so, and deploys by itself once the account has
+      # them. Any other refusal, such as a token without the permission, fails the job with
+      # Cloudflare's own errors: Wrangler names the request it was refused, and not why.
+      - name: Ask Cloudflare whether the account can run Containers
+        id: containers
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          answer="$RUNNER_TEMP/cloudflare-containers.json"
+          status=$(curl --silent --max-time 30 --output "$answer" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/me") || status="none"
+          if [ "$status" = 200 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "Workers Paid" "$answer" 2>/dev/null; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nothing was deployed to Cloudflare: the account has no Containers, which need the Workers Paid plan."
+          else
+            echo "::error::Cloudflare refused the request for the account's Containers (HTTP $status)."
+            jq '{success, errors, messages}' "$answer" 2>/dev/null || echo "The answer was not JSON."
+            exit 1
+          fi
       - uses: actions/checkout@v7
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
       - uses: pnpm/action-setup@v6
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
       - uses: actions/setup-node@v7
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
       # The action returns the branch that is there, with its addresses, and creates it only when
       # the Hono stack's job did not.
       - id: branch
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch_name: ${{ env.NEON_BRANCH }}
           api_key: ${{ secrets.NEON_API_KEY }}
       - name: Apply migrations to the Hono stack's Neon branch
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
           DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
       - name: Read the main Supabase project's URL and publishable key
         id: auth
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
         run: node scripts/stack-preview-supabase.mjs
       - name: Build create-clubedge-app
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         run: |
           set -euo pipefail
           git clone --depth 1 --branch main https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
@@ -172,7 +199,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
       - name: Generate the Cloudflare project
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         env:
           AUTH_KIND: ${{ steps.auth.outputs.auth }}
         run: |
@@ -187,7 +214,7 @@ jobs:
       # Render. The website's variables are set for its build; without VITE_API_URL, it calls the
       # API at its own address.
       - name: Deploy the website and the API to Cloudflare
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         working-directory: ${{ runner.temp }}/${{ env.WORKER }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -206,7 +233,7 @@ jobs:
       # which applies the migrations and then serves, and Cloudflare can take several minutes to
       # have a new container ready. The URL is saved once the API answers.
       - name: Wait for the API to answer at the Worker's address
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         env:
           PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
         run: |
@@ -233,25 +260,10 @@ jobs:
           done
           printf '%s\n%s\n' "$url" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-cloudflare.txt"
       - uses: actions/upload-artifact@v7
-        if: steps.credentials.outputs.configured == 'true'
+        if: steps.containers.outputs.available == 'true'
         with:
           name: stack-preview-cloudflare
           path: ${{ runner.temp }}/stack-preview-cloudflare.txt
-      # Wrangler names the request Cloudflare refused, not why. This asks Cloudflare whether the
-      # token may use Containers and shows its answer: the errors alone, which name a missing
-      # permission or an account without Containers.
-      - name: Ask Cloudflare whether the token may use Containers
-        if: failure() && steps.credentials.outputs.configured == 'true'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          answer="$RUNNER_TEMP/cloudflare-containers.json"
-          status=$(curl --silent --max-time 30 --output "$answer" --write-out '%{http_code}' \
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/me") || status="none"
-          echo "GET /accounts/<account>/containers/me: HTTP $status"
-          jq '{success, errors, messages}' "$answer" 2>/dev/null || echo "The answer was not JSON."
 
   comment:
     if: >-
@@ -273,6 +285,7 @@ jobs:
           PR: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CLOUDFLARE_CONFIGURED: ${{ needs.cloudflare.outputs.configured }}
+          CLOUDFLARE_CONTAINERS: ${{ needs.cloudflare.outputs.containers }}
         run: |
           set -euo pipefail
           marker="<!-- clubedge-stack-previews -->"
@@ -297,6 +310,9 @@ jobs:
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt" ]; then
             body="$body
           - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt")) on Cloudflare: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt") (one Worker serves the frontend and runs the API as a Container, on the Hono stack's database)"
+          elif [ "$CLOUDFLARE_CONTAINERS" = false ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript) on Cloudflare: not deployed. The Cloudflare account has no Containers, which need the Workers Paid plan."
           elif [ "$CLOUDFLARE_CONFIGURED" = true ]; then
             body="$body
           - React + Vite + Hono (TypeScript) on Cloudflare: no URL was published; check its job in the Stack previews workflow."
