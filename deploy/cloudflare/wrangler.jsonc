@@ -1,0 +1,49 @@
+// The whole app on Cloudflare, as one Worker (src/index.ts): Cloudflare serves the website's files
+// (apps/web's build, made before each deploy) and sends /api to the Worker, which runs the API's
+// own image (apps/api/Dockerfile) as a Container. `pnpm deploy:cloudflare` deploys it, and names
+// the Worker after the project (scripts/wrangler.mjs), so this file has no "name"; one written
+// here is used instead. The steps to set it up, and its variables and secrets, are in SETUP.md
+// (Deploy).
+{
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-30",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../../apps/web/dist",
+    "binding": "ASSETS",
+    // A page's address that is no file, such as /dashboard, opens the app, which shows it.
+    "not_found_handling": "single-page-application",
+    // The API's paths go to the Worker, whatever files the website has.
+    "run_worker_first": ["/api", "/api/*"],
+  },
+  "containers": [
+    {
+      "class_name": "Api",
+      "image": "../../apps/api/Dockerfile",
+      // The image builds from the whole repository, as on every other host.
+      "image_build_context": "../..",
+      // A quarter of a CPU and 1 GiB of memory.
+      "instance_type": "basic",
+      "max_instances": 1,
+    },
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "API", "class_name": "Api" }],
+  },
+  "exports": {
+    "Api": { "type": "durable-object", "storage": "sqlite" },
+  },
+  // Settings that are no secret; the secrets are set in Cloudflare's dashboard, and every one of
+  // them reaches the API (src/routing.ts). Variables set in the dashboard survive each deploy.
+  "vars": {
+    // Cloudflare's own header for the visitor's address, for the API's rate limits.
+    "CLIENT_IP_HEADER": "cf-connecting-ip",
+    // How long the API runs on with no request, before it stops until the next visit.
+    "API_IDLE_MINUTES": "60",
+    // The region the API starts in the first time, and stays in: the one nearest its database.
+    // One of wnam, enam, sam, weur, eeur, apac, oc, afr and me; without it, Cloudflare starts the
+    // API near the first request.
+    // "API_LOCATION": "weur",
+  },
+  "keep_vars": true,
+}

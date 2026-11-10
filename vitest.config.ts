@@ -5,6 +5,11 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: "node",
-    include: ["apps/*/src/**/*.test.ts", "packages/*/src/**/*.test.ts", "scripts/**/*.test.ts"],
+    include: [
+      "apps/*/src/**/*.test.ts",
+      "packages/*/src/**/*.test.ts",
+      "deploy/*/{src,scripts}/**/*.test.ts",
+      "scripts/**/*.test.ts",
+    ],
   },
 });

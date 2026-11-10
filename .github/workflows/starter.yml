@@ -207,8 +207,9 @@ jobs:
           exit 1
 
   # Generates a project per deployment platform and checks the fields that matter in its config.
-  # TanStack Start projects for serverless platforms also build with that platform's preset. The
-  # image's migrator itself is exercised by the docker jobs.
+  # TanStack Start projects for serverless platforms also build with that platform's preset, and
+  # Cloudflare projects go through a deploy's steps without an account. The image's migrator
+  # itself is exercised by the docker jobs.
   deploy-config:
     name: deploy-config (${{ matrix.deploy }}, ${{ matrix.framework }}, ${{ matrix.api || 'none' }})
     runs-on: ubuntu-24.04
@@ -235,6 +236,8 @@ jobs:
             }
           - { deploy: docker, framework: vite, api: fastapi, auth: supabase }
           - { deploy: railway, framework: vite, api: fastapi, auth: supabase }
+          - { deploy: cloudflare, framework: vite, api: hono, auth: supabase }
+          - { deploy: cloudflare, framework: vite, api: fastapi, auth: supabase }
     env:
       CLI_REF: ${{ inputs.cli-ref || 'main' }}
     steps:
@@ -257,13 +260,14 @@ jobs:
         working-directory: ${{ runner.temp }}/app
         run: |
           set -euo pipefail
-          configs="fly.toml .railway/railway.ts render.yaml apps/web/vercel.json apps/web/netlify.toml"
+          configs="fly.toml .railway/railway.ts render.yaml apps/web/vercel.json apps/web/netlify.toml deploy/cloudflare/wrangler.jsonc"
           ! grep -n "clubedge:" $configs 2>/dev/null
           # Only the selected platform's file is present.
           for config in $configs; do
             case "$config" in
               *fly.toml) want=fly ;; *railway.ts) want=railway ;; *render.yaml) want=render ;;
               *vercel.json) want=vercel ;; *netlify.toml) want=netlify ;;
+              *wrangler.jsonc) want=cloudflare ;;
             esac
             if [ "$want" = "${{ matrix.deploy }}" ]; then test -f "$config"; else test ! -e "$config"; fi
           done
@@ -324,6 +328,24 @@ jobs:
           assert build["publish"], build
           PY
               ;;
+            cloudflare)
+              # The Worker starts the API's own image: its migrator, then the command of its
+              # Dockerfile, on its port. The website's files tell Cloudflare how long to keep them.
+              test -f deploy/cloudflare/wrangler.website.jsonc
+              test -f apps/web/public/_headers
+              API=${{ matrix.api }} python3 - <<'PY'
+          import json, os
+          command = {"hono": "node dist/index.mjs", "fastapi": "python -m clubedge_api"}[os.environ["API"]]
+          image = json.load(open("apps/api/cloudflare.json"))
+          assert image == {
+              "port": 3001,
+              "healthPath": "/api/health",
+              "entrypoint": ["sh", "-c", f"node migrate.mjs && exec {command}"],
+          }, image
+          scripts = json.load(open("package.json"))["scripts"]
+          assert "deploy:cloudflare" in scripts and "deploy:cloudflare:website" in scripts, scripts
+          PY
+              ;;
           esac
           # Full-stack apps check their own environment schema; Vite delegates to its API.
           if [ "${{ matrix.framework }}" = vite ]; then env_schema=apps/api/.env.example; else env_schema=apps/web/src/env/production.ts; fi
@@ -356,8 +378,9 @@ jobs:
         working-directory: ${{ runner.temp }}/app
         run: |
           set -euo pipefail
-          # Docker projects deploy with the files `clubedge deploy` writes, so they have no deploy.yml.
-          if [ "${{ matrix.deploy }}" = docker ]; then
+          # Docker projects deploy with the files `clubedge deploy` writes, and Cloudflare projects
+          # from Cloudflare's own Git integration, so neither has a deploy.yml.
+          if [ "${{ matrix.deploy }}" = docker ] || [ "${{ matrix.deploy }}" = cloudflare ]; then
             test ! -e .github/workflows/deploy.yml
             exit 0
           fi
@@ -380,6 +403,29 @@ jobs:
           else
             test -d apps/web/.netlify/functions-internal/server
             test -d apps/web/dist
+          fi
+      # What a deploy does, short of reaching Cloudflare: the website's build, the Worker's bundle,
+      # and Wrangler's checks of both configurations. The API's image is not built here.
+      - name: Dry-run the Cloudflare deploys
+        if: matrix.deploy == 'cloudflare'
+        working-directory: ${{ runner.temp }}/app
+        env:
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm --filter @clubedge/deploy-cloudflare typecheck
+          pnpm exec vitest run deploy
+          pnpm exec eslint deploy
+          pnpm format:check
+          pnpm deploy:cloudflare --dry-run --containers-rollout=none | tee "$RUNNER_TEMP/whole.log"
+          # The Worker and the API's container are named after the project.
+          grep -q -- "- app-api (" "$RUNNER_TEMP/whole.log"
+          VITE_API_URL=https://api.example.com pnpm deploy:cloudflare:website --dry-run
+          # Without the API's address, the website alone does not deploy.
+          if pnpm deploy:cloudflare:website --dry-run; then
+            echo "The website alone deployed without VITE_API_URL."
+            exit 1
           fi
 
   # Generates projects from this checkout with create-clubedge-app and runs their full pipeline.

@@ -113,13 +113,14 @@ To try the native app, download [clubedge-native-demo.apk](https://github.com/Cl
 - A production image that includes its own migrator (`node /app/migrate.mjs`), for running migrations before each release. <!-- clubedge:only api=none -->
 - Production images for the frontend, served by Node, and for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only api!=none && framework!=none -->
 - A production image for the API, which includes the migrator (`node /app/migrate.mjs`) for running migrations before each release. <!-- clubedge:only framework=none -->
-- A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database. <!-- clubedge:only deploy!=docker -->
+- A manual deploy workflow for the chosen platform, and a readiness endpoint (`/api/ready`) that checks the database. <!-- clubedge:only deploy!=docker|cloudflare -->
 - Deployment with Docker Compose behind Caddy: `pnpm clubedge deploy` writes the Compose file, a Caddyfile, and a workflow that publishes the images to GitHub's container registry with each release. A readiness endpoint (`/api/ready`) checks the database. <!-- clubedge:only deploy=docker -->
 - Deployment to Fly.io with `fly.toml`: migrations run as the release command. <!-- clubedge:only deploy=fly -->
 - Deployment to Railway with `.railway/railway.ts`: migrations run before each release, and `pnpm clubedge deploy` sets up the project. <!-- clubedge:only deploy=railway -->
 - Deployment to Render with a `render.yaml` Blueprint: migrations run before each deploy. <!-- clubedge:only deploy=render -->
 - Deployment to Vercel with `apps/web/vercel.json`: the build stops when a production variable is missing, then runs migrations. <!-- clubedge:only deploy=vercel -->
 - Deployment to Netlify with `apps/web/netlify.toml`: the build stops when a production variable is missing, then runs migrations. <!-- clubedge:only deploy=netlify -->
+- Deployment to Cloudflare with `deploy/cloudflare`: one Worker serves the website's files and runs the API's image as a Container, which applies the migrations each time it starts; or, on the free plan, the website alone, with the API on another host. A readiness endpoint (`/api/ready`) checks the database. <!-- clubedge:only deploy=cloudflare -->
 
 **Quality**
 
@@ -133,22 +134,24 @@ To try the native app, download [clubedge-native-demo.apk](https://github.com/Cl
 
 Pick modules when you create a project, and change them later with `pnpm clubedge add` and `pnpm clubedge remove`.
 
-| Module        | Options                                                   | Default    |
-| ------------- | --------------------------------------------------------- | ---------- |
-| Framework     | `next`, `tanstack-start`                                  | `next`     |
-| Auth          | `supabase`, `better-auth`, `firebase`, `appwrite`, `none` | `supabase` |
-| Storage       | `s3`, `supabase`, `none`                                  | `s3`       |
-| Cache         | `redis`, `memory`                                         | `redis`    |
-| Email         | `smtp`, `resend`, `none`                                  | `smtp`     |
-| Payments      | `stripe`, `none`                                          | `none`     |
-| Jobs          | `pg-boss`, `bullmq`, `inngest`, `none`                    | `none`     |
-| Observability | `otel`, `sentry`, `none`                                  | `none`     |
-| Push          | `expo`, `native` (FCM and APNs), `none`                   | `none`     |
-| OTA updates   | `eas`, `none`                                             | `none`     |
-| Local infra   | `docker`, `supabase`, `local` (no Docker), `neon`, `none` | `docker`   |
-| Deploy        | `docker`, `fly`, `railway`, `render`, `vercel`, `netlify` | `docker`   |
+| Module        | Options                                                                 | Default    |
+| ------------- | ----------------------------------------------------------------------- | ---------- |
+| Framework     | `next`, `tanstack-start`                                                | `next`     |
+| Auth          | `supabase`, `better-auth`, `firebase`, `appwrite`, `none`               | `supabase` |
+| Storage       | `s3`, `supabase`, `none`                                                | `s3`       |
+| Cache         | `redis`, `memory`                                                       | `redis`    |
+| Email         | `smtp`, `resend`, `none`                                                | `smtp`     |
+| Payments      | `stripe`, `none`                                                        | `none`     |
+| Jobs          | `pg-boss`, `bullmq`, `inngest`, `none`                                  | `none`     |
+| Observability | `otel`, `sentry`, `none`                                                | `none`     |
+| Push          | `expo`, `native` (FCM and APNs), `none`                                 | `none`     |
+| OTA updates   | `eas`, `none`                                                           | `none`     |
+| Local infra   | `docker`, `supabase`, `local` (no Docker), `neon`, `none`               | `docker`   |
+| Deploy        | `docker`, `fly`, `railway`, `render`, `vercel`, `netlify`, `cloudflare` | `docker`   |
 
 A module you leave out takes its packages, provider SDK, environment variables, documentation, and lockfile entries with it.
+
+`cloudflare` deploys React + Vite with its API (`--framework vite` with `--api hono` or `--api fastapi`): the website as static files, and the API's image as a container. Next.js and TanStack Start would each need a Cloudflare adapter, which the Starter does not have, so the CLI refuses the option with them.
 
 <!-- clubedge:end -->
 
@@ -479,6 +482,7 @@ The TanStack Start app is `apps/start`, run with `pnpm --filter @clubedge/start 
 - `apps/api/`: the API, with its routes and the composition root in `src/clubedge_api/server.py` <!-- clubedge:only framework=none && api=fastapi -->
 - `apps/shell/`: the mobile app, which packages the web app for Android and iOS with Capacitor, and its native projects once created <!-- clubedge:only shell!=none -->
 - `apps/mobile/`: the native app, built with Expo and React Native, whose Android and iOS projects Expo generates <!-- clubedge:only mobile!=none -->
+- `deploy/cloudflare/`: the Worker that runs the app on Cloudflare, and its Wrangler configurations <!-- clubedge:only deploy=cloudflare -->
 - `e2e/`: Playwright browser checks <!-- clubedge:only framework!=none -->
 - `packages/contract/`: the API's OpenAPI contract (`openapi.yaml`), the client generated from it, and the conformance suite every API passes <!-- clubedge:only framework=none -->
 - `packages/core/`: errors, `Result` type, HTTP helpers, and the error reporting and tracing hooks (no dependencies)

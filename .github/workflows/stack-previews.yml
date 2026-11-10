@@ -1,5 +1,6 @@
-# Additional previews for both decoupled Vite stacks. This maintainer workflow is excluded from
-# generated projects; the existing Preview workflow remains unchanged.
+# Additional previews for both decoupled Vite stacks on Render, and for the Hono one on Cloudflare.
+# This maintainer workflow is excluded from generated projects; the existing Preview workflow
+# remains unchanged.
 name: Stack previews
 on:
   pull_request:
@@ -94,12 +95,185 @@ jobs:
           name: stack-preview-${{ matrix.api }}
           path: ${{ runner.temp }}/stack-preview-${{ matrix.api }}.txt
 
+  # The Hono stack once more, as `--deploy cloudflare` deploys it: one Worker serves the website
+  # and runs the API's image as a Container. It needs CLOUDFLARE_API_TOKEN, a secret, and
+  # CLOUDFLARE_ACCOUNT_ID, a secret or a variable. A job's `if` cannot read secrets, so the first
+  # step looks for the token and the others run only with it: without it, they are skipped and the
+  # job passes. Only the steps that call Cloudflare are given the token.
+  cloudflare:
+    # After the Render stacks, whatever their result, since the Hono one creates the Neon branch
+    # used here. A run that a newer push cancelled deploys nothing.
+    if: >-
+      !cancelled() && github.event.action != 'closed' && vars.NEON_PROJECT_ID != '' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [deploy]
+    name: React + Vite + hono on Cloudflare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      # Whether the repository has the token, which tells the comment to expect a URL.
+      configured: ${{ steps.credentials.outputs.configured }}
+      # Whether the account can run Containers; without them, nothing is deployed.
+      containers: ${{ steps.containers.outputs.available }}
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      # The Hono stack's branch, not one more: the Neon project allows few, and each pull request
+      # already has three.
+      NEON_BRANCH: preview/pr-${{ github.event.number }}-vite-hono
+      # The generated project's name. `pnpm deploy:cloudflare` names the Worker after the project,
+      # so each pull request has its own Worker, which the cleanup deletes by this name.
+      WORKER: clubedge-starter-cf-pr-${{ github.event.number }}
+    steps:
+      - name: Look for the Cloudflare token
+        id: credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then configured=true; else configured=false; fi
+          echo "configured=$configured" >> "$GITHUB_OUTPUT"
+      # The API runs as a Container, which needs the Workers Paid plan. On an account without
+      # Containers the job deploys nothing and says so, and deploys by itself once the account has
+      # them. Any other refusal, such as a token without the permission, fails the job with
+      # Cloudflare's own errors: Wrangler names the request it was refused, and not why.
+      - name: Ask Cloudflare whether the account can run Containers
+        id: containers
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          answer="$RUNNER_TEMP/cloudflare-containers.json"
+          status=$(curl --silent --max-time 30 --output "$answer" --write-out '%{http_code}' \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/me") || status="none"
+          if [ "$status" = 200 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "Workers Paid" "$answer" 2>/dev/null; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Nothing was deployed to Cloudflare: the account has no Containers, which need the Workers Paid plan."
+          else
+            echo "::error::Cloudflare refused the request for the account's Containers (HTTP $status)."
+            jq '{success, errors, messages}' "$answer" 2>/dev/null || echo "The answer was not JSON."
+            exit 1
+          fi
+      # Nothing here pushes, so the checkout keeps no token for the scripts that run after it.
+      - uses: actions/checkout@v7
+        if: steps.containers.outputs.available == 'true'
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        if: steps.containers.outputs.available == 'true'
+      - uses: actions/setup-node@v7
+        if: steps.containers.outputs.available == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: steps.containers.outputs.available == 'true'
+      # The action returns the branch that is there, with its addresses, and creates it only when
+      # the Hono stack's job did not.
+      - id: branch
+        if: steps.containers.outputs.available == 'true'
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: ${{ env.NEON_BRANCH }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Apply migrations to the Hono stack's Neon branch
+        if: steps.containers.outputs.available == 'true'
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+      - name: Read the main Supabase project's URL and publishable key
+        id: auth
+        if: steps.containers.outputs.available == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || secrets.SUPABASE_PROJECT_REF }}
+        run: node scripts/stack-preview-supabase.mjs
+      - name: Build create-clubedge-app
+        if: steps.containers.outputs.available == 'true'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch main https://github.com/Clubedge/create-clubedge-app.git "$RUNNER_TEMP/cli"
+          cd "$RUNNER_TEMP/cli"
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Generate the Cloudflare project
+        if: steps.containers.outputs.available == 'true'
+        env:
+          AUTH_KIND: ${{ steps.auth.outputs.auth }}
+        run: |
+          set -euo pipefail
+          node "$RUNNER_TEMP/cli/bin/create.mjs" "$RUNNER_TEMP/$WORKER" --template-dir "$GITHUB_WORKSPACE" \
+            --framework vite --api hono --auth "$AUTH_KIND" --deploy cloudflare --no-git --no-install --yes
+      # The API's settings go up with the deploy itself, as the Worker's secrets (--secrets-file),
+      # so the Worker never runs without them and the first request, which starts the API, finds
+      # them: there is no `wrangler secret bulk` to run before or after. The file is JSON, which
+      # Wrangler takes as written, and stays outside the project, whose files the API's image is
+      # built from. The API's other variables are for services a preview has none of, as on
+      # Render. The website's variables are set for its build; without VITE_API_URL, it calls the
+      # API at its own address.
+      - name: Deploy the website and the API to Cloudflare
+        if: steps.containers.outputs.available == 'true'
+        working-directory: ${{ runner.temp }}/${{ env.WORKER }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          DATABASE_URL: ${{ steps.branch.outputs.db_url_pooled }}
+          DATABASE_URL_DIRECT: ${{ steps.branch.outputs.db_url }}
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          secrets="$RUNNER_TEMP/cloudflare-secrets.json"
+          trap 'rm -f "$secrets"' EXIT
+          (umask 077 && jq -n 'env | {DATABASE_URL, DATABASE_URL_DIRECT, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY}' > "$secrets")
+          VITE_SUPABASE_URL="$SUPABASE_URL" VITE_SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
+            pnpm deploy:cloudflare --secrets-file "$secrets" 2>&1 | tee "$RUNNER_TEMP/cloudflare-deploy.log"
+      # Wrangler prints the Worker's address. The first request there starts the API's container,
+      # which applies the migrations and then serves, and Cloudflare can take several minutes to
+      # have a new container ready. The URL is saved once the API answers.
+      - name: Wait for the API to answer at the Worker's address
+        if: steps.containers.outputs.available == 'true'
+        env:
+          PREVIEW_AUTH: ${{ steps.auth.outputs.auth }}
+        run: |
+          set -euo pipefail
+          url=$(grep -oE "https://$WORKER\.[a-z0-9.-]+\.workers\.dev" "$RUNNER_TEMP/cloudflare-deploy.log" | tail -n 1 || true)
+          if [ -z "$url" ]; then
+            echo "::error::Wrangler printed no workers.dev address for $WORKER."
+            exit 1
+          fi
+          answer="$RUNNER_TEMP/cloudflare-health.txt"
+          deadline=$((SECONDS + 900))
+          while true; do
+            rm -f "$answer"
+            status=$(curl --silent --max-time 120 --output "$answer" --write-out '%{http_code}' "$url/api/health") ||
+              status="none (curl exit $?)"
+            if [ "$status" = 200 ]; then break; fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::$url/api/health did not answer 200 within 15 minutes. Its last answer: $status"
+              if [ -s "$answer" ]; then head -c 2000 "$answer" && echo; fi
+              exit 1
+            fi
+            echo "$url/api/health: $status. Trying again."
+            sleep 10
+          done
+          printf '%s\n%s\n' "$url" "$PREVIEW_AUTH" > "$RUNNER_TEMP/stack-preview-cloudflare.txt"
+      - uses: actions/upload-artifact@v7
+        if: steps.containers.outputs.available == 'true'
+        with:
+          name: stack-preview-cloudflare
+          path: ${{ runner.temp }}/stack-preview-cloudflare.txt
+
   comment:
     if: >-
       always() && github.event.action != 'closed' &&
       github.event.pull_request.user.login != 'dependabot[bot]' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: [deploy]
+    needs: [deploy, cloudflare]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
@@ -113,12 +287,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CLOUDFLARE_CONFIGURED: ${{ needs.cloudflare.outputs.configured }}
+          CLOUDFLARE_CONTAINERS: ${{ needs.cloudflare.outputs.containers }}
         run: |
           set -euo pipefail
           marker="<!-- clubedge-stack-previews -->"
           body="$marker
           **Additional stack previews** for ${HEAD_SHA:0:7}
-          Each URL serves the React + Vite frontend; its API runs as a separate Render web service, and the frontend sends its API requests there. Render free services may take about a minute to wake after inactivity."
+          Each Render URL serves the React + Vite frontend; its API runs as a separate Render web service, and the frontend sends its API requests there. Render free services may take about a minute to wake after inactivity."
           if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt" ]; then
             body="$body
           - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")) on Render: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-hono.txt")"
@@ -132,6 +308,17 @@ jobs:
           else
             body="$body
           - React + Vite + FastAPI (Python): no URL was published; check its job in the Stack previews workflow."
+          fi
+          # Cloudflare has a line once the repository has its token.
+          if [ -s "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt" ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript, auth: $(sed -n '2p' "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt")) on Cloudflare: $(sed -n '1p' "$RUNNER_TEMP/stack-previews/stack-preview-cloudflare.txt") (one Worker serves the frontend and runs the API as a Container, on the Hono stack's database)"
+          elif [ "$CLOUDFLARE_CONTAINERS" = false ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript) on Cloudflare: not deployed. The Cloudflare account has no Containers, which need the Workers Paid plan."
+          elif [ "$CLOUDFLARE_CONFIGURED" = true ]; then
+            body="$body
+          - React + Vite + Hono (TypeScript) on Cloudflare: no URL was published; check its job in the Stack previews workflow."
           fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
             --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n 1)
@@ -181,3 +368,78 @@ jobs:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: ${{ env.NEON_BRANCH }}
           api_key: ${{ secrets.NEON_API_KEY }}
+
+  # Deletes what the cloudflare job deployed. Without the token, its steps are skipped, as there.
+  # `wrangler delete` removes the Worker alone: the Container application that ran the API keeps
+  # running, and the images each deploy pushed stay in Cloudflare's registry, so both are deleted
+  # by the name Wrangler gave them, the Worker's with the Container's class: <Worker>-api.
+  cloudflare-cleanup:
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      WORKER: clubedge-starter-cf-pr-${{ github.event.number }}
+    steps:
+      - name: Look for the Cloudflare token
+        id: credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then configured=true; else configured=false; fi
+          echo "configured=$configured" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        if: steps.credentials.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        if: steps.credentials.outputs.configured == 'true'
+        with:
+          node-version: 22
+      # The version `pnpm deploy:cloudflare` runs, which deployed the Worker. A checkout without
+      # that file, such as a pull request from before this option, deletes with Wrangler 4.
+      - name: Read the Wrangler version the deploys use
+        if: steps.credentials.outputs.configured == 'true'
+        run: |
+          wrangler=$(sed -n 's/^const WRANGLER = "\(wrangler@[0-9.]*\)";$/\1/p' deploy/cloudflare/scripts/wrangler.mjs 2>/dev/null || true)
+          echo "WRANGLER=${wrangler:-wrangler@4}" >> "$GITHUB_ENV"
+      # --force skips the question Wrangler asks, and deletes the Worker whatever uses it.
+      - name: Delete the Worker
+        if: steps.credentials.outputs.configured == 'true'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes "$WRANGLER" delete --name "$WORKER" --force
+      - name: Delete the API's Container application
+        if: steps.credentials.outputs.configured == 'true'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "$WRANGLER" containers list --json |
+            jq -r --arg name "$WORKER-api" '.[] | select(.name == $name) | .id' |
+            while read -r id; do
+              npx --yes "$WRANGLER" containers delete "$id" < /dev/null
+            done
+      - name: Delete the API's images
+        if: steps.credentials.outputs.configured == 'true'
+        continue-on-error: true
+        working-directory: ${{ runner.temp }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes "$WRANGLER" containers images list --json |
+            jq -r --arg name "$WORKER-api" '.[] | select(.name == $name) | "\(.name):\(.tags[])"' |
+            while read -r image; do
+              npx --yes "$WRANGLER" containers images delete "$image" --skip-confirmation < /dev/null
+            done

@@ -148,7 +148,10 @@
     },
     "deploy": {
       "docker": {},
-      "railway": {}
+      "railway": {},
+      "cloudflare": {
+        "files": ["public/_headers"]
+      }
     },
     "push": {
       "none|expo|native": {}

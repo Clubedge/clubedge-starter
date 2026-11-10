@@ -1,0 +1,7 @@
+# How long browsers keep the website's files on Cloudflare, which reads this file
+# (apps/web/server.mjs sets the same itself). The rest, the pages among them, is checked again on
+# each visit, so a new version shows at once.
+
+# The build's bundles have their contents' hash in their names: they never change.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

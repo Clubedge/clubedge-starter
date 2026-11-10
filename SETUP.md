@@ -759,8 +759,54 @@ Netlify has no step that runs before a release, so the build command applies mig
 Netlify runs no worker for [background jobs](#background-jobs). Set `JOBS_WORKER=off` and `CRON_SECRET`, then call `/api/jobs/run` every minute from a [scheduled function](https://docs.netlify.com/build/functions/scheduled-functions/) or another scheduler, with the header `Authorization: Bearer <CRON_SECRET>`. <!-- clubedge:only jobs=pg-boss|bullmq -->
 
 <!-- clubedge:end -->
+<!-- clubedge:if deploy=cloudflare -->
 
-<!-- clubedge:if deploy!=docker -->
+`deploy/cloudflare` runs the whole app as one [Cloudflare](https://www.cloudflare.com) Worker: Cloudflare serves the website's files from its network, and the Worker sends `/api` to the API's own image (`apps/api/Dockerfile`), which runs as a [Cloudflare Container](https://developers.cloudflare.com/containers/). The first request starts it: the migrator runs, then the API serves, and a failed migration keeps the API from starting. It stops after `API_IDLE_MINUTES` (60) with no request, and the next request starts it again. The website and the API share one address, so `VITE_API_URL` stays unset. Containers need the Workers Paid plan; the instance type is in `deploy/cloudflare/wrangler.jsonc`.
+
+It deploys React + Vite with its API, Hono or FastAPI. Next.js and TanStack Start render pages on a server, so each would need a Cloudflare adapter, which the Starter does not have: create-clubedge-app refuses `--deploy cloudflare` with them. It also refuses it with Better Auth and with the mobile shell, which both rely on the website's own server, and Cloudflare serves the website as files. <!-- clubedge:only starter-repository -->
+
+The Worker is named after the project: `pnpm deploy:cloudflare` gives it the `name` of the root `package.json` (`deploy/cloudflare/scripts/wrangler.mjs`), so the configuration files have none. A `name` written in one of them is used instead.
+
+To set it up, in the Cloudflare dashboard:
+
+1. **Workers & Pages** > **Create** > **Import a repository**, choose this repository, and give the Worker the project's name, the `name` in the root `package.json`, which each deploy uses.
+2. Builds: root directory `/`, build command `corepack enable && pnpm install --frozen-lockfile`, deploy command `pnpm deploy:cloudflare`, which builds the website and runs `wrangler deploy`. Cloudflare builds the API's image itself.
+3. **Settings** > **Builds** > **Variables and secrets**: the website's variables, which are compiled into it, so they are set for the build. They are the `VITE_` variables of `apps/web/.env.local`, without `VITE_API_URL`.
+4. **Settings** > **Variables and Secrets**: the API's variables, as secrets. They are the production variables listed below, and `pnpm check:env` names each one that the API's modules need. `CLIENT_IP_HEADER` is already set, in `wrangler.jsonc`, and `FRONTEND_URL`, the website's address, is by default the address the API is first reached at. Every text variable and secret reaches the API.
+5. Deploy again (a new push, or **Deployments** > **Retry**): the API reads its settings when it starts.
+6. **Settings** > **Domains & Routes** for your own domain, then add the website's address to the auth provider's allowed redirect URLs.
+
+The website's variables are `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, and the API's include `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. <!-- clubedge:only auth=supabase -->
+The website's variables are `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_AUTH_DOMAIN`, and the API's include `FIREBASE_PROJECT_ID`. <!-- clubedge:only auth=firebase -->
+The website's variables are `VITE_APPWRITE_ENDPOINT` and `VITE_APPWRITE_PROJECT_ID`, and the API's include `APPWRITE_ENDPOINT` and `APPWRITE_PROJECT_ID`. <!-- clubedge:only auth=appwrite -->
+
+Cloudflare starts the API near the first request that reaches it, and the API stays in that region. To start it near its database instead, set `API_LOCATION` in `wrangler.jsonc` before the first deploy, to one of Cloudflare's location hints, such as `weur` for western Europe or `enam` for eastern North America.
+
+The jobs worker runs inside the API, so it stops with it: a job that comes due while the API is stopped runs once the next request has started it. Where jobs must run on time, have a scheduler ask for `/api/health` more often than `API_IDLE_MINUTES`: the API then never stops, and is billed for all of that time. <!-- clubedge:only jobs=pg-boss|bullmq -->
+
+Locally, `pnpm --filter @clubedge/deploy-cloudflare dev` runs the same Worker and container with Docker, once `pnpm --filter @clubedge/web build` has built the website, with the API's settings in `deploy/cloudflare/.dev.vars`.
+
+**The website alone, on the free plan.** Containers need Workers Paid, but serving files does not: `deploy/cloudflare/wrangler.website.jsonc` serves the website alone, and requests for its files count against none of the free plan's limits. The API runs on another host, any that runs its image (`apps/api/Dockerfile`), and the website calls it at its own address:
+
+1. Import the repository as above, with the deploy command `pnpm deploy:cloudflare:website`.
+2. Build variables: the website's, as above, and `VITE_API_URL`, the API's address, such as `https://my-app-api.onrender.com`. Without `VITE_API_URL` the deploy stops, and the website already online stays as it is.
+3. On the API's host, set `FRONTEND_URL` to the website's address, which lets the API answer the browser, and `CLIENT_IP_HEADER` or `TRUSTED_PROXY_HOPS` for that host (see [Client addresses](#client-addresses)). Then add the website's address to the auth provider's allowed redirect URLs.
+
+Every five minutes, a small Worker (`deploy/cloudflare/src/website.ts`) asks the API at `VITE_API_URL` for `/api/health`, so a host that stops an API no request has reached for a while keeps it running, and no visitor waits for it to start. Render's free plan stops one after 15 minutes and takes about a minute to start it again. It also gives a workspace 750 instance hours a month, of which an API that never stops uses up to 744, so the API must be the workspace's only free web service: when the hours run out, Render stops every free service until the next month. A run whose request fails shows in the Worker's logs. Removing `triggers` from `wrangler.website.jsonc` stops the requests.
+
+With the website alone, the website's address has no API: a request for `/api` there gets the app's page. Whatever reaches the API from outside the website uses the API's own address.
+
+- The native app: set its `EXPO_PUBLIC_API_URL` to the API's address. <!-- clubedge:only mobile!=none -->
+- Stripe: give it the webhook endpoint `https://<the API's address>/api/webhooks/payments`. <!-- clubedge:only payments=stripe -->
+- Inngest calls the API at `FRONTEND_URL`, the website's address, so its jobs do not run with the website alone: run the whole app on Cloudflare, or the website on a host that forwards `/api`. <!-- clubedge:only jobs=inngest -->
+- A scheduler that calls `/api/jobs/run` calls it at the API's address. <!-- clubedge:only jobs=pg-boss|bullmq -->
+- A check from outside, such as an uptime monitor, asks the API's address for `/api/health`.
+
+Moving the API to Cloudflare later is a change of deploy command, to `pnpm deploy:cloudflare`, with `VITE_API_URL` removed and the API's secrets added.
+
+<!-- clubedge:end -->
+
+<!-- clubedge:if deploy!=docker|cloudflare -->
 
 `.github/workflows/deploy.yml` deploys on demand: in GitHub, open Actions, then Deploy, then Run workflow.
 
@@ -785,6 +831,8 @@ It runs once the repository has the Neon settings below, in Settings, then Secre
 - the secret `RAILWAY_API_TOKEN`, an account or workspace token (a project token can't create environments), and the variables `RAILWAY_PROJECT_ID` and `RAILWAY_SERVICE`. Each pull request gets a Railway environment, `pr-<number>`, copied from production with its own domain and the branch as its database; it is deleted with the branch. <!-- clubedge:only deploy=railway -->
 
 The Starter repository also runs `.github/workflows/stack-previews.yml`. For each pull request, it generates React + Vite with Hono and FastAPI through the CLI, then deploys each generated frontend and API as separate Render web services. Both stacks use the existing main Supabase project's Auth endpoint and publishable key, retrieved by the workflow and passed to their generated frontend and API. Set the Actions secret `SUPABASE_ACCESS_TOKEN` and the repository secret or variable `SUPABASE_PROJECT_REF`. The token needs permission to read API gateway keys. These previews share the main project's Supabase Auth configuration and user pool; their application databases remain isolated on per-stack Neon branches. Also set the existing `RENDER_API_KEY`, `NEON_PROJECT_ID`, and `NEON_API_KEY`; if the Render token can access multiple workspaces, set `RENDER_OWNER_ID`. Connect the Starter GitHub repository to that Render workspace so Render can build generated preview branches. Each stack's Neon branch, API service, frontend service, and generated Git branch are deleted when the pull request closes. To allow Supabase email confirmation and password-reset links to return to the Render frontends, add `https://clubedge-starter-vite-**-web.onrender.com/**` under the Supabase project's Auth URL Configuration > Redirect URLs; [Supabase documents the wildcard format](https://supabase.com/docs/guides/auth/redirect-urls#use-wildcards-in-redirect-urls). Render free services can take about a minute to wake after inactivity. These settings apply only to the Starter repository and are not copied into generated projects. <!-- clubedge:only starter-repository -->
+
+With the Actions secret `CLOUDFLARE_API_TOKEN` and the repository secret or variable `CLOUDFLARE_ACCOUNT_ID`, the same workflow also deploys React + Vite with Hono to Cloudflare for each pull request, as `--deploy cloudflare` does: one Worker, `clubedge-starter-cf-pr-<number>`, serves the frontend at its `workers.dev` address and runs the API as a Container. The token is Cloudflare's **Edit Cloudflare Workers** template with the account permission **Containers** > **Edit** added; the account needs the Workers Paid plan and a `workers.dev` subdomain. This preview uses the Hono stack's Neon branch and the same Supabase project, so add `https://clubedge-starter-cf-pr-*.<subdomain>.workers.dev/**` to the Supabase redirect URLs as well. Its Worker, Container application, and images are deleted when the pull request closes. Without the token, the workflow's Cloudflare jobs skip their steps, and on an account without Containers the deploy job says so and deploys nothing. <!-- clubedge:only starter-repository -->
 
 From your machine, `pnpm clubedge deploy --preview` does the same for the current Git branch. <!-- clubedge:only deploy=vercel|railway && framework=next|tanstack-start -->
 
@@ -838,6 +886,8 @@ Without a website, clients reach the API itself, so the API takes the setting fo
 | Reached by clients directly           | Neither                                             |
 
 Vercel and Netlify take runtime variables only from the project's settings, not from `vercel.json` or `netlify.toml`, so set `CLIENT_IP_HEADER` there with the others. <!-- clubedge:only framework!=none -->
+
+On Cloudflare (`deploy/cloudflare`), the Worker hands the API each request with Cloudflare's own header for the visitor's address, and `wrangler.jsonc` sets `CLIENT_IP_HEADER=cf-connecting-ip` for the API. <!-- clubedge:only deploy=cloudflare -->
 
 ## Checks
 

@@ -85,6 +85,7 @@
     "deploy"
   ],
   "conditional": [
+    ".dockerignore",
     ".env.example",
     "apps/vite/.env.example",
     "apps/api/.env.example",
@@ -122,6 +123,7 @@
     "scripts/stack-preview-generate.mjs",
     "scripts/stack-preview-supabase.mjs",
     "scripts/clubedge-upgrade-workflow.test.ts",
+    "scripts/deploy-cloudflare.test.ts",
     "scripts/mobile-app.test.ts",
     "scripts/template-manifest.test.ts",
     "scripts/vite-api-routes.test.ts",
@@ -142,7 +144,19 @@
     },
     {
       "when": "framework=none && deploy!=docker|railway",
-      "message": "Fly.io, Vercel, Netlify, and Render deploy a web app, and this project has only its API: choose --deploy docker or --deploy railway."
+      "message": "Fly.io, Vercel, Netlify, Render, and Cloudflare deploy a web app, and this project has only its API: choose --deploy docker or --deploy railway."
+    },
+    {
+      "when": "framework=next|tanstack-start && deploy=cloudflare",
+      "message": "On Cloudflare, the website is static files and the API runs as a container, which is React + Vite with its API; Next.js and TanStack Start would each need a Cloudflare adapter the Starter does not have: choose --framework vite with --api hono or --api fastapi, or another --deploy."
+    },
+    {
+      "when": "auth=better-auth && deploy=cloudflare",
+      "message": "On Cloudflare, the website is static files, and Better Auth runs in the website's server, which is not there: choose --auth supabase, --auth firebase, or --auth appwrite, or another --deploy."
+    },
+    {
+      "when": "shell!=none && deploy=cloudflare",
+      "message": "On Cloudflare, the website is static files, and the mobile shell calls the API through the website's server, which is not there: choose --shell none (a native app, --mobile expo, works without that server), or another --deploy."
     },
     {
       "when": "push!=none && mobile=none && shell=none",

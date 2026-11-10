@@ -42,6 +42,13 @@ supabase/.branches/
 # Build output of the Vercel and Netlify presets
 .vercel/
 .netlify/
+# clubedge:if deploy=cloudflare
+# Cloudflare (deploy/cloudflare): Wrangler's local state, local secrets for `wrangler dev`, and
+# the configurations written with the Worker's name (scripts/wrangler.mjs).
+.wrangler
+.dev.vars*
+*.named.jsonc
+# clubedge:end
 
 # Python apps
 .venv/
