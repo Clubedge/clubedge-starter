@@ -25,6 +25,9 @@ test("resets a forgotten password through the emailed link", async ({ page }) =>
   await page.waitForLoadState("networkidle");
   await page.getByRole("link", { name: "Forgot password?" }).click();
   await expect(page).toHaveURL(/\/forgot-password$/);
+  // A router that changes pages in place changes the address first, while the login page and its
+  // Email field are still showing: wait for this page's own form before filling it in.
+  await expect(page.getByRole("button", { name: "Send reset link" })).toBeVisible();
   // Let the page finish starting up first: a form posted while the router initializes can be
   // cancelled by its first navigation.
   await page.waitForLoadState("networkidle");
