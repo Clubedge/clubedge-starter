@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { uniqueEmail } from "./unique";
 
 // The settings page end to end: display name, password change, and account deletion. It needs
 // an auth provider and a database, so it runs only with E2E_AUTH_FLOW=1 and E2E_DATABASE=1.
@@ -11,18 +12,23 @@ test.skip(
 test.describe.configure({ timeout: 90_000 });
 
 async function signIn(page: Page, email: string, password: string) {
+  // Leave the page once it has loaded: WebKit loads a page again when its scripts are cut off,
+  // which would undo the navigation.
+  await page.waitForLoadState("networkidle");
   await page.goto("/login");
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
 test("updates the profile, changes the password, and deletes the account", async ({ page }) => {
-  const email = `settings-${Date.now()}@example.com`;
+  const email = uniqueEmail("settings");
   const password = "correct horse battery";
   const newPassword = "a brand new secret";
 
   await page.goto("/login?mode=signup");
+  await page.waitForLoadState("networkidle");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Create account" }).click();

@@ -108,7 +108,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # Each engine visitors use (playwright.config.ts): Chrome's, Firefox's, and Safari's WebKit.
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:e2e
   # clubedge:end
 

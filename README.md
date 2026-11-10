@@ -396,7 +396,7 @@ Run these from the repository root:
 
 <!-- clubedge:end -->
 
-Playwright's first run may require installing Chromium with `pnpm exec playwright install chromium`. CI runs the browser checks automatically. <!-- clubedge:only framework!=none -->
+The browser checks run in Chromium, Firefox, and WebKit. Install the engines once with `pnpm exec playwright install chromium firefox webkit`, or run one engine with `pnpm test:e2e --project=chromium`. CI runs the browser checks automatically. <!-- clubedge:only framework!=none -->
 
 Local services:
 

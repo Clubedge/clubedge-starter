@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { emailedLink } from "./inbox";
+import { uniqueEmail } from "./unique";
 
 // With BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true, sign-in waits for the emailed confirmation
 // link. The Starter's CI runs it with E2E_EMAIL_VERIFICATION=1 and a Mailpit inbox.
@@ -9,7 +10,7 @@ test.skip(
 );
 
 test("signs in only after the emailed confirmation link", async ({ page }) => {
-  const email = `verify-${Date.now()}@example.com`;
+  const email = uniqueEmail("verify");
   const password = "correct horse battery";
 
   await page.goto("/login?mode=signup");

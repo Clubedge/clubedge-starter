@@ -132,7 +132,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # Every engine, as ci.yml runs them for Next.js.
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm test:e2e
       - run: cp apps/start/.env.example apps/start/.env.local
       - run: pnpm --filter @clubedge/start build
@@ -613,9 +614,10 @@ jobs:
           VITE_FIREBASE_API_KEY: fake-api-key
           VITE_FIREBASE_AUTH_DOMAIN: localhost
           VITE_FIREBASE_AUTH_EMULATOR_URL: http://127.0.0.1:9099
+        # One engine for each combination; ci.yml and the local-infra jobs run all three.
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e
+          pnpm test:e2e --project=chromium
       - name: Show Firebase emulator log on failure
         if: failure() && contains(matrix.modules, '--auth firebase')
         run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
@@ -826,7 +828,7 @@ jobs:
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/firebase-auth-flow.spec.ts
+          pnpm test:e2e --project=chromium e2e/firebase-auth-flow.spec.ts
       - name: Show emulator log on failure
         if: failure()
         run: tail -n 100 "$RUNNER_TEMP/firebase.log" || true
@@ -885,7 +887,7 @@ jobs:
         working-directory: ${{ runner.temp }}/generated-app
         run: |
           pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts
+          pnpm test:e2e --project=chromium e2e/auth-flow.spec.ts
       # Failed browser tests: print each one's page snapshot here and keep traces and screenshots.
       - name: Show why browser tests failed
         if: failure()
@@ -1230,16 +1232,21 @@ jobs:
         env:
           E2E_MAIL_API: ${{ matrix.mail-api }}
           E2E_DATABASE: "1"
+        # In every engine: sessions, cookies, and forms are where browsers differ. One engine at a
+        # time, each with servers of its own, so the auth provider's limit on sign-ups from one
+        # address counts each engine's alone.
         run: |
-          pnpm exec playwright install --with-deps chromium
-          pnpm test:e2e e2e/auth-flow.spec.ts e2e/password-reset.spec.ts e2e/ready.spec.ts \
-            e2e/settings.spec.ts
+          pnpm exec playwright install --with-deps chromium firefox webkit
+          for engine in chromium firefox webkit; do
+            pnpm test:e2e --project=$engine e2e/auth-flow.spec.ts e2e/password-reset.spec.ts \
+              e2e/ready.spec.ts e2e/settings.spec.ts
+          done
       - name: Run a background job (the dev server's worker, or Inngest)
         if: contains(matrix.modules, '--jobs')
         working-directory: ${{ runner.temp }}/generated-app
         env:
           E2E_DATABASE: "1"
-        run: pnpm test:e2e e2e/jobs.spec.ts
+        run: pnpm test:e2e --project=chromium e2e/jobs.spec.ts
       - name: Show the Inngest Dev Server's log
         if: failure() && contains(matrix.modules, '--jobs inngest')
         run: tail -n 100 "$RUNNER_TEMP/inngest.log" || true
@@ -1271,7 +1278,7 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4319
           SENTRY_DSN: http://public@127.0.0.1:4319/1
           SENTRY_TRACES_SAMPLE_RATE: "1"
-        run: pnpm test:e2e e2e/observability.spec.ts
+        run: pnpm test:e2e --project=chromium e2e/observability.spec.ts
       - name: Sign in only after confirming the email address
         if: matrix.infra == 'docker' && matrix.mail-api != '' && contains(matrix.modules, '--auth better-auth')
         working-directory: ${{ runner.temp }}/generated-app
@@ -1279,7 +1286,7 @@ jobs:
           E2E_MAIL_API: ${{ matrix.mail-api }}
           E2E_EMAIL_VERIFICATION: "1"
           BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: "true"
-        run: pnpm test:e2e e2e/email-verification.spec.ts
+        run: pnpm test:e2e --project=chromium e2e/email-verification.spec.ts
       # Checkout, the webhook, and the portal against e2e/stripe-fake.ts, a stand-in for the
       # Stripe API; webhooks are signed with the secret below, as Stripe signs them.
       - name: Subscribe through checkout and the webhook, then open the billing portal
@@ -1291,7 +1298,7 @@ jobs:
           STRIPE_WEBHOOK_SECRET: whsec_ci_only
           STRIPE_PRICE_PRO: price_ci_pro
           STRIPE_API_BASE: http://127.0.0.1:12111
-        run: pnpm test:e2e e2e/payments.spec.ts
+        run: pnpm test:e2e --project=chromium e2e/payments.spec.ts
       - name: Restart the local database and keep its data
         if: matrix.infra == 'local'
         working-directory: ${{ runner.temp }}/generated-app

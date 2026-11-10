@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { uniqueEmail } from "./unique";
 
 // Queues the dashboard's sample job and waits for the worker inside the dev server to finish
 // it. It needs a database and an auth provider, so it runs only with E2E_DATABASE=1 and
@@ -10,7 +11,7 @@ test.skip(
 
 test("runs the sample job in the background worker", async ({ page }) => {
   await page.goto("/login?mode=signup");
-  await page.getByLabel("Email").fill(`jobs-${Date.now()}@example.com`);
+  await page.getByLabel("Email").fill(uniqueEmail("jobs"));
   await page.getByLabel("Password", { exact: true }).fill("correct horse battery");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
