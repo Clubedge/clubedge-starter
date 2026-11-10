@@ -6,7 +6,14 @@ import { optional, parseEnv } from "@/env/server";
 import { getSupabaseClient } from "@/server/auth";
 import { withSpans } from "@clubedge/core";
 
-export type { SignedUrlOptions, StorageProvider, UploadInput } from "@clubedge/storage";
+export type {
+  ByteRange,
+  DownloadOptions,
+  SignedUrlOptions,
+  StorageProvider,
+  UploadInput,
+} from "@clubedge/storage";
+export { parseByteRange } from "@clubedge/storage";
 
 // Supabase Storage, through the request-scoped Supabase client, so bucket policies can use
 // the signed-in user.
@@ -29,7 +36,7 @@ function resolveProvider(): StorageProvider {
 /** The configured storage provider, resolved on first use so imports stay side-effect free. */
 export const storage: StorageProvider = withSpans("storage", {
   upload: (input) => resolveProvider().upload(input),
-  download: (key) => resolveProvider().download(key),
+  download: (key, options) => resolveProvider().download(key, options),
   delete: (key) => resolveProvider().delete(key),
   exists: (key) => resolveProvider().exists(key),
   getSignedUrl: (key, options) => resolveProvider().getSignedUrl(key, options),

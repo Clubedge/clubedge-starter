@@ -6,6 +6,7 @@ import json
 import httpx
 import pytest
 
+from clubedge_api.storage_provider import ByteRange
 from clubedge_api.storage_supabase import StorageError, SupabaseStorage
 
 SUPABASE_URL = "https://project.supabase.co"
@@ -54,6 +55,22 @@ def test_acts_as_anonymous_without_a_token() -> None:
     assert request.method == "GET"
     assert str(request.url) == f"{SUPABASE_URL}/storage/v1/object/app/a.png"
     assert request.headers["authorization"] == "Bearer sb_publishable_key"
+
+
+def test_asks_for_part_of_an_object_with_a_range_header() -> None:
+    supabase = FakeSupabase(httpx.Response(206, content=b"456"))
+    assert asyncio.run(supabase.storage().download("a b.mp4", ByteRange(4, 6))) == b"456"
+    asyncio.run(supabase.storage().download("a b.mp4", ByteRange(7)))
+    asyncio.run(supabase.storage().download("a b.mp4"))
+    ranged, open_ended, whole = supabase.requests
+    assert (ranged.method, str(ranged.url)) == (
+        "GET",
+        f"{SUPABASE_URL}/storage/v1/object/app/a%20b.mp4",
+    )
+    assert ranged.headers["range"] == "bytes=4-6"
+    assert ranged.headers["authorization"] == "Bearer user-token"
+    assert open_ended.headers["range"] == "bytes=7-"
+    assert "range" not in whole.headers
 
 
 def test_deletes_and_finds_objects() -> None:

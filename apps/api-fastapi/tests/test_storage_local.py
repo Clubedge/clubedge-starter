@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from clubedge_api.storage_local import FileSystemStorage
+from clubedge_api.storage_provider import ByteRange
 
 
 def test_stores_objects_as_files_in_a_folder_it_creates(tmp_path: Path) -> None:
@@ -23,6 +24,24 @@ def test_stores_objects_as_files_in_a_folder_it_creates(tmp_path: Path) -> None:
 
     assert asyncio.run(round_trip()) == (b"image", True, False)
     assert (tmp_path / "storage" / "avatars").is_dir()
+
+
+def test_reads_part_of_an_object(tmp_path: Path) -> None:
+    folder = FileSystemStorage(tmp_path)
+    asyncio.run(folder.upload("media/clip.mp4", b"0123456789", "video/mp4"))
+
+    def read(byte_range: ByteRange | None) -> bytes:
+        return asyncio.run(folder.download("media/clip.mp4", byte_range))
+
+    assert read(ByteRange(0, 1)) == b"01"
+    assert read(ByteRange(4, 6)) == b"456"
+    assert read(ByteRange(7)) == b"789"
+    # Without a range, and with a range of the whole object, every byte.
+    assert read(None) == b"0123456789"
+    assert read(ByteRange(0, 9)) == b"0123456789"
+    # As a file read does: what there is of a range that runs past the end.
+    assert read(ByteRange(8, 20)) == b"89"
+    assert read(ByteRange(10)) == b""
 
 
 def test_answers_for_a_folder_that_does_not_exist_yet(tmp_path: Path) -> None:

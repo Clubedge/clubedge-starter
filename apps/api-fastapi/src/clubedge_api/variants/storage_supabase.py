@@ -11,10 +11,11 @@ import re
 from fastapi import Request
 
 from clubedge_api.settings import get_settings
-from clubedge_api.storage_provider import StorageProvider, UploadResult
+from clubedge_api.storage_provider import ByteRange, StorageProvider, UploadResult
+from clubedge_api.storage_range import parse_byte_range
 from clubedge_api.storage_supabase import SupabaseStorage
 
-__all__ = ["StorageProvider", "UploadResult", "get_storage"]
+__all__ = ["ByteRange", "StorageProvider", "UploadResult", "get_storage", "parse_byte_range"]
 
 _BEARER = re.compile(r"^Bearer\s+(.+)$", re.IGNORECASE)
 

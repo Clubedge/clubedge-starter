@@ -83,6 +83,27 @@ describe("createS3Storage", () => {
     expect(result).toEqual({ key: "avatars/1.png", url: "https://cdn.example/avatars/1.png" });
   });
 
+  it("downloads the whole object, or the bytes a range names", async () => {
+    const storage = createS3Storage({ bucket: "files", region: "auto" });
+    for (let call = 0; call < 4; call++) {
+      send.mockResolvedValueOnce({
+        Body: { transformToWebStream: () => new Blob(["bytes"]).stream() },
+      });
+    }
+
+    expect(await new Response(await storage.download("media/clip.mp4")).text()).toBe("bytes");
+    await storage.download("media/clip.mp4", { range: { start: 500, end: 999 } });
+    await storage.download("media/clip.mp4", { range: { start: 500 } });
+    await storage.download("media/clip.mp4", { range: { start: 0, end: 0 } });
+
+    expect(send.mock.calls.map(([command]) => command.input)).toEqual([
+      { Bucket: "files", Key: "media/clip.mp4" },
+      { Bucket: "files", Key: "media/clip.mp4", Range: "bytes=500-999" },
+      { Bucket: "files", Key: "media/clip.mp4", Range: "bytes=500-" },
+      { Bucket: "files", Key: "media/clip.mp4", Range: "bytes=0-0" },
+    ]);
+  });
+
   it("fails clearly when the bucket is not configured", async () => {
     const storage = createS3Storage({ region: "auto" });
     await expect(storage.exists("a.txt")).rejects.toThrow("STORAGE_BUCKET must be configured");

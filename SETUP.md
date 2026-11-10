@@ -534,6 +534,92 @@ The API holds the storage adapter: set `SUPABASE_STORAGE_BUCKET` in `apps/api/.e
 
 The storage adapter does not authorize users or validate uploads. Before calling it, the route must check ownership and authorization, file size, content type, and the object key. Keep credentials server side.
 
+### Serving part of a file
+
+Browsers ask for audio and video in parts, with a `Range` header, so a player can seek without downloading the whole file, and Safari plays no media from a route that ignores the header. `download` takes the part to read as its `range` option, and `parseByteRange` reads a `Range` header into one. It needs the file's size, which the storage adapter does not report: save the size with the file's key and type when the file is uploaded, where the route checks them. A route then answers with the whole file or the part asked for: <!-- clubedge:only api!=fastapi -->
+Browsers ask for audio and video in parts, with a `Range` header, so a player can seek without downloading the whole file, and Safari plays no media from a route that ignores the header. `download` takes the part to read as a `ByteRange`, and `parse_byte_range` reads a `Range` header into one. It needs the file's size, which the storage adapter does not report: save the size with the file's key and type when the file is uploaded, where the route checks them. A route then answers with the whole file or the part asked for: <!-- clubedge:only api=fastapi -->
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=none -->
+
+```ts
+import { parseByteRange, storage } from "@/server/storage";
+
+export async function fileResponse(
+  request: Request,
+  file: { key: string; type: string; size: number },
+): Promise<Response> {
+  const headers = new Headers({ "Accept-Ranges": "bytes" });
+  const range = parseByteRange(request.headers.get("range"), file.size);
+  if (range === "unsatisfiable") {
+    headers.set("Content-Range", `bytes */${file.size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  const body = await storage.download(file.key, range ? { range } : undefined);
+  const { start, end } = range ?? { start: 0, end: file.size - 1 };
+  headers.set("Content-Type", file.type);
+  headers.set("Content-Length", String(end - start + 1));
+  if (range) headers.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=hono -->
+
+```ts
+import { getStorage, parseByteRange } from "@/server/storage";
+
+export async function fileResponse(
+  request: Request,
+  file: { key: string; type: string; size: number },
+): Promise<Response> {
+  const headers = new Headers({ "Accept-Ranges": "bytes" });
+  const range = parseByteRange(request.headers.get("range"), file.size);
+  if (range === "unsatisfiable") {
+    headers.set("Content-Range", `bytes */${file.size}`);
+    return new Response(null, { status: 416, headers });
+  }
+  const body = await getStorage(request).download(file.key, range ? { range } : undefined);
+  const { start, end } = range ?? { start: 0, end: file.size - 1 };
+  headers.set("Content-Type", file.type);
+  headers.set("Content-Length", String(end - start + 1));
+  if (range) headers.set("Content-Range", `bytes ${start}-${end}/${file.size}`);
+  return new Response(body, { status: range ? 206 : 200, headers });
+}
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none && api=fastapi -->
+
+```python
+from fastapi import Request, Response
+
+from clubedge_api.storage import get_storage, parse_byte_range
+
+
+async def file_response(request: Request, key: str, content_type: str, size: int) -> Response:
+    headers = {"Accept-Ranges": "bytes"}
+    byte_range = parse_byte_range(request.headers.get("range"), size)
+    if byte_range == "unsatisfiable":
+        headers["Content-Range"] = f"bytes */{size}"
+        return Response(status_code=416, headers=headers)
+    body = await get_storage(request).download(key, byte_range)
+    if byte_range:
+        headers["Content-Range"] = f"bytes {byte_range.start}-{byte_range.end}/{size}"
+    status = 206 if byte_range else 200
+    return Response(body, status_code=status, media_type=content_type, headers=headers)
+```
+
+<!-- clubedge:end -->
+<!-- clubedge:if storage!=none -->
+
+Call it from a route handler with the request and your record of the file, once the route has checked that the user may read it. <!-- clubedge:only api=none -->
+Call it from a route with `c.req.raw` and your record of the file, once the route has checked that the user may read it. <!-- clubedge:only api=hono -->
+Call it from a route with the request and the file's key, type, and size from your record of it, once the route has checked that the user may read it. <!-- clubedge:only api=fastapi -->
+
+A range that starts past the file's end gets `416`. A header that asks for several ranges, or is not valid, gets the whole file, as HTTP allows. Send a file under its own type only when the upload route allows that type: a stored HTML or SVG file served as such runs as a page of your site, so send any other file as `application/octet-stream` with `Content-Disposition: attachment`.
+
 <!-- clubedge:end -->
 <!-- clubedge:if framework!=none -->
 

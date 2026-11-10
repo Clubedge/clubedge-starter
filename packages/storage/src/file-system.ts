@@ -97,11 +97,14 @@ export function createFileSystemStorage({ directory }: FileSystemStorageConfig):
       }
       return { key };
     },
-    async download(key) {
+    async download(key, options) {
       const path = await existingPath(key);
       if (!path) throw new Error(`Object not found: ${key}`);
       await access(path);
-      return Readable.toWeb(createReadStream(path)) as ReadableStream<Uint8Array>;
+      const range = options?.range;
+      return Readable.toWeb(
+        createReadStream(path, range ? { start: range.start, end: range.end } : undefined),
+      ) as ReadableStream<Uint8Array>;
     },
     async delete(key) {
       const path = await existingPath(key);
