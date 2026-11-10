@@ -103,6 +103,8 @@ Create or select a Supabase project and copy its URL and publishable key from th
 To let users delete their account from the settings page, set `SUPABASE_SECRET_KEY` in `apps/api/.env.local` to a secret key from the project's API settings; only the API uses it. <!-- clubedge:only framework=vite && api=hono|fastapi -->
 Create or select a Supabase project and copy its URL and publishable key from the project's API settings into `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` in `apps/api/.env.local`. The API validates the access token each request carries with Supabase, and the publishable key is all it needs. To let users delete their account, also set `SUPABASE_SECRET_KEY` there to a secret key from the same settings; only the API uses it. <!-- clubedge:only framework=none -->
 
+The API checks each request's access token against the signing keys the project publishes, which it fetches once and keeps for ten minutes, so it doesn't ask Supabase on every request. A token whose session ended elsewhere, such as after a password change on another device, keeps working until it expires: an hour by default, which the project's JWT settings can shorten. A project that still signs tokens with a shared secret is asked each time. <!-- clubedge:only api=hono -->
+
 <!-- clubedge:end -->
 <!-- clubedge:if auth=supabase && framework!=none -->
 
