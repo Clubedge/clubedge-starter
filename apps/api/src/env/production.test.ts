@@ -33,9 +33,12 @@ describe("production env check", () => {
       local: [],
       invalid: [],
     });
-    expect(aliases("app.example.com").invalid).toEqual([
-      'FRONTEND_ALIASES has "app.example.com", not an absolute URL',
-    ]);
+    expect(aliases("https://old.example.com:8443").invalid).toEqual([]);
+    for (const alias of ["app.example.com", "old.example.com:8443", "http://example.com:abc"]) {
+      expect(aliases(alias).invalid).toEqual([
+        `FRONTEND_ALIASES has "${alias}", not an absolute URL`,
+      ]);
+    }
     expect(aliases("https://old.example.com,http://localhost:3000").local).toEqual([
       "FRONTEND_ALIASES",
     ]);

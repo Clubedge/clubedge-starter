@@ -3,6 +3,7 @@
 import { parseClientIpSettings } from "@clubedge/core";
 import { siteConfig } from "@/config/site";
 import type { ApiDependencies } from "@/app";
+import { parseFrontendAliases } from "@/env"; // clubedge:only framework!=none
 import { account } from "./account"; // clubedge:only auth!=none
 import { appVersion } from "./app-version";
 import { getCurrentUser } from "./auth";
@@ -25,11 +26,7 @@ const supabase = {
 // clubedge:if framework!=none
 // Other addresses the website is served at (FRONTEND_ALIASES, comma-separated), such as the one
 // it had before a new domain: their pages may call the API too. Links name FRONTEND_URL alone.
-const frontendAliases = (process.env.FRONTEND_ALIASES ?? "")
-  .split(",")
-  .map((alias) => alias.trim())
-  .filter(Boolean)
-  .map((alias) => new URL(alias).origin);
+const frontendAliases = parseFrontendAliases(process.env.FRONTEND_ALIASES);
 // clubedge:end
 
 export const dependencies: ApiDependencies = {

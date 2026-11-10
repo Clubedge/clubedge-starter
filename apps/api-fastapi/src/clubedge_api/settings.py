@@ -53,17 +53,41 @@ def parse_client_ip_settings(env: Mapping[str, str]) -> ClientIpSettings:
     return ClientIpSettings(header=header.lower() or None, trusted_hops=int(hops or "0"))
 
 
+# The port browsers leave out of an origin, for the schemes a website is served with.
+_DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def _origin(url: str) -> str | None:
+    """The origin of an absolute URL as browsers send it, which is what CORS compares: the host in
+    lower case, and the port unless it is the scheme's own. None for a value that isn't one."""
+    try:
+        parts = urlsplit(url)
+        host, port = parts.hostname, parts.port
+    except ValueError:
+        return None
+    if not parts.scheme or not host:
+        return None
+    if ":" in host:
+        # An IPv6 address, which urlsplit gives without its brackets.
+        host = f"[{host}]"
+    if port is None or port == _DEFAULT_PORTS.get(parts.scheme):
+        return f"{parts.scheme}://{host}"
+    return f"{parts.scheme}://{host}:{port}"
+
+
 def parse_frontend_aliases(value: str) -> tuple[str, ...]:
     """The origins of FRONTEND_ALIASES: other addresses the website is served at, comma-separated,
-    such as the one it had before a new domain. Links name FRONTEND_URL alone."""
+    such as the one it had before a new domain. Links name FRONTEND_URL alone. Raises ValueError
+    for one that isn't an absolute URL, so the API stops at startup instead of refusing its
+    pages."""
     origins = []
     for alias in (each.strip() for each in value.split(",")):
         if not alias:
             continue
-        parts = urlsplit(alias)
-        if not parts.scheme or not parts.netloc:
+        origin = _origin(alias)
+        if origin is None:
             raise ValueError(f'FRONTEND_ALIASES has "{alias}", not an absolute URL')
-        origins.append(f"{parts.scheme}://{parts.netloc}")
+        origins.append(origin)
     return tuple(origins)
 
 

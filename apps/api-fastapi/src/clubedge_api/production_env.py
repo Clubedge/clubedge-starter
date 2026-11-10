@@ -128,7 +128,13 @@ def check_production_env(env: Mapping[str, str]) -> ProductionEnvCheck:
     for alias in (each.strip() for each in values.get("FRONTEND_ALIASES", "").split(",")):
         if not alias:
             continue
-        if _url_host(alias) is None:
+        try:
+            # urlsplit takes any port, such as :abc: reading it raises for one that cannot be right.
+            _ = urlsplit(alias).port
+            host = _url_host(alias)
+        except ValueError:
+            host = None
+        if host is None:
             invalid.append(f'FRONTEND_ALIASES has "{alias}", not an absolute URL')
         elif is_local_url(alias):
             local.append("FRONTEND_ALIASES")

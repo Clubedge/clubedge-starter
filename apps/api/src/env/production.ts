@@ -112,7 +112,8 @@ export function checkProductionEnv(env: Env): ProductionEnvCheck {
   // call the API as well.
   for (const alias of (env.FRONTEND_ALIASES ?? "").split(",").map((each) => each.trim())) {
     if (!alias) continue;
-    if (urlHost(alias) === null) {
+    // An address without its scheme still parses when it has a port, with the origin "null".
+    if (urlHost(alias) === null || new URL(alias).origin === "null") {
       invalid.push(`FRONTEND_ALIASES has "${alias}", not an absolute URL`);
     } else if (isLocalUrl(alias)) local.push("FRONTEND_ALIASES");
   }

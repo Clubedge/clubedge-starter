@@ -77,9 +77,9 @@ def test_checks_the_websites_other_addresses() -> None:
         return check_production_env(complete(FRONTEND_ALIASES=value))
 
     assert aliases("https://app.example.workers.dev, https://old.example.com").ok
-    assert aliases("app.example.com").invalid == [
-        'FRONTEND_ALIASES has "app.example.com", not an absolute URL'
-    ]
+    assert aliases("https://old.example.com:8443").ok
+    for alias in ["app.example.com", "old.example.com:8443", "http://example.com:abc"]:
+        assert aliases(alias).invalid == [f'FRONTEND_ALIASES has "{alias}", not an absolute URL']
     assert aliases("https://old.example.com,http://localhost:3000").local == ["FRONTEND_ALIASES"]
 
 
