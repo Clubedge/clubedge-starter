@@ -22,6 +22,9 @@ test("login keeps a same-origin destination and drops external ones", async ({ p
     "/login?mode=signup&next=%2Fprojects%3Ftab%3Da",
   );
 
+  // Leave the page once it has loaded: Firefox gives up on a navigation that starts while the
+  // page before it is still loading its scripts.
+  await page.waitForLoadState("networkidle");
   await page.goto("/login?next=https%3A%2F%2Fevil.example");
   await expect(page.locator('input[name="next"]')).toHaveValue("/dashboard");
 });

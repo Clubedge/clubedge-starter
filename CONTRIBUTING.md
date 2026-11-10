@@ -21,7 +21,7 @@ pnpm format:check
 pnpm build
 ```
 
-Run `pnpm test:e2e` for changes that affect browser behavior. It requires a locally installed Playwright browser. CI runs the full configured verification workflow for pull requests.
+Run `pnpm test:e2e` for changes that affect browser behavior. It runs in Chromium, Firefox, and WebKit, and requires them installed locally (`pnpm exec playwright install chromium firefox webkit`). CI runs the full configured verification workflow for pull requests.
 
 ## Contribution workflow
 

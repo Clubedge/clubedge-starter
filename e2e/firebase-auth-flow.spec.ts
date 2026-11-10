@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { uniqueEmail } from "./unique";
 
 test.skip(!process.env.FIREBASE_AUTH_EMULATOR_HOST, "requires the Firebase Auth Emulator");
 
 test("verifies email and signs in through Firebase Auth Emulator", async ({ page }) => {
   const projectId = process.env.FIREBASE_PROJECT_ID ?? "demo-clubedge";
   const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "127.0.0.1:9099";
-  const email = `firebase-${Date.now()}@example.com`;
+  const email = uniqueEmail("firebase");
   const password = "correct horse battery";
 
   await page.goto("/login?mode=signup");

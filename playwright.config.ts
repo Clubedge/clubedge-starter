@@ -31,7 +31,15 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // Each browser engine visitors use: Chrome's (Chrome, Edge, and Android's browsers), Firefox's,
+  // and Safari's WebKit (every browser on an iPhone). `pnpm test:e2e --project=chromium` runs one,
+  // which is how to run the account flows (E2E_AUTH_FLOW): they sign up from one address, and an
+  // auth provider limits how often one address may (Better Auth: three sign-ups in a row).
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+  ],
   // The app, and the packages its dev task runs with (a frontend's API), each started here so
   // Playwright stops every one of them afterwards. An API is up once the app forwards its health.
   webServer: [

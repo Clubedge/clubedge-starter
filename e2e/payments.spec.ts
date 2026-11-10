@@ -1,10 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { signedWebhook, startFakeStripe } from "./stripe-fake";
+import { unique, uniqueEmail } from "./unique";
 
 // Subscribes through checkout and the provider's webhook, then opens billing management. It
 // needs payments configured against the fake Stripe API in ./stripe-fake.ts, so it runs only with
 // E2E_PAYMENTS=1 (the Starter's CI sets STRIPE_API_BASE and the Stripe variables for it).
 test.skip(!process.env.E2E_PAYMENTS, "needs payments configured against the fake Stripe API");
+// The fake Stripe API listens on one port and holds one checkout, so one browser runs this. What
+// it checks is the server's side: the checkout it opens, the webhook, and the portal.
+test.skip(({ browserName }) => browserName !== "chromium", "one fake Stripe API: one browser");
 
 test("subscribes through checkout and the webhook, then opens the billing portal", async ({
   page,
@@ -12,7 +16,7 @@ test("subscribes through checkout and the webhook, then opens the billing portal
   const stripe = await startFakeStripe();
   try {
     await page.goto("/login?mode=signup");
-    await page.getByLabel("Email").fill(`billing-${Date.now()}@example.com`);
+    await page.getByLabel("Email").fill(uniqueEmail("billing"));
     await page.getByLabel("Password", { exact: true }).fill("correct horse battery");
     await page.getByRole("button", { name: "Create account" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
@@ -24,7 +28,7 @@ test("subscribes through checkout and the webhook, then opens the billing portal
     expect(stripe.checkout?.userId).toMatch(/^[0-9a-f-]{36}$/);
 
     const event = {
-      id: `evt_${Date.now()}`,
+      id: unique("evt"),
       type: "customer.subscription.created",
       data: { object: { id: "sub_e2e" } },
     };
