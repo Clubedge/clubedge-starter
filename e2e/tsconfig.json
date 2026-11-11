@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.base.json",
+  // The browser tests and their config: no app's typecheck covers them, so `pnpm typecheck`
+  // runs this one too (typecheck:e2e).
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}
