@@ -7,7 +7,21 @@ import {
   type RateLimitOptions,
 } from "@clubedge/cache";
 
-type RedisClient = ReturnType<typeof createClient>;
+function newClient(url: string) {
+  return createClient({
+    url,
+    // RESP2, which node-redis spoke by default before version 6 made RESP3 the default. RESP3
+    // needs Redis 6 or newer on the server, which some hosted services and proxies are not, and
+    // nothing here needs it.
+    RESP: 2,
+    socket: {
+      connectTimeout: 5_000,
+      reconnectStrategy: (retries) => Math.min(retries * 250, 3_000),
+    },
+  });
+}
+
+type RedisClient = ReturnType<typeof newClient>;
 
 // One client per URL for the life of the process, surviving dev-server module reloads.
 const globalForRedis = globalThis as typeof globalThis & {
@@ -18,13 +32,7 @@ function redisEntry(url: string) {
   globalForRedis.clubedgeRedis ??= new Map();
   let entry = globalForRedis.clubedgeRedis.get(url);
   if (!entry) {
-    const client = createClient({
-      url,
-      socket: {
-        connectTimeout: 5_000,
-        reconnectStrategy: (retries) => Math.min(retries * 250, 3_000),
-      },
-    });
+    const client = newClient(url);
     client.on("error", (error) => console.error("Redis client error", error));
     entry = { client };
     globalForRedis.clubedgeRedis.set(url, entry);

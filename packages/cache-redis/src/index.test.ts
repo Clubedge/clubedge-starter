@@ -37,6 +37,14 @@ describe("createRedisRateLimiter", () => {
     expect(result).toMatchObject({ success: false, limit: 2, remaining: 0 });
   });
 
+  it("speaks RESP2, as before node-redis 6 made RESP3 its default", async () => {
+    redisClient.eval.mockResolvedValueOnce([1, 60_000]);
+    await createRedisRateLimiter("redis://resp.example:6379").limit("client");
+    expect(createClient).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "redis://resp.example:6379", RESP: 2 }),
+    );
+  });
+
   it("reuses one connection per Redis URL", async () => {
     redisClient.eval.mockResolvedValue([1, 60_000]);
     const url = "redis://reuse.example:6379";
