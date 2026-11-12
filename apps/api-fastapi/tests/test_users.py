@@ -27,8 +27,26 @@ def test_creates_the_users_row_when_it_is_missing(monkeypatch: pytest.MonkeyPatc
     assert asyncio.run(users.ensure_user_id(USER)) == "row-2"
     [_, (insert, params)] = db.statements
     assert insert.startswith("insert into users (auth_user_id, email) values (%s, %s)")
-    assert "on conflict (auth_user_id) do update" in insert
+    # No conflict target: every unique index, the email's too, settles a race.
+    assert insert.endswith(" on conflict do nothing returning id")
     assert params == ("user-1", "ada@example.com")
+
+
+def test_reads_the_row_another_first_request_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Two first requests at once: the insert does nothing, and the other request's row is read.
+    db = database(monkeypatch, None, None, ("row-3",))
+    assert asyncio.run(users.ensure_user_id(USER)) == "row-3"
+    assert [statement for statement, _ in db.statements] == [
+        users.FIND_USER,
+        db.statements[1][0],
+        users.FIND_USER,
+    ]
+
+
+def test_says_so_when_another_users_row_has_the_email(monkeypatch: pytest.MonkeyPatch) -> None:
+    database(monkeypatch, None, None, None)
+    with pytest.raises(RuntimeError, match="Another users row has this user's email address"):
+        asyncio.run(users.ensure_user_id(USER))
 
 
 def test_reads_and_writes_the_display_name(monkeypatch: pytest.MonkeyPatch) -> None:

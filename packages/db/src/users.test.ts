@@ -4,7 +4,13 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Database } from "./client";
-import { deleteUserProfile, ensureUserId, getDisplayName, setDisplayName } from "./users";
+import {
+  deleteUserProfile,
+  ensureUserId,
+  getDisplayName,
+  setDisplayName,
+  upsertUserProfile,
+} from "./users";
 
 /** A fresh PostgreSQL (PGlite) with the app's migrations applied. */
 async function database() {
@@ -26,6 +32,22 @@ describe("user profiles", () => {
     expect(await getDisplayName(db, id)).toBe("Ada Lovelace");
     await setDisplayName(db, id, null);
     expect(await getDisplayName(db, id)).toBeNull();
+  }, 30_000);
+
+  it("gives a user's first requests at once the same row", async () => {
+    const db = await database();
+    const ids = await Promise.all([1, 2, 3, 4].map(() => ensureUserId(db, profile)));
+    expect(new Set(ids).size).toBe(1);
+    const synced = await Promise.all([1, 2].map(() => upsertUserProfile(db, profile)));
+    expect(synced).toEqual([ids[0], ids[0]]);
+  }, 30_000);
+
+  it("says so when another user's row has the email address, which is unique", async () => {
+    const db = await database();
+    await ensureUserId(db, profile);
+    await expect(ensureUserId(db, { ...profile, authUserId: "another-user" })).rejects.toThrow(
+      "Another users row has this user's email address, so it can't have one of its own.",
+    );
   }, 30_000);
 
   it("deletes a profile by its identity-provider user", async () => {
