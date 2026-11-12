@@ -5,26 +5,31 @@ reference it, such as subscriptions, delete their rows with it."""
 from clubedge_api.contract import User
 from clubedge_api.db import connect
 
+FIND_USER = "select id from users where auth_user_id = %s limit 1"
+
 
 async def ensure_user_id(user: User) -> str:
     """The users row id for the signed-in user. Reads first, so requests that only need the id
     don't write; creates the row when it is missing."""
     async with connect() as db:
-        cursor = await db.execute(
-            "select id from users where auth_user_id = %s limit 1", (user["id"],)
-        )
+        cursor = await db.execute(FIND_USER, (user["id"],))
         row = await cursor.fetchone()
         if row is None:
+            # Without a conflict target, every unique index settles the race between a user's
+            # first requests, which can insert at once: one inserts the row, the others read it.
             cursor = await db.execute(
                 "insert into users (auth_user_id, email) values (%s, %s)"
-                " on conflict (auth_user_id) do update"
-                " set email = excluded.email, updated_at = now()"
-                " returning id",
+                " on conflict do nothing returning id",
                 (user["id"], user["email"]),
             )
             row = await cursor.fetchone()
+            if row is None:
+                cursor = await db.execute(FIND_USER, (user["id"],))
+                row = await cursor.fetchone()
     if row is None:
-        raise RuntimeError("The users row was not created.")
+        raise RuntimeError(
+            "Another users row has this user's email address, so it can't have one of its own."
+        )
     return str(row[0])
 
 
