@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/mobile",
-  "version": "0.31.2",
+  "version": "0.31.3",
   "description": "The mobile app's native helpers, through Capacitor, and its own screens: the update notice and the demo.",
   "private": true,
   "license": "Apache-2.0",

@@ -389,7 +389,7 @@ wheels = [
 
 [[package]]
 name = "clubedge-api"
-version = "0.31.2"
+version = "0.31.3"
 source = { editable = "." }
 default-groups = "all"
 dependencies = [

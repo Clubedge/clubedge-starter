@@ -1,6 +1,6 @@
 {
   "name": "@clubedge/jobs-pg-boss",
-  "version": "0.31.2",
+  "version": "0.31.3",
   "description": "pg-boss provider for @clubedge/jobs: a job queue stored in the project's PostgreSQL.",
   "private": true,
   "license": "Apache-2.0",
