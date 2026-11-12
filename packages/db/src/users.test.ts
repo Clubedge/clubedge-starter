@@ -42,6 +42,37 @@ describe("user profiles", () => {
     expect(synced).toEqual([ids[0], ids[0]]);
   }, 30_000);
 
+  it("reads the row of a user's first request that inserted it at once with this one", async () => {
+    const db = await database();
+    const id = await ensureUserId(db, profile);
+    // PGlite runs one statement at a time, so two inserts never race here. This stands in for
+    // the one that lost: the other request's row is in, and the email's unique index stopped it.
+    const lost = Object.assign(new Error("duplicate key value violates unique constraint"), {
+      code: "23505",
+    });
+    const racing: Database = Object.create(db, {
+      insert: {
+        value: () => {
+          throw lost;
+        },
+      },
+    });
+    expect(await upsertUserProfile(racing, profile)).toBe(id);
+    await expect(
+      upsertUserProfile(racing, { ...profile, email: "grace@example.com" }),
+    ).rejects.toBe(lost);
+  }, 30_000);
+
+  it("leaves an email address another user's row has to that row", async () => {
+    const db = await database();
+    const id = await ensureUserId(db, profile);
+    await ensureUserId(db, { authUserId: "another-user", email: "grace@example.com" });
+    await expect(
+      upsertUserProfile(db, { ...profile, email: "grace@example.com" }),
+    ).rejects.toMatchObject({ cause: { code: "23505" } });
+    expect(await upsertUserProfile(db, profile)).toBe(id);
+  }, 30_000);
+
   it("says so when another user's row has the email address, which is unique", async () => {
     const db = await database();
     await ensureUserId(db, profile);

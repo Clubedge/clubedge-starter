@@ -2,14 +2,17 @@ import { eq } from "drizzle-orm";
 import type { Database } from "./client";
 import { users } from "./schema";
 
-/** The users row id of an identity-provider user, if it has one. */
-async function userIdOf(db: Database, authUserId: string): Promise<string | undefined> {
+/** The users row of an identity-provider user, if it has one. */
+async function findUser(
+  db: Database,
+  authUserId: string,
+): Promise<{ id: string; email: string } | undefined> {
   const [row] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, email: users.email })
     .from(users)
     .where(eq(users.authUserId, authUserId))
     .limit(1);
-  return row?.id;
+  return row;
 }
 
 /** Whether an error is PostgreSQL's unique violation (23505), as the driver or Drizzle raises it. */
@@ -48,9 +51,10 @@ export async function upsertUserProfile(
     return row!.id;
   } catch (error) {
     // A user's first requests can insert at once. The conflict target settles only auth_user_id,
-    // so the email's unique index stops all but one, whose row the others then read.
-    const id = isUniqueViolation(error) ? await userIdOf(db, profile.authUserId) : undefined;
-    if (id) return id;
+    // so the email's unique index stops all but one, whose row the others then read. A row with
+    // another address means the index stopped an update to one that another user's row has.
+    const row = isUniqueViolation(error) ? await findUser(db, profile.authUserId) : undefined;
+    if (row?.email === profile.email) return row.id;
     throw error;
   }
 }
@@ -63,8 +67,8 @@ export async function ensureUserId(
   db: Database,
   profile: { authUserId: string; email: string },
 ): Promise<string> {
-  const existing = await userIdOf(db, profile.authUserId);
-  if (existing) return existing;
+  const existing = await findUser(db, profile.authUserId);
+  if (existing) return existing.id;
   // Without a conflict target, every unique index settles the race between a user's first
   // requests, which can insert at once: one inserts the row, and the others read it.
   const [created] = await db
@@ -72,7 +76,7 @@ export async function ensureUserId(
     .values(profile)
     .onConflictDoNothing()
     .returning({ id: users.id });
-  const id = created?.id ?? (await userIdOf(db, profile.authUserId));
+  const id = created?.id ?? (await findUser(db, profile.authUserId))?.id;
   if (!id) throw emailTaken();
   return id;
 }
