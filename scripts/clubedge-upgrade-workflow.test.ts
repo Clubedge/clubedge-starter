@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 // Runs the steps of .github/workflows/clubedge-upgrade.yml, which every generated project gets,
 // as GitHub runs them (`shell: bash` is `bash --noprofile --norc -eo pipefail`). The project
 // pushes to a local bare repository, and `pnpm` and `gh` are replaced by scripts that record
-// their calls: `pnpm dlx` stands in for the CLI's upgrade, with the outcome FAKE_UPGRADE names.
+// their calls: `pnpm dlx` stands in for the CLI's `upgrade --json`, writing the files and
+// printing the report of the outcome FAKE_UPGRADE names.
 
 const workflow = readFileSync(".github/workflows/clubedge-upgrade.yml", "utf8");
 
@@ -50,30 +51,128 @@ const upgradedFiles = {
   "clean.json": manifest("v0.25.0"),
 };
 
+// The reports the CLI prints with --json (reportVersion 1) for each outcome.
+const starter = (ref: string) => ({
+  repository: "Clubedge/clubedge-starter",
+  ref,
+  stacks: { framework: "next" },
+  modules: { auth: "supabase" },
+});
+const report = (fields: Record<string, unknown>) =>
+  JSON.stringify({
+    reportVersion: 1,
+    cli: "0.49.0",
+    command: "upgrade",
+    outcome: "changed",
+    dryRun: false,
+    summary: "Starter v0.24.2 -> v0.25.0",
+    from: starter("v0.24.2"),
+    to: starter("v0.25.0"),
+    files: [{ path: "package.json", action: "update" }],
+    lockfile: "install",
+    envFiles: [],
+    conflicts: { files: 0, blocks: 0 },
+    install: { mode: "lockfile-only", status: "done" },
+    releases: [
+      {
+        tag: "v0.25.0",
+        name: "v0.25.0",
+        url: "https://github.com/Clubedge/clubedge-starter/releases/tag/v0.25.0",
+        headings: ["Payments", "Tests"],
+      },
+    ],
+    introduced: [],
+    warnings: [],
+    notes: ["Release notes: https://github.com/Clubedge/clubedge-starter/releases/tag/v0.25.0"],
+    ...fields,
+  });
+const skippedInstall =
+  "Skipped `pnpm install`: package.json has conflict markers, which pnpm cannot read, so pnpm commands, `pnpm clubedge` among them, fail until it is resolved. Then run `pnpm install`.";
+const reports = {
+  "conflict.report.json": report({
+    outcome: "conflicts",
+    files: [
+      {
+        path: "package.json",
+        action: "conflict",
+        conflicts: 1,
+        incoming: ".clubedge/incoming/package.json",
+      },
+    ],
+    conflicts: { files: 1, blocks: 1 },
+    install: { mode: "lockfile-only", status: "skipped", reason: skippedInstall },
+    warnings: [skippedInstall],
+  }),
+  "clean.report.json": report({
+    introduced: [{ module: "cache", option: "none" }],
+    warnings: ["This choice is not Stable yet:\n• Beta: Resend (email resend)."],
+    notes: [
+      'Cache is new since Starter v0.24.2; the project uses "none". Choose another option with: pnpm clubedge add cache <option>',
+      "Release notes: https://github.com/Clubedge/clubedge-starter/releases/tag/v0.25.0",
+    ],
+  }),
+  "lockfile-failed.report.json": report({
+    outcome: "failed",
+    install: { mode: "lockfile-only", status: "failed", reason: "pnpm exited with code 1." },
+    error: {
+      message:
+        "The files were updated, but `pnpm install --lockfile-only` did not complete: pnpm exited with code 1. Fix that, then run `pnpm install`.",
+    },
+  }),
+  "current.report.json": report({
+    outcome: "unchanged",
+    summary: undefined,
+    to: undefined,
+    files: [],
+    lockfile: "unchanged",
+    install: { mode: "none", status: "off" },
+    releases: [],
+    notes: ["The project is already on Starter v0.24.2."],
+  }),
+  "failed.report.json": report({
+    outcome: "failed",
+    summary: undefined,
+    to: undefined,
+    files: [],
+    install: { mode: "none", status: "off" },
+    releases: [],
+    notes: [],
+    error: { message: 'Could not resolve Starter "v0.25.0" to a commit.' },
+  }),
+};
+
+// The log goes to stderr and the report to stdout, as with --json.
 const fakePnpm = `#!/usr/bin/env bash
 echo "pnpm $*" >>"$FAKE_LOG"
-if [ "$1" = install ]; then
-  node -e 'JSON.parse(require("node:fs").readFileSync("package.json", "utf8"))' 2>/dev/null && exit 0
-  echo " ERR_PNPM_JSON_PARSE  package.json"
-  exit 1
-fi
 case "$FAKE_UPGRADE" in
   conflict)
     cp "$FAKE_FILES/conflicted.json" package.json
     mkdir -p .clubedge/incoming
     printf '*\\n' >.clubedge/.gitignore
     cp "$FAKE_FILES/incoming.json" .clubedge/incoming/package.json
-    echo "conflict package.json"
+    echo "conflict package.json" >&2
+    cat "$FAKE_FILES/conflict.report.json"
     exit 2 ;;
   clean)
     cp "$FAKE_FILES/clean.json" package.json
-    echo "update   package.json"
+    echo "update   package.json" >&2
+    cat "$FAKE_FILES/clean.report.json"
     exit 0 ;;
+  lockfile-failed)
+    cp "$FAKE_FILES/clean.json" package.json
+    echo " ERR_PNPM_FETCH_404  GET https://registry.npmjs.org/nope: Not Found - 404" >&2
+    cat "$FAKE_FILES/lockfile-failed.report.json"
+    exit 1 ;;
   current)
-    echo "The project is already on Starter v0.24.2."
+    echo "The project is already on Starter v0.24.2." >&2
+    cat "$FAKE_FILES/current.report.json"
     exit 0 ;;
+  old-cli)
+    echo "Unknown option '--json'. Run with --help to see available options." >&2
+    exit 1 ;;
   *)
-    echo "Could not resolve the Starter."
+    echo 'Could not resolve Starter "v0.25.0" to a commit.' >&2
+    cat "$FAKE_FILES/failed.report.json"
     exit 1 ;;
 esac
 `;
@@ -119,7 +218,7 @@ function project(packageJson = manifest("v0.24.2")) {
     writeFileSync(join(paths.bin, name), script);
     chmodSync(join(paths.bin, name), 0o755);
   }
-  for (const [name, content] of Object.entries(upgradedFiles)) {
+  for (const [name, content] of Object.entries({ ...upgradedFiles, ...reports })) {
     writeFileSync(join(paths.files, name), content);
   }
   writeFileSync(paths.log, "");
@@ -200,10 +299,11 @@ describe.skipIf(process.platform === "win32")("the Starter upgrade workflow", ()
       install: "skipped",
       incoming: "true",
     });
-    // pnpm cannot read the conflicted package.json, so the install is not attempted.
     expect(calls(paths)).toEqual([
-      "pnpm dlx @clubedge/create-clubedge-app@latest upgrade --no-install --detailed-exit-code",
+      "pnpm dlx @clubedge/create-clubedge-app@latest upgrade --json --lockfile-only --detailed-exit-code",
     ]);
+    // The log went to stderr, and the step shows it.
+    expect(upgrade.output).toContain("conflict package.json");
 
     const pullRequest = openPullRequest(paths, upgrade.outputs);
     expect(pullRequest.status, pullRequest.output).toBe(0);
@@ -218,7 +318,12 @@ describe.skipIf(process.platform === "win32")("the Starter upgrade workflow", ()
     expect(body).toContain("### Conflicts to resolve");
     expect(body).toContain("- `package.json`\n");
     expect(body).toContain(
-      "`pnpm install` did not run: pnpm cannot read a `package.json` with conflict markers",
+      "`pnpm-lock.yaml` is not updated: pnpm cannot read a `package.json` with conflict markers",
+    );
+    // The install's reason is said once, in its own section.
+    expect(body).not.toContain("### Warnings");
+    expect(body).toContain(
+      "### Starter releases in this upgrade\n\n- [`v0.25.0`](https://github.com/Clubedge/clubedge-starter/releases/tag/v0.25.0): Payments, Tests\n",
     );
     expect(remoteBranches(paths)).toEqual([
       expect.stringMatching(/\trefs\/heads\/clubedge\/upgrade-v0\.25\.0$/),
@@ -245,19 +350,43 @@ describe.skipIf(process.platform === "win32")("the Starter upgrade workflow", ()
     expect(retry.outputs.branch).toBe("clubedge/upgrade-v0.25.0");
   });
 
-  it("reads the new release from package.json after a clean upgrade, and installs", () => {
+  it("reads the new release from the report after a clean upgrade, whose lockfile the CLI updated", () => {
     const paths = project();
     const upgrade = run(paths, upgradeStep, { FAKE_UPGRADE: "clean" });
 
     expect(upgrade.status, upgrade.output).toBe(0);
     expect(upgrade.outputs).toMatchObject({ after: "v0.25.0", install: "updated" });
     expect(upgrade.outputs.incoming).toBeUndefined();
-    expect(calls(paths)).toContain("pnpm install --no-frozen-lockfile");
+    // --lockfile-only: nothing else installs, and nothing from the project runs.
+    expect(calls(paths)).toEqual([
+      "pnpm dlx @clubedge/create-clubedge-app@latest upgrade --json --lockfile-only --detailed-exit-code",
+    ]);
 
     const pullRequest = openPullRequest(paths, upgrade.outputs);
     expect(pullRequest.status, pullRequest.output).toBe(0);
-    expect(readFileSync(paths.body, "utf8")).not.toContain("### Conflicts to resolve");
-    expect(readFileSync(paths.body, "utf8")).not.toContain("### pnpm install");
+    const body = readFileSync(paths.body, "utf8");
+    expect(body).not.toContain("### Conflicts to resolve");
+    expect(body).not.toContain("### pnpm-lock.yaml");
+    expect(body).toContain(
+      "### Warnings\n\n- This choice is not Stable yet:\n  • Beta: Resend (email resend).\n",
+    );
+    expect(body).toContain(
+      '### Notes\n\n- Cache is new since Starter v0.24.2; the project uses "none".',
+    );
+    expect(body).not.toContain("- Release notes: ");
+  });
+
+  it("opens a pull request that says the lockfile could not follow, when only the install failed", () => {
+    const paths = project();
+    const upgrade = run(paths, upgradeStep, { FAKE_UPGRADE: "lockfile-failed" });
+
+    expect(upgrade.status, upgrade.output).toBe(0);
+    expect(upgrade.outputs).toMatchObject({ after: "v0.25.0", install: "failed" });
+    const pullRequest = openPullRequest(paths, upgrade.outputs);
+    expect(pullRequest.status, pullRequest.output).toBe(0);
+    expect(readFileSync(paths.body, "utf8")).toContain(
+      "`pnpm-lock.yaml` could not follow the upgrade: pnpm exited with code 1. Run `pnpm install` to see why",
+    );
   });
 
   it("stops without a branch when the project is on the newest release", () => {
@@ -272,16 +401,21 @@ describe.skipIf(process.platform === "win32")("the Starter upgrade workflow", ()
     const paths = project();
     const upgrade = run(paths, upgradeStep, { FAKE_UPGRADE: "fail" });
     expect(upgrade.status).toBe(1);
-    expect(upgrade.output).toContain("The upgrade failed (exit code 1); nothing was pushed.");
+    expect(upgrade.output).toContain(
+      'The upgrade failed: Could not resolve Starter "v0.25.0" to a commit. Nothing was pushed.',
+    );
     expect(upgrade.outputs).toEqual({});
+    expect(remoteBranches(paths)).toEqual([expect.stringMatching(/\trefs\/heads\/main$/)]);
   });
 
-  it("explains a package.json that does not parse before the upgrade", () => {
-    const paths = project(manifest("v0.24.2").replace('"name": "my-app",', '"name": "my-app",,'));
-    const upgrade = run(paths, upgradeStep, { FAKE_UPGRADE: "clean" });
+  it("says when the CLI printed no report, as one from before --json would", () => {
+    const paths = project();
+    const upgrade = run(paths, upgradeStep, { FAKE_UPGRADE: "old-cli" });
     expect(upgrade.status).toBe(1);
-    expect(upgrade.output).toContain("package.json could not be read (");
-    expect(upgrade.output).toContain("Fix it on the default branch, then run this workflow again.");
-    expect(calls(paths)).toEqual([]);
+    expect(upgrade.output).toContain("Unknown option '--json'.");
+    expect(upgrade.output).toContain(
+      "The upgrade printed no report (exit code 1); nothing was pushed.",
+    );
+    expect(upgrade.outputs).toEqual({});
   });
 });

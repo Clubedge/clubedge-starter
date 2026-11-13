@@ -1,9 +1,10 @@
 name: Starter upgrade
 
 # Checks every Monday for a newer Clubedge Starter release. When there is one, it runs
-# `pnpm clubedge upgrade` and opens a pull request with the release notes and anything left for
-# you to resolve, so your CI tests the upgrade before you merge it. Run it by hand from the
-# Actions tab, or delete this file to turn it off.
+# `pnpm clubedge upgrade`, which merges the release into your code and updates pnpm-lock.yaml
+# without installing anything or running the project's scripts, and opens a pull request with
+# the release notes and anything left for you to resolve, so your CI tests the upgrade before you
+# merge it. Run it by hand from the Actions tab, or delete this file to turn it off.
 #
 # It needs Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull
 # requests", or a CLUBEDGE_UPGRADE_TOKEN secret (a fine-grained token with contents and pull
@@ -36,79 +37,76 @@ jobs:
       - name: Upgrade to the newest Starter release
         id: upgrade
         shell: bash
+        env:
+          # Raises GitHub's rate limit for the list of releases the upgrade crosses.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          # A field of `clubedge` in package.json, read with fs: while a package.json has conflict
-          # markers, require() fails for every file in the project, and pnpm cannot read it. After
-          # an upgrade that left them, the Starter's version saved in .clubedge/incoming has the
-          # new values; pass it as the fallback.
-          starter_field() {
-            node -e '
-              const fs = require("node:fs");
-              const [field, fallback] = process.argv.slice(1);
-              const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
-              let manifest;
-              try {
-                manifest = read("package.json");
-              } catch (error) {
-                if (!fallback) {
-                  console.error(`package.json could not be read (${error.message}). Fix it on the default branch, then run this workflow again.`);
-                  process.exit(1);
-                }
-                try {
-                  manifest = read(fallback);
-                } catch {
-                  console.error(`Neither package.json nor ${fallback} could be read after the upgrade.`);
-                  process.exit(1);
-                }
-              }
-              console.log(manifest.clubedge?.[field] ?? "");
-            ' "$@"
-          }
-
-          before=$(starter_field starterRef)
-          if [ -z "$before" ]; then
-            echo "package.json records no Starter release: this project was not created by create-clubedge-app."
-            exit 1
-          fi
-          # The newest CLI upgrades to the Starter release it is pinned to. With
-          # --detailed-exit-code it exits with 2 when the upgrade left conflicts to resolve, which
-          # the pull request lists; any other failure stops here.
+          # The newest CLI upgrades to the Starter release it is pinned to. It prints a JSON report
+          # of the change on stdout and its log on stderr. --lockfile-only updates pnpm-lock.yaml
+          # without installing anything or running the project's scripts: your CI installs and
+          # tests the pull request. With --detailed-exit-code, an upgrade that left conflicts to
+          # resolve exits with 2, which the pull request lists.
           status=0
-          pnpm dlx @clubedge/create-clubedge-app@latest upgrade --no-install --detailed-exit-code 2>&1 | tee "$RUNNER_TEMP/upgrade.log" || status=$?
-          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
-            echo "The upgrade failed (exit code $status); nothing was pushed."
-            exit "$status"
-          fi
-          after=$(starter_field starterRef .clubedge/incoming/package.json)
-          repository=$(starter_field starterRepository .clubedge/incoming/package.json)
-          if [ "$after" = "$before" ] && [ -z "$(git status --porcelain)" ]; then
-            echo "Already on the newest Starter release, $before."
-            exit 0
-          fi
-          branch="clubedge/upgrade-$after"
+          pnpm dlx @clubedge/create-clubedge-app@latest upgrade --json --lockfile-only --detailed-exit-code \
+            >"$RUNNER_TEMP/report.json" 2>"$RUNNER_TEMP/upgrade.log" || status=$?
+          cat "$RUNNER_TEMP/upgrade.log"
+
+          # Writes what the pull request needs from the report into files in $RUNNER_TEMP, and the
+          # step's outputs. It reads nothing from the upgraded files, whose package.json may have
+          # conflict markers.
+          node - "$RUNNER_TEMP" "$status" <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const [temp, status] = process.argv.slice(2);
+          const fail = (message) => {
+            console.log(message);
+            process.exit(1);
+          };
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(path.join(temp, "report.json"), "utf8"));
+          } catch {
+            fail(`The upgrade printed no report (exit code ${status}); nothing was pushed. Its log is above.`);
+          }
+          const write = (name, text) => fs.writeFileSync(path.join(temp, name), text);
+          const outputs = [];
+          if (report.outcome === "unchanged") {
+            console.log(`Already on the newest Starter release, ${report.from?.ref}.`);
+            process.exit(0);
+          }
+          // Files written before the lockfile could follow still make a pull request, which says so.
+          if (report.outcome === "failed" && !(report.files?.length && report.install?.status === "failed")) {
+            fail(`The upgrade failed: ${report.error?.message ?? `exit code ${status}`} Nothing was pushed.`);
+          }
+          const conflicts = report.files.filter((file) => file.action === "conflict").map((file) => file.path);
+          write("conflicts.txt", conflicts.map((file) => `${file}\n`).join(""));
+          write("install-reason.txt", report.install?.reason ?? "");
+          write(
+            "releases.md",
+            (report.releases ?? []).map((release) => `- [\`${release.tag}\`](${release.url})${release.headings.length ? `: ${release.headings.join(", ")}` : ""}\n`).join(""),
+          );
+          const item = (text) => `- ${text.replaceAll("\n", "\n  ")}\n`;
+          // The install's reason has its own section, and the release notes their link.
+          write("warnings.md", report.warnings.filter((warning) => warning !== report.install?.reason).map(item).join(""));
+          write("notes.md", report.notes.filter((note) => !note.startsWith("Release notes: ")).map(item).join(""));
+          const install = { done: "updated", failed: "failed" }[report.install?.status] ?? "skipped";
+          outputs.push(
+            `before=${report.from.ref}`,
+            `after=${report.to.ref}`,
+            `repository=${report.to.repository}`,
+            `branch=clubedge/upgrade-${report.to.ref}`,
+            `install=${install}`,
+          );
+          if (report.files.some((file) => file.incoming)) outputs.push("incoming=true");
+          write("outputs.txt", outputs.map((line) => `${line}\n`).join(""));
+          NODE
+          [ -f "$RUNNER_TEMP/outputs.txt" ] || exit 0
+          branch=$(sed -n 's/^branch=//p' "$RUNNER_TEMP/outputs.txt")
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             echo "$branch already exists: its pull request is open, or was closed on purpose."
             exit 0
           fi
-          conflicts=""
-          if [ "$status" -eq 2 ]; then conflicts=$(git grep -l --untracked '^<<<<<<< yours' -- . || true); fi
-          # The lockfile follows the upgraded package.json files. pnpm cannot read one with
-          # conflict markers, so the install waits until they are resolved.
-          if printf '%s\n' "$conflicts" | grep -qE '(^|/)package\.json$'; then
-            install="skipped"
-          else
-            install="updated"
-            pnpm install --no-frozen-lockfile >"$RUNNER_TEMP/install.log" 2>&1 || install="failed"
-          fi
-          printf '%s\n' "$conflicts" | sed '/^$/d' >"$RUNNER_TEMP/conflicts.txt"
-          {
-            echo "before=$before"
-            echo "after=$after"
-            echo "repository=${repository:-Clubedge/clubedge-starter}"
-            echo "branch=$branch"
-            echo "install=$install"
-            if [ -d .clubedge/incoming ]; then echo "incoming=true"; fi
-          } >>"$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/outputs.txt" >>"$GITHUB_OUTPUT"
       - name: Keep the Starter's versions of conflicted files
         if: steps.upgrade.outputs.incoming == 'true'
         uses: actions/upload-artifact@v7
@@ -130,9 +128,10 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          # The pull request's text is written before anything is pushed: it reads nothing from
-          # the upgraded files, whose package.json may have conflict markers.
+          # The pull request's text is written before anything is pushed, from what the upgrade
+          # step kept of its report.
           conflicts=$(cat "$RUNNER_TEMP/conflicts.txt")
+          reason=$(cat "$RUNNER_TEMP/install-reason.txt")
           {
             echo "Upgrades this project from Clubedge Starter \`$BEFORE\` to [\`$AFTER\`](https://github.com/$REPOSITORY/releases/tag/$AFTER), with \`pnpm clubedge upgrade\`. Your own edits are merged in; files you never changed take the new version."
             echo
@@ -147,14 +146,36 @@ jobs:
               echo
             fi
             if [ "$INSTALL" = "skipped" ]; then
-              echo "### pnpm install"
+              echo "### pnpm-lock.yaml"
               echo
-              echo "\`pnpm install\` did not run: pnpm cannot read a \`package.json\` with conflict markers, so \`pnpm-lock.yaml\` and \`pnpm clubedge\` wait for them. Resolve the conflicts in the \`package.json\` files above, then run \`pnpm install\` and commit \`pnpm-lock.yaml\`."
+              if printf '%s\n' "$conflicts" | grep -qE '(^|/)package\.json$'; then
+                echo "\`pnpm-lock.yaml\` is not updated: pnpm cannot read a \`package.json\` with conflict markers, so \`pnpm-lock.yaml\` and \`pnpm clubedge\` wait for them. Resolve the conflicts in the \`package.json\` files above, then run \`pnpm install\` and commit \`pnpm-lock.yaml\`."
+              else
+                echo "\`pnpm-lock.yaml\` is not updated. $reason"
+              fi
               echo
             elif [ "$INSTALL" = "failed" ]; then
-              echo "### pnpm install"
+              echo "### pnpm-lock.yaml"
               echo
-              echo "\`pnpm install\` did not complete on the upgraded project, so \`pnpm-lock.yaml\` is not updated. Run \`pnpm install\` to see why, then commit \`pnpm-lock.yaml\`."
+              echo "\`pnpm-lock.yaml\` could not follow the upgrade: ${reason:-pnpm failed.} Run \`pnpm install\` to see why, then commit \`pnpm-lock.yaml\`."
+              echo
+            fi
+            if [ -s "$RUNNER_TEMP/warnings.md" ]; then
+              echo "### Warnings"
+              echo
+              cat "$RUNNER_TEMP/warnings.md"
+              echo
+            fi
+            if [ -s "$RUNNER_TEMP/releases.md" ]; then
+              echo "### Starter releases in this upgrade"
+              echo
+              cat "$RUNNER_TEMP/releases.md"
+              echo
+            fi
+            if [ -s "$RUNNER_TEMP/notes.md" ]; then
+              echo "### Notes"
+              echo
+              cat "$RUNNER_TEMP/notes.md"
               echo
             fi
             echo "### Before merging"
