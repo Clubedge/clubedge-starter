@@ -559,7 +559,8 @@ Each phase ends with a Starter release and a create-clubedge-app release pinned 
 | v0.28.0            | The native app with Expo, and projects without a website                                       |
 | v0.29.0            | An update policy for installed apps, and a new design for the native app                       |
 | v0.30.0            | Shipping the mobile apps to stores, push notifications, and over-the-air updates               |
-| next               | Proposed: real-time, Cloudflare, two-step verification, then organizations and teams           |
+| v0.31.0            | Deploying to Cloudflare, downloads by byte range, and browser tests in three engines           |
+| next               | Proposed: real-time, two-step verification, then organizations and teams                       |
 
 ## Community
 

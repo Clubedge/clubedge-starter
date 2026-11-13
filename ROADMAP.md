@@ -34,17 +34,16 @@ Every phase follows the rules the existing modules already follow:
 | 18      | v0.28.0            | The native app with Expo (template schema 6), and projects without a website: an API, with or without the native app               |
 | 19      | v0.29.0            | An update policy for installed apps, with a minimum version the APIs enforce, and a new design for the native app                  |
 | 20      | v0.30.0 to v0.30.1 | Shipping to stores: release workflows for both mobile apps, push notifications, and over-the-air updates with EAS Update           |
+| 21      | v0.31.0 to v0.31.3 | Deploying React + Vite and its API to Cloudflare, downloads by byte range, and browser tests in Chromium, Firefox, and WebKit      |
 
 ## Next
 
 These are the candidates for the next phases, in the order proposed. The order is not settled yet.
 
-The first four come from two apps built from the Starter that run in production, [Chess](https://starter.clubedge.live/case-studies/chess) and [Chat App](https://starter.clubedge.live/case-studies/chat-app): each is something one of them had to add itself.
+The first two come from two apps built from the Starter that run in production, [Chess](https://starter.clubedge.live/case-studies/chess) and [Chat App](https://starter.clubedge.live/case-studies/chat-app): each is something one of them had to add itself. Two more of theirs, deploying to Cloudflare and downloads by byte range, shipped in v0.31.0.
 
 - **Real-time:** a `realtime` module that delivers short messages to every server instance over PostgreSQL's LISTEN/NOTIFY, with no extra service, and live events for a signed-in page over Server-Sent Events.
-- **Deploying to Cloudflare:** for React + Vite with a separate API, the website's files served by Cloudflare with the API's image as a Cloudflare Container, or the website alone on the free plan with the API on another host.
 - **Email codes and two-step verification:** a new account's email confirmed with a code from the email, where a link is today, and two-step verification with an authenticator app, asked for at sign-in and before a password changes, for the auth providers that support them.
-- **Media in storage:** downloads by byte range, which browsers ask for to play and seek in video and audio.
 - **Sign-in with Firebase and Appwrite in the native app,** which has Supabase and Better Auth today.
 - **Organizations and teams:** workspaces, members, roles (owner, admin, member), email invitations, and an active-organization switcher, with data and billing per organization, across the web apps, the API contract, and the native app. Better Auth has an organizations plugin; Supabase would use tables and row-level security; Appwrite has Teams.
 - **An admin area:** a user list, roles, banning users, and impersonating a user for support, built on the roles of organizations and teams.
