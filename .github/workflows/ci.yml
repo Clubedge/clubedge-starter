@@ -93,6 +93,10 @@ jobs:
   # clubedge:if framework!=none
   e2e:
     runs-on: ubuntu-24.04
+    env: # clubedge:only framework=vite && auth=better-auth
+      # A Vite app with Better Auth is always configured: its dashboard asks visitors to sign in. # clubedge:only framework=vite && auth=better-auth
+      # False in the Starter's own repository, whose apps/web has no auth configured. # clubedge:only starter-repository
+      E2E_AUTH_ENABLED: ${{ github.repository != 'Clubedge/clubedge-starter' }} # clubedge:only framework=vite && auth=better-auth
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
