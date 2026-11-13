@@ -35,6 +35,7 @@ Every phase follows the rules the existing modules already follow:
 | 19      | v0.29.0            | An update policy for installed apps, with a minimum version the APIs enforce, and a new design for the native app                  |
 | 20      | v0.30.0 to v0.30.1 | Shipping to stores: release workflows for both mobile apps, push notifications, and over-the-air updates with EAS Update           |
 | 21      | v0.31.0 to v0.31.3 | Deploying React + Vite and its API to Cloudflare, downloads by byte range, and browser tests in Chromium, Firefox, and WebKit      |
+| 22      | v0.32.0            | Support levels for every option and stack, a stability policy, and upgrade pull requests built from the CLI's report               |
 
 ## Next
 
