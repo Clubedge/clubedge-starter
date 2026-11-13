@@ -110,6 +110,7 @@
     ".github/assets",
     ".github/dependabot.yml",
     ".github/workflows/demo-app.yml",
+    ".github/workflows/expo-patches.yml",
     ".github/workflows/starter.yml",
     ".github/workflows/starter-ios.yml",
     ".github/workflows/starter-mobile.yml",

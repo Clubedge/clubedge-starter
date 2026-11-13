@@ -1,0 +1,145 @@
+# Maintainer workflow for the Starter repository. Expo publishes patch versions of its SDK's
+# packages without notice, and from then on `expo install --check`, which every project with the
+# native app runs in CI, fails until apps/expo asks for them. Every six hours, this asks Expo
+# which versions it expects. When apps/expo is behind, it takes them on the chore/expo-patches
+# branch, as `expo install --fix` would, and opens a pull request for them or updates the one
+# that is open. Once main has them, it closes that pull request. Generated projects never get
+# this workflow.
+#
+# A pull request the default token opens or updates starts no workflows, so this job starts CI,
+# Starter, and Starter mobile on the branch, and the pull request shows their checks. With an
+# EXPO_PATCHES_TOKEN secret (a fine-grained token with contents and pull requests write), the
+# pull request starts them itself. The default token needs Settings -> Actions -> General ->
+# "Allow GitHub Actions to create and approve pull requests".
+name: Expo patches
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+concurrency:
+  group: expo-patches
+  cancel-in-progress: false
+jobs:
+  patches:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BRANCH: chore/expo-patches
+      BOT_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      GH_TOKEN: ${{ secrets.EXPO_PATCHES_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.EXPO_PATCHES_TOKEN || github.token }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The check exits 1 and names each package Expo expects at another version when apps/expo
+      # is behind. Any other failure, such as Expo's servers not answering, fails the job instead.
+      - name: Ask Expo which versions it expects
+        id: check
+        working-directory: apps/expo
+        run: |
+          set -uo pipefail
+          if pnpm exec expo install --check > "$RUNNER_TEMP/check.txt" 2>&1; then
+            cat "$RUNNER_TEMP/check.txt"
+            echo "outdated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cat "$RUNNER_TEMP/check.txt"
+          grep -qE "@[^[:space:]]+ - expected version: " "$RUNNER_TEMP/check.txt" || exit 1
+          echo "outdated=true" >> "$GITHUB_OUTPUT"
+      - name: Close the pull request once main has the versions
+        if: steps.check.outputs.outdated == 'false'
+        run: |
+          set -euo pipefail
+          number=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr close "$number" --delete-branch --comment "\`apps/expo\` on \`main\` has the versions Expo expects now."
+          fi
+      - name: Take the versions Expo expects
+        if: steps.check.outputs.outdated == 'true'
+        working-directory: apps/expo
+        run: |
+          set -euo pipefail
+          # The versions the check named, as "expo@~58.0.25": what `expo install --fix` installs.
+          # The fix then stops with an error, since it would add a package's config plugin to the
+          # Expo config, and can't write to app.config.ts.
+          mapfile -t wanted < <(sed -nE 's/^[[:space:]]*([^[:space:]]+)@[^[:space:]]+ - expected version: ([^[:space:]]+)$/\1@\2/p' "$RUNNER_TEMP/check.txt")
+          echo "Installing ${wanted[*]}"
+          pnpm add "${wanted[@]}"
+          pnpm exec expo install --check
+          pnpm --filter @clubedge/expo typecheck
+          # The lockfile matches every package.json, as CI's install requires.
+          cd ../..
+          pnpm install --frozen-lockfile
+          git diff --stat
+      - name: Open the pull request, or update the open one
+        if: steps.check.outputs.outdated == 'true'
+        env:
+          OWN_TOKEN: ${{ secrets.EXPO_PATCHES_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          expo=$(node -p 'require("./apps/expo/node_modules/expo/package.json").version')
+          title="chore(expo): take Expo $expo's patch versions"
+          # The packages the check named, as "- expo@58.0.24 - expected version: ~58.0.25".
+          named=$(grep -E "@[^[:space:]]+ - expected version: " "$RUNNER_TEMP/check.txt" | sed -E 's/^[[:space:]]*/- /')
+          git config user.name "github-actions[bot]"
+          git config user.email "$BOT_EMAIL"
+          git switch --create "$BRANCH"
+          git add apps/expo/package.json pnpm-lock.yaml
+          git commit --quiet --message "$title" \
+            --message "Expo published new patch versions, and expo install --check names:" --message "$named"
+
+          # The branch is this workflow's own. A push of the change it already has would start
+          # every check again, and a commit someone else pushed there is theirs to keep.
+          pushed=true
+          if git fetch --quiet origin "$BRANCH" 2> /dev/null; then
+            if [ "$(git log -1 --format=%ae FETCH_HEAD)" != "$BOT_EMAIL" ]; then
+              echo "::warning::$BRANCH has a commit this workflow didn't make, so it is left as it is."
+              exit 0
+            fi
+            if git diff --quiet FETCH_HEAD HEAD -- apps/expo/package.json pnpm-lock.yaml; then
+              echo "$BRANCH already has these versions."
+              pushed=false
+            else
+              git push --force-with-lease="$BRANCH:$(git rev-parse FETCH_HEAD)" origin "HEAD:$BRANCH"
+            fi
+          else
+            git push origin "HEAD:$BRANCH"
+          fi
+
+          body=$(cat <<EOF
+          Expo published new patch versions of its SDK's packages, and \`expo install --check\` in \`apps/expo\` names:
+
+          $named
+
+          Until \`apps/expo\` asks for them, the check fails CI for every project with the native app, on \`main\` and on every pull request. This takes them, as \`expo install --fix\` would, and \`expo install --check\`, the app's typecheck, and \`pnpm install --frozen-lockfile\` pass with them.
+
+          Opened by the Expo patches workflow (\`.github/workflows/expo-patches.yml\`), which updates this pull request while it is open, and closes it once \`main\` has the versions.
+          EOF
+          )
+          number=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh pr edit "$number" --title "$title" --body "$body"
+          elif [ "$pushed" = false ]; then
+            # Its pull request was closed without merging: none opens again for the same versions.
+            echo "The pull request for these versions was closed; another opens when Expo publishes others."
+            exit 0
+          elif ! gh pr create --base main --head "$BRANCH" --title "$title" --body "$body"; then
+            echo "::error::No pull request for $BRANCH: set an EXPO_PATCHES_TOKEN secret, or allow GitHub Actions to create pull requests in the repository's settings."
+            exit 1
+          fi
+          # What the default token pushes starts no workflows: start the pull request's checks.
+          if [ "$pushed" = true ] && [ "$OWN_TOKEN" != true ]; then
+            for workflow in ci.yml starter.yml starter-mobile.yml; do
+              gh workflow run "$workflow" --ref "$BRANCH"
+            done
+          fi
