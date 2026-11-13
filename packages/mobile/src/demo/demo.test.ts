@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { api } from "./api";
+import { checkForUpdate, rememberedUpdate, updateStatus } from "@clubedge/contract";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { api, DEMO_APK } from "./api";
 import { authClient } from "./auth";
 import { demo } from "./state";
 
@@ -81,5 +82,88 @@ describe("the demo's API", () => {
     });
     expect(response.status).toBe(404);
     expect(error?.error.code).toBe("not_found");
+  });
+});
+
+describe("the demo's updates", () => {
+  const latest = "https://api.github.com/repos/Clubedge/clubedge-starter/releases/latest";
+  const download = (tag: string, name: string) =>
+    `https://github.com/Clubedge/clubedge-starter/releases/download/${tag}/${name}`;
+
+  /** GitHub's latest release, with these files. */
+  const release = (tag: string, files: string[]) =>
+    Response.json({
+      tag_name: tag,
+      assets: files.map((name) => ({ name, browser_download_url: download(tag, name) })),
+    });
+
+  /** What GitHub answers the demo, or the error it gets instead. */
+  function github(answer: Response | Error) {
+    const fetch = vi.fn(async () => {
+      if (answer instanceof Error) throw answer;
+      return answer;
+    });
+    vi.stubGlobal("fetch", fetch);
+    return fetch;
+  }
+
+  const forReleases = () => vi.stubEnv("VITE_DEMO_RELEASES", "Clubedge/clubedge-starter");
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks for none in a build for no repository's releases", async () => {
+    const fetch = github(release("v0.31.5", [DEMO_APK]));
+    expect((await api.GET("/api/app-version")).data?.minimumVersion).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("asks an older demo to update to the latest release's APK", async () => {
+    forReleases();
+    const fetch = github(release("v0.31.5", ["clubedge-native-demo.apk", DEMO_APK]));
+    const versions = (await api.GET("/api/app-version")).data!;
+    expect(fetch).toHaveBeenCalledWith(latest, expect.anything());
+    expect(versions).toEqual({
+      minimumVersion: "0.31.5",
+      latestVersion: "0.31.5",
+      updateUrl: download("v0.31.5", DEMO_APK),
+      nextMinimumVersion: null,
+      nextMinimumFrom: null,
+    });
+    expect(updateStatus("0.31.4", versions)).toBe("required");
+    expect(updateStatus("0.31.5", versions)).toBe("current");
+  });
+
+  it("can't tell until the latest release carries the demo, or when GitHub can't answer", async () => {
+    forReleases();
+    for (const answer of [
+      release("v0.31.5", ["clubedge-native-demo.apk"]),
+      release("nightly", [DEMO_APK]),
+      new Response("rate limit exceeded", { status: 403 }),
+      new TypeError("Failed to fetch"),
+    ]) {
+      github(answer);
+      const { response, data } = await api.GET("/api/app-version");
+      expect(response.status).toBe(503);
+      expect(data).toBeUndefined();
+    }
+  });
+
+  it("keeps a demo it asked to update closed while it can't tell", async () => {
+    forReleases();
+    const kept = new Map<string, string>();
+    const storage = {
+      get: async (key: string) => kept.get(key) ?? null,
+      set: async (key: string, value: string) => void kept.set(key, value),
+      remove: async (key: string) => void kept.delete(key),
+    };
+    const versions = async () => (await api.GET("/api/app-version")).data ?? null;
+    github(release("v0.31.5", [DEMO_APK]));
+    expect((await checkForUpdate("0.31.4", versions, storage))?.status).toBe("required");
+    github(new TypeError("Failed to fetch"));
+    expect(await checkForUpdate("0.31.4", versions, storage)).toBeNull();
+    expect((await rememberedUpdate("0.31.4", storage))?.status).toBe("required");
   });
 });

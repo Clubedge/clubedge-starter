@@ -7,6 +7,8 @@
 // and ios/ with the rest of the app. Without one, the projects that exist are updated, with the
 // version in version.json (version.mjs). --open then opens them in Android Studio or Xcode.
 // --demo builds the demo instead: sample data kept on the device, and no server, so no WEB_URL.
+// With DEMO_RELEASES, a GitHub repository whose releases carry the demo, it asks for an update
+// once a newer release is out.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -45,6 +47,20 @@ export function webOrigin(value) {
   return url.origin;
 }
 
+/**
+ * The GitHub repository whose latest release a demo asks to be updated to, from DEMO_RELEASES,
+ * such as "Clubedge/clubedge-starter", or null without one: the demo then asks for no update.
+ */
+export function demoReleases(value) {
+  if (!value) return null;
+  if (!/^[\w.-]+\/[\w.-]+$/.test(value)) {
+    throw new Error(
+      `DEMO_RELEASES must be a GitHub repository, such as Clubedge/clubedge-starter, not "${value}".`,
+    );
+  }
+  return value;
+}
+
 function fail(message) {
   console.error(message);
   process.exit(1);
@@ -74,7 +90,14 @@ export function build(args) {
   // A demo answers from memory on the device; the app calls the website otherwise.
   const demo = options.includes("--demo");
   const environment = { VITE_DEMO: String(demo) };
-  if (!demo) {
+  if (demo) {
+    try {
+      const releases = demoReleases(process.env.DEMO_RELEASES);
+      if (releases) environment.VITE_DEMO_RELEASES = releases;
+    } catch (error) {
+      fail(error.message);
+    }
+  } else {
     try {
       environment.VITE_PUBLIC_ORIGIN = webOrigin(process.env.WEB_URL);
     } catch (error) {

@@ -13,7 +13,7 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { webOrigin } from "../apps/capacitor/scripts/build.mjs";
+import { demoReleases, webOrigin } from "../apps/capacitor/scripts/build.mjs";
 import { iconArguments, makeAndroidSplash, makeIcons } from "../apps/capacitor/scripts/icons.mjs";
 import { delegateWithPush, projectWithEntitlements } from "../apps/capacitor/scripts/push.mjs";
 import {
@@ -244,6 +244,16 @@ describe("apps/capacitor/scripts/build.mjs", () => {
     expect(() => webOrigin("http://app.example.com")).toThrow("https://");
     expect(() => webOrigin("https://app.example.com/app")).toThrow("must be an origin");
     expect(() => webOrigin("https://user:secret@app.example.com")).toThrow("must be an origin");
+  });
+
+  it("builds the demo for a GitHub repository's releases, or for none", () => {
+    expect(demoReleases("Clubedge/clubedge-starter")).toBe("Clubedge/clubedge-starter");
+    expect(demoReleases(undefined)).toBeNull();
+    expect(demoReleases("")).toBeNull();
+    expect(() => demoReleases("clubedge-starter")).toThrow("must be a GitHub repository");
+    expect(() => demoReleases("https://github.com/Clubedge/clubedge-starter")).toThrow(
+      "must be a GitHub repository",
+    );
   });
 });
 
