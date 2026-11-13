@@ -1,6 +1,8 @@
 node_modules/
 .pnpm-store/
 .turbo/
+# The auth server the React + Vite app's dev.mjs bundles for pnpm dev.
+.cache/
 .next/
 out/
 build/
