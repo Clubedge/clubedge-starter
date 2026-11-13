@@ -68,6 +68,7 @@ export default defineConfig([
     "**/.tanstack/**",
     "**/routeTree.gen.ts",
     "**/.turbo/**",
+    "**/.cache/**",
     ".pnpm-store/**",
     "out/**",
     "build/**",
