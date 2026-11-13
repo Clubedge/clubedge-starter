@@ -2,6 +2,7 @@
   "id": "expo",
   "name": "Expo",
   "role": "mobile",
+  "status": "stable",
   "envExample": ".env.example",
   "conditional": [
     ".env.example",

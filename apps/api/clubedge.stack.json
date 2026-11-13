@@ -2,6 +2,7 @@
   "id": "hono",
   "name": "Hono (TypeScript)",
   "role": "api",
+  "status": "stable",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
   "conditional": [

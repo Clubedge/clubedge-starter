@@ -2,6 +2,7 @@
   "id": "next",
   "name": "Next.js",
   "role": "fullstack",
+  "status": "stable",
   "envExample": "../../.env.example",
   "dockerfile": "../../Dockerfile",
   "conditional": [

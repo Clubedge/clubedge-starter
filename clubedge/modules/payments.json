@@ -4,6 +4,8 @@
   "options": {
     "stripe": {
       "name": "Stripe",
+      "status": "beta",
+      "note": "Checkout, the webhook, and the billing portal run end to end in CI against a stand-in for Stripe's API, but not against Stripe's test mode.",
       "packages": {
         "@clubedge/payments": "packages/payments",
         "@clubedge/payments-stripe": "packages/payments-stripe"

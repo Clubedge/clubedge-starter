@@ -2,6 +2,7 @@
   "id": "vite",
   "name": "React + Vite",
   "role": "frontend",
+  "status": "stable",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
   "conditional": [

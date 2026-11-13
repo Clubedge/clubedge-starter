@@ -4,12 +4,14 @@
   "options": {
     "redis": {
       "name": "Redis, or memory without REDIS_URL",
+      "status": "stable",
       "packages": {
         "@clubedge/cache-redis": "packages/cache-redis"
       }
     },
     "memory": {
-      "name": "Memory only"
+      "name": "Memory only",
+      "status": "stable"
     }
   }
 }
