@@ -32,9 +32,10 @@ Every module option and stack has a level, earned from what CI runs on `main`, n
 | Deprecated   | Still works and still upgrades, but new projects should choose its replacement. See [Deprecation](#deprecation).                             |
 
 The level and its note live in the option's descriptor (`clubedge/modules/<id>.json`, or a stack's
-`clubedge.stack.json`). The CLI warns when a project chooses an option below Stable, the MCP server
-returns the level with each option, and the builder on the website shows it. An option moves up
-when the missing evidence lands in CI, and down when that evidence stops passing.
+`clubedge.stack.json`). From create-clubedge-app 0.49.0, the CLI warns when a project chooses an
+option below Stable, and its MCP server returns the level with each option; the builder on the
+website shows it too. Earlier CLIs ignore the levels. An option moves up when the missing evidence
+lands in CI, and down when that evidence stops passing.
 
 <!-- The checks in scripts/stability.test.ts keep this table and the descriptors in step. -->
 

@@ -151,7 +151,7 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 
 A module you leave out takes its packages, provider SDK, environment variables, documentation, and lockfile entries with it.
 
-Each option has a support level, Stable, Beta, or Experimental, earned from what CI runs; the CLI warns before you choose one below Stable. [STABILITY.md](STABILITY.md) lists them with their evidence, and says what stays compatible between releases, how an option is retired, and what an upgrade promises.
+Each option has a support level, Stable, Beta, or Experimental, earned from what CI runs; from create-clubedge-app 0.49.0, the CLI warns before you choose one below Stable. [STABILITY.md](STABILITY.md) lists them with their evidence, and says what stays compatible between releases, how an option is retired, and what an upgrade promises.
 
 `cloudflare` deploys React + Vite with its API (`--framework vite` with `--api hono` or `--api fastapi`): the website as static files, and the API's image as a container. Next.js and TanStack Start would each need a Cloudflare adapter, which the Starter does not have, so the CLI refuses the option with them.
 
