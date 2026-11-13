@@ -2,6 +2,7 @@
   "id": "tanstack-start",
   "name": "TanStack Start",
   "role": "fullstack",
+  "status": "stable",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
   "conditional": [

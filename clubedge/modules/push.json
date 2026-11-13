@@ -4,6 +4,8 @@
   "options": {
     "expo": {
       "name": "Expo push service (the native app)",
+      "status": "beta",
+      "note": "The apps build with it and sending is unit-tested in CI, but no notification is delivered there.",
       "packages": {
         "@clubedge/push": "packages/push",
         "@clubedge/push-expo": "packages/push-expo"
@@ -15,6 +17,8 @@
     },
     "native": {
       "name": "FCM and APNs, directly (the native app and the mobile shell)",
+      "status": "beta",
+      "note": "The apps build with it and sending is unit-tested in CI, but no notification is delivered through FCM or APNs there.",
       "packages": {
         "@clubedge/push": "packages/push",
         "@clubedge/push-native": "packages/push-native"

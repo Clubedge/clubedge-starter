@@ -2,6 +2,7 @@
   "id": "capacitor",
   "name": "Capacitor",
   "role": "shell",
+  "status": "stable",
   "envExample": ".env.example",
   "conditional": [".env.example", "scripts/build.mjs"],
   "modules": {

@@ -5,6 +5,8 @@
   "options": {
     "eas": {
       "name": "EAS Update (the native app)",
+      "status": "beta",
+      "note": "The native app builds with EAS Update configured in CI, but no update has been published through it.",
       "dependencies": ["expo-updates"],
       "files": [".github/workflows/expo-update.yml"]
     },

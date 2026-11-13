@@ -4,6 +4,7 @@
   "options": {
     "smtp": {
       "name": "SMTP (any provider, or a local inbox)",
+      "status": "stable",
       "packages": {
         "@clubedge/email": "packages/email",
         "@clubedge/email-smtp": "packages/email-smtp"
@@ -11,6 +12,8 @@
     },
     "resend": {
       "name": "Resend",
+      "status": "beta",
+      "note": "Projects build and test with it in CI, but no email has been sent through Resend's API in CI.",
       "packages": {
         "@clubedge/email": "packages/email",
         "@clubedge/email-resend": "packages/email-resend"

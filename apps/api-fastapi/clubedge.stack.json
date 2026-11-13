@@ -2,6 +2,7 @@
   "id": "fastapi",
   "name": "FastAPI (Python)",
   "role": "api",
+  "status": "stable",
   "envExample": ".env.example",
   "dockerfile": "Dockerfile",
   "conditional": [

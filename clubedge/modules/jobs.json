@@ -4,6 +4,7 @@
   "options": {
     "pg-boss": {
       "name": "pg-boss (jobs stored in PostgreSQL)",
+      "status": "stable",
       "packages": {
         "@clubedge/jobs": "packages/jobs",
         "@clubedge/jobs-pg-boss": "packages/jobs-pg-boss"
@@ -12,6 +13,7 @@
     },
     "bullmq": {
       "name": "BullMQ (jobs stored in Redis)",
+      "status": "stable",
       "packages": {
         "@clubedge/jobs": "packages/jobs",
         "@clubedge/jobs-bullmq": "packages/jobs-bullmq"
@@ -23,6 +25,8 @@
     },
     "inngest": {
       "name": "Inngest (runs each job by calling the app)",
+      "status": "beta",
+      "note": "CI runs a job end to end through the Inngest Dev Server, but not through Inngest Cloud.",
       "packages": {
         "@clubedge/jobs": "packages/jobs",
         "@clubedge/jobs-inngest": "packages/jobs-inngest"

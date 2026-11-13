@@ -151,6 +151,8 @@ Pick modules when you create a project, and change them later with `pnpm clubedg
 
 A module you leave out takes its packages, provider SDK, environment variables, documentation, and lockfile entries with it.
 
+Each option has a support level, Stable, Beta, or Experimental, earned from what CI runs; the CLI warns before you choose one below Stable. [STABILITY.md](STABILITY.md) lists them with their evidence, and says what stays compatible between releases, how an option is retired, and what an upgrade promises.
+
 `cloudflare` deploys React + Vite with its API (`--framework vite` with `--api hono` or `--api fastapi`): the website as static files, and the API's image as a container. Next.js and TanStack Start would each need a Cloudflare adapter, which the Starter does not have, so the CLI refuses the option with them.
 
 <!-- clubedge:end -->
@@ -449,6 +451,8 @@ Change the project later:
 - `pnpm clubedge upgrade`: move the project to the newest Starter release. It first lists the releases in between.
 
 These commands merge the change into your code instead of overwriting it: files you never touched are updated, your edits are kept, and lines you both changed get conflict markers, listed per file afterward. Commit first, because they need a clean Git tree so that `git diff` shows the result. Add `--dry-run` to preview a change.
+
+What an upgrade promises, how ready each module option is, and how an option is retired: [Stability and compatibility](https://github.com/Clubedge/clubedge-starter/blob/main/STABILITY.md).
 
 ## Documentation
 

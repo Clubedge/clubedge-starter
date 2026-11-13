@@ -116,6 +116,7 @@
     ".github/workflows/starter-mobile.yml",
     ".github/workflows/stack-previews.yml",
     "ROADMAP.md",
+    "STABILITY.md",
     "apps/api/src/server/variants/auth.better-auth.test.ts",
     "apps/vite/src/lib/demo.test.ts",
     "apps/api-fastapi/tests/test_auth_variants.py",
@@ -126,6 +127,7 @@
     "scripts/clubedge-upgrade-workflow.test.ts",
     "scripts/deploy-cloudflare.test.ts",
     "scripts/mobile-app.test.ts",
+    "scripts/stability.test.ts",
     "scripts/template-manifest.test.ts",
     "scripts/vite-api-routes.test.ts",
     "scripts/vite-client-ip.test.ts"

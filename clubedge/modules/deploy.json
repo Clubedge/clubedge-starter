@@ -3,30 +3,42 @@
   "default": "docker",
   "options": {
     "docker": {
-      "name": "Docker image, on any container host"
+      "name": "Docker image, on any container host",
+      "status": "stable"
     },
     "fly": {
       "name": "Fly.io",
+      "status": "beta",
+      "note": "CI checks the generated fly.toml and deploy workflow, but no project has been deployed to Fly with it yet.",
       "files": [".github/workflows/deploy.yml", "fly.toml"]
     },
     "railway": {
       "name": "Railway",
+      "status": "beta",
+      "note": "CI checks the generated Railway config and deploy workflow, but no project has been deployed to Railway with it yet.",
       "files": [".github/workflows/deploy.yml", ".railway/railway.ts"]
     },
     "render": {
       "name": "Render",
+      "status": "beta",
+      "note": "CI checks the generated render.yaml and deploy workflow, but no project has been deployed to Render with it yet.",
       "files": [".github/workflows/deploy.yml", "render.yaml"]
     },
     "vercel": {
       "name": "Vercel",
+      "status": "stable",
       "files": [".github/workflows/deploy.yml"]
     },
     "netlify": {
       "name": "Netlify",
+      "status": "beta",
+      "note": "CI checks the generated config and builds TanStack Start with Netlify's preset, but no project has been deployed to Netlify with it yet.",
       "files": [".github/workflows/deploy.yml"]
     },
     "cloudflare": {
       "name": "Cloudflare",
+      "status": "experimental",
+      "note": "CI dry-runs both configurations with Wrangler, but nothing has been deployed with it yet, and the API's container needs Cloudflare's Workers Paid plan.",
       "packages": {
         "@clubedge/deploy-cloudflare": "deploy/cloudflare"
       },

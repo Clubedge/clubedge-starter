@@ -5,6 +5,7 @@
   "options": {
     "docker": {
       "name": "Docker Compose",
+      "status": "stable",
       "files": ["docker-compose.dev.yml"],
       "scripts": {
         "dev": "turbo run dev --filter=@clubedge/web",
@@ -16,6 +17,7 @@
     },
     "supabase": {
       "name": "Supabase CLI",
+      "status": "stable",
       "files": ["supabase"],
       "scripts": {
         "dev": "turbo run dev --filter=@clubedge/web",
@@ -27,6 +29,7 @@
     },
     "local": {
       "name": "No Docker (PGlite and a local folder)",
+      "status": "stable",
       "packages": {
         "@clubedge/local-db": "packages/local-db"
       },
@@ -38,6 +41,7 @@
     },
     "neon": {
       "name": "Neon (hosted PostgreSQL, nothing to install)",
+      "status": "stable",
       "files": [".github/workflows/preview.yml"],
       "scripts": {
         "dev": "turbo run dev --filter=@clubedge/web"

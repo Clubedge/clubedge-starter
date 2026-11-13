@@ -4,6 +4,8 @@
   "options": {
     "otel": {
       "name": "OpenTelemetry (OTLP to any collector)",
+      "status": "beta",
+      "note": "CI sends a request's traces over OTLP to a stand-in collector, but not to a hosted backend.",
       "packages": {
         "@clubedge/observability": "packages/observability",
         "@clubedge/observability-otel": "packages/observability-otel"
@@ -12,6 +14,8 @@
     },
     "sentry": {
       "name": "Sentry",
+      "status": "beta",
+      "note": "CI sends a request's traces to a stand-in for Sentry's API, but not to Sentry.",
       "packages": {
         "@clubedge/observability": "packages/observability",
         "@clubedge/observability-sentry": "packages/observability-sentry"
