@@ -180,6 +180,11 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/e2e.sh" <<EOF
           set -uo pipefail
+          adb wait-for-device
+          # Android's own apps, such as its launcher, can stop answering while the emulator is
+          # still busy after boot, and their "isn't responding" dialog then covers the app under
+          # test. With this setting, Android shows no such dialog.
+          adb shell settings put global hide_error_dialogs 1
           adb logcat -c
           adb logcat -v time > "$RUNNER_TEMP/e2e/logcat.txt" 2>&1 &
           logcat=\$!
