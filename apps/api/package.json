@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "node --env-file-if-exists=.env.local --watch --import tsx src/index.ts",
+    "dev": "node --watch --import tsx --import ./scripts/env-local.ts src/index.ts",
     "build": "node build.mjs",
     "start": "node --env-file-if-exists=.env.local dist/index.mjs",
     "typecheck": "tsc --noEmit",
