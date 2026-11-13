@@ -69,6 +69,9 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build the demo and number it after the release
         working-directory: ${{ runner.temp }}/clubedge-demo
+        env:
+          # The demo asks for an update once a newer release of this repository carries its APK.
+          DEMO_RELEASES: ${{ github.repository }}
         run: |
           set -euo pipefail
           pnpm --filter @clubedge/shell run sync android --demo

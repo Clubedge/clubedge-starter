@@ -1109,6 +1109,7 @@ Google Play takes an app's first upload in its console; later ones can come from
 - The settings work until the app closes, and deleting the account signs out.
 - Other calls answer as an API with nothing set up would, and routes the demo leaves out answer 404, as for a module the project does not have.
 - A banner says it is a demo, with sample data that stays on the device.
+- It asks for updates only when `DEMO_RELEASES` names a GitHub repository whose releases carry the demo as `clubedge-demo.apk`, such as `Clubedge/clubedge-starter`, in `apps/shell/.env.local` or the environment. When it starts and when it comes back, it asks GitHub for that repository's latest release: a demo older than the release shows **Update required**, with a link to its APK, and while GitHub can't be reached, the demo keeps what it showed.
 
 Builds without `--demo` contain none of it. The demo replaces the app's build in the native project, so run `pnpm --filter @clubedge/shell sync` before building a release.
 
