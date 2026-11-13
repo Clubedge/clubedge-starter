@@ -98,8 +98,9 @@ An option is retired in stages, so no project loses a module it uses in an ordin
    `"offered": false`: new projects, and `pnpm clubedge add`, can no longer choose it. Projects
    that have it keep upgrading with it.
 3. **Removed.** A release removes it from the Starter only after its notes announced the removal
-   one release ahead, and, from 1.0, only in a major release. An upgrade to that release stops
-   before changing anything when the project still has the option, and names the replacement.
+   one release ahead, and, from 1.0, only in a major release. Its module's descriptor keeps it
+   under `removed`, with `since` and `replacement`, so an upgrade to that release stops before
+   changing anything when the project still has the option, and names the replacement.
 
 Removing a module you chose is always your command, `pnpm clubedge remove`: an upgrade never does
 it for you.

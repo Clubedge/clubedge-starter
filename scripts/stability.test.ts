@@ -80,6 +80,23 @@ describe("support levels", () => {
     }
   });
 
+  it("record each removed option's release and a replacement the module still offers", () => {
+    for (const moduleId of root.modules as string[]) {
+      const descriptor = readJson(`clubedge/modules/${moduleId}.json`);
+      for (const [optionId, removed] of Object.entries<{ since?: string; replacement?: string }>(
+        descriptor.removed ?? {},
+      )) {
+        const id = `${moduleId}/${optionId}`;
+        expect(descriptor.options[optionId], `${id} is no longer an option`).toBeUndefined();
+        expect(removed.since, id).toMatch(/^v\d+\.\d+\.\d+$/);
+        expect(
+          descriptor.options[removed.replacement ?? ""],
+          `${id} names its replacement`,
+        ).toBeDefined();
+      }
+    }
+  });
+
   it("match the table in STABILITY.md", () => {
     const rows = new Map<string, string>();
     for (const line of readFileSync("STABILITY.md", "utf8").split("\n")) {
