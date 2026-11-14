@@ -7,6 +7,8 @@ describe("getSupabaseAuthEnv", () => {
   });
 
   it("reports Supabase Auth only when both values are present", () => {
+    // Stubbed so CI's local Supabase stack (which exports all three variables) cannot leak in.
+    vi.stubEnv("SUPABASE_SECRET_KEY", "");
     vi.stubEnv("SUPABASE_URL", "https://project.supabase.co");
     vi.stubEnv("SUPABASE_PUBLISHABLE_KEY", "");
     expect(getSupabaseAuthEnv()).toBeNull();
