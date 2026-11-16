@@ -29,7 +29,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Python apps (the FastAPI API) run their checks with uv.
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -597,7 +597,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # Python apps (the FastAPI API) run their checks with uv.
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -841,7 +841,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -911,7 +911,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: Build create-clubedge-app
         run: |
           set -euo pipefail
@@ -1135,7 +1135,7 @@ jobs:
           node-version: 22
           cache: pnpm
       # The FastAPI API runs with uv.
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
         if: matrix.api == 'fastapi'
       - name: Build create-clubedge-app
         run: |
